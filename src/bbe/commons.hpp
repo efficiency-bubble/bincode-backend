@@ -3,6 +3,7 @@
 #include<cppp/string.hpp>
 #include<cppp/ptr.hpp>
 #define BBE_EXPORT using impl::
+#define BBE_ENS(n) namespace n = impl::n
 namespace bbe::impl{
     using std::uint64_t;
     using uindex = std::size_t;
