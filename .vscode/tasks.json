@@ -1,0 +1,43 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compile Test",
+            "command": "make",
+            "type": "shell",
+            "args": [],
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "clear": true,
+                "showReuseMessage": false
+            }
+        },
+        {
+            "label": "Run Test",
+            "command": "test.exe",
+            "type": "process",
+            "args": [],
+            "problemMatcher": [],
+            "presentation": {
+                "clear": true,
+                "showReuseMessage": false
+            },
+            "dependsOn": [
+                "Compile Test"
+            ],
+            "group": "test"
+        },
+        {
+            "label": "Compile Backend",
+            "command": "make backend.exe",
+            "type": "shell",
+            "args": [],
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "clear": true,
+                "showReuseMessage": false
+            },
+            "group": "build"
+        }
+    ]
+}

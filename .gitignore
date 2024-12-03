@@ -1,0 +1,4 @@
+*.exe
+*.a
+.vscode/settings.json
+src/bbe/*.o

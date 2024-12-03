@@ -1,0 +1,17 @@
+{
+    "configurations": [
+        {
+            "name": "Default",
+            "cppStandard": "c++23",
+            "includePath": [
+                "${default}",
+                "src"
+            ],
+            "intelliSenseMode": "windows-gcc-x64",
+            "defines": [
+                "__cplusplus=202400L"
+            ]
+        }
+    ],
+    "version": 4
+}
