@@ -13,8 +13,10 @@ namespace bbe::impl{
     };
     class ASTNode : public cppp::virtual_class{
         public:
-            virtual void set(std::uint64_t ind,ptr<ASTNode>&& nd){}
-            virtual void setprim32(std::uint64_t ind, std::uint32_t u32){}
+            virtual void set(std::uint64_t,ptr<ASTNode>&&){}
+            virtual void setprim32(std::uint64_t,std::uint32_t){
+                throw std::runtime_error("Bad setprim32");
+            }
             virtual Value compile(FunctionCompilationContext&) const = 0;
     };
     class Constanti32 : public ASTNode{
@@ -49,6 +51,13 @@ namespace bbe::impl{
                 }
             }
             Value compile(FunctionCompilationContext& context) const override{
+                if(!lhs){
+                    throw std::logic_error("Blank lhs to subi32");
+                }
+                if(!rhs){
+                    throw std::logic_error("Blank rhs to subi32");
+                }
+                
                 Value lhv{lhs->compile(context)};
                 Value rhv{rhs->compile(context)};
                 x86::encode::mov::r_rm<x86::width::W32>(context.text().text(),x86::reg::A,x86::encode::DisplacementRM<x86::width::W8>(x86::reg::BP),rhv.frame_offset);
@@ -61,14 +70,17 @@ namespace bbe::impl{
         ptr<ASTNode> en;
         public:
             Return(ptr<ASTNode>&& en) : en(std::move(en)){}
+            void set(std::uint64_t,ptr<ASTNode>&& nd) override{
+                en = std::move(nd);
+            }
             Value compile(FunctionCompilationContext& context) const{
+                if(!en){
+                    throw std::logic_error("Blank return");
+                }
                 Value value{en->compile(context)};
                 x86::encode::mov::r_rm<x86::width::W32>(context.text().text(),x86::reg::A,x86::encode::DisplacementRM<x86::width::W8>(x86::reg::BP),value.frame_offset);
                 x86::encode::ret::near(context.text().text());
                 return {0};
-            }
-            void set(std::uint64_t,ptr<ASTNode>&& nd) override{
-                en = std::move(nd);
             }
     };
 }
