@@ -1,5 +1,5 @@
-COMPOPT := -std=c++26 -flto -Wall -Wextra -Wpedantic -m64 -O3 -I"src" $(cppinclude)
-FINALOPT := $(COMPOPT) -s -static -fwhole-program
+COMPOPT := -std=c++26 -flto -fuse-linker-plugin -Wall -Wextra -Wpedantic -m64 -O3 -I"src" $(cppinclude)
+FINALOPT := $(COMPOPT) -s -static
 HEADERS := $(wildcard src/bbe/*.hpp)
 SOURCES := $(wildcard src/bbe/*.cpp)
 OBJECTS := $(patsubst %.cpp,%.o,$(SOURCES))

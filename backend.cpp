@@ -8,7 +8,6 @@
 // #define DBGPRINT(pat,...) fprintf(stderr,pat __VA_OPT__(,) __VA_ARGS__)
 using namespace bbe;
 using namespace std::literals;
-using cppp::ptr;
 using asm_generic::operator ""_b;
 constexpr static std::uint32_t CONTEXT_IDENTIFIER_C = 0;
 constexpr static std::uint32_t CONTEXT_VALUE_C = 1;
@@ -53,29 +52,6 @@ char8_t read(){
 std::byte bread(){
     return static_cast<std::byte>(read());
 }
-ptr<ASTNode> aread(){
-    switch(bread()){
-        case 0_b: // Builtin
-            switch(bread()){
-                case 0_b: // Return
-                    return ptr<Return>::construct(nullptr);
-            }
-            break;
-        case 1_b: // Operator
-            switch(bread()){
-                case 0_b: // Sub
-                    return ptr<Subi32>::construct(nullptr,nullptr);
-            }
-            break;
-        case 2_b: // Literal
-            switch(bread()){
-                case 0_b: // Num
-                    return ptr<Constanti32>::construct(0);
-            }
-            break;
-    }
-    throw std::runtime_error("aread(): unknown sequence");
-}
 template<typename T> requires(std::is_integral_v<T> && std::is_unsigned_v<T>)
 T ri(){
     T ret;
@@ -87,6 +63,9 @@ T ri(){
         return std::byteswap(ret);
     }
 }
+ASTNode aread(){
+    return {ri<std::uint64_t>(),ri<std::uint32_t>()};
+}
 template<typename T> requires(std::is_integral_v<T> && std::is_unsigned_v<T>)
 void wi(std::type_identity_t<T> x){
     if(std::endian::native != std::endian::little){
@@ -96,40 +75,36 @@ void wi(std::type_identity_t<T> x){
     std::fwrite(&x,sizeof(T),1uz,stdout);
 }
 int main(){
-    ptr<ASTNode> root{nullptr};
-    AllocatedArray<ASTNode*> nodes{};
+    std::optional<ASTNode> root{std::nullopt};
     freopen(nullptr,"rb",stdin);
     freopen(nullptr,"wb",stdout);
-    std::uint32_t node;
+    std::uint32_t naddr;
     std::uint32_t arg;
+    ASTNodeDefs env{default_ast_defs()};
     while(true){
         switch(bread()){
             case 0_b: // Create root
                 root = aread();
-                wi<std::uint64_t>(nodes.emplace(root.get()));
+                wi<std::uint64_t>(reinterpret_cast<std::uint64_t>(&*root));
                 std::fflush(stdout);
                 break;
             case 1_b: { // Create child
-                node = ri<std::uint64_t>();
+                naddr = ri<std::uint64_t>();
                 arg = ri<std::uint64_t>();
-                ptr<ASTNode> nd{aread()};
-                wi<std::uint64_t>(nodes.emplace(nd.get()));
                 std::fflush(stdout);
-                nodes[node]->set(arg,std::move(nd));
+                wi<std::uint64_t>(reinterpret_cast<std::uint64_t>(&reinterpret_cast<ASTNode*>(naddr)->emplace(arg,aread())));
                 break;
             }
             case 2_b: // Set primitive
-                node = ri<std::uint64_t>();
+                naddr = ri<std::uint64_t>();
                 arg = ri<std::uint64_t>();
                 switch(bread()){
                     case 32_b: // ui32
-                        nodes[node]->setprim32(arg,ri<std::uint32_t>());
+                        reinterpret_cast<ASTNode*>(naddr)->setp(arg,ri<std::uint32_t>());
                         break;
                 }
                 break;
             case 4_b: // Delete node
-                node = ri<std::uint64_t>();
-                nodes.free(node);
                 break;
             case 12_b: // List autocomplete contexts
                 wi<std::uint64_t>(2);
@@ -141,7 +116,7 @@ int main(){
                 Text text;
                 FunctionCompilationContext cc{text};
                 DBGPRINT("Comp.A");
-                root->compile(cc);
+                env.compile(*root,cc);
                 DBGPRINT("Comp.B");
                 wi<std::uint64_t>(text.text().size());
                 DBGPRINT("Comp.C");

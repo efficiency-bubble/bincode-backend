@@ -7,9 +7,9 @@ namespace bbe::impl{
         str _name;
         const Type* ret;
         std::vector<const Type*> argt;
-        ptr<ASTNode> root;
+        ASTNode root;
         public:
-            Function(str n,const Type* r,std::vector<const Type*>&& a,ptr<ASTNode>&& root) : _name(std::move(n)), ret(r), argt(std::move(a)), root(std::move(root)){}
+            Function(str n,const Type* r,std::vector<const Type*>&& a,ASTNode&& root) : _name(std::move(n)), ret(r), argt(std::move(a)), root(std::move(root)){}
             const str& name() const{
                 return _name;
             }
@@ -20,10 +20,10 @@ namespace bbe::impl{
                 return argt;
             }
             ASTNode& ast(){
-                return *root;
+                return root;
             }
             const ASTNode& ast() const{
-                return *root;
+                return root;
             }
     };
 }
