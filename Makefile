@@ -3,9 +3,14 @@ FINALOPT := $(COMPOPT) -s -static
 HEADERS := $(wildcard src/bbe/*.hpp)
 SOURCES := $(wildcard src/bbe/*.cpp)
 OBJECTS := $(patsubst %.cpp,%.o,$(SOURCES))
-test.exe: test.cpp bbe.a
+ifeq ($(OS),"Windows_NT")
+TARGET_SUFFIX := .exe
+else
+TARGET_SUFFIX :=
+endif
+test$(TARGET_SUFFIX): test.cpp bbe.a
 	g++ $< bbe.a -o $@ $(FINALOPT)
-backend.exe: backend.cpp bbe.a
+backend$(TARGET_SUFFIX): backend.cpp bbe.a
 	g++ $< bbe.a -o $@ $(FINALOPT)
 bbe.a: $(OBJECTS)
 	ar rcs $@ $(OBJECTS)

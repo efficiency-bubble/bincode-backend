@@ -35,7 +35,7 @@ namespace bbe::impl{
     void Default_AMD64::compile(const Function& fn,Text& t) const{
         FunctionCompilationContext fcc;
         compile_node(fn.ast(),fcc);
-        x86::encode::sub::rm_imm<x86::width::W32>(t.text(),x86::reg::BP,4*fcc.stack().max_size());
+        x86::encode::sub::rm_imm<x86::width::W32>(t.text(),x86::RM(x86::reg::BP),4*fcc.stack().max_size());
         t.text().append(fcc.text());
     }
 }
