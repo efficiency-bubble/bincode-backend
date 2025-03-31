@@ -1,4 +1,5 @@
 #include<cppp/bfile.hpp>
+#include<assembly/common.hpp>
 #include<bbe/bbe.hpp>
 #include<type_traits>
 #include<cinttypes>
@@ -9,8 +10,6 @@
 using namespace bbe;
 using namespace std::literals;
 using asm_generic::operator ""_b;
-constexpr static std::uint32_t CONTEXT_IDENTIFIER_C = 0;
-constexpr static std::uint32_t CONTEXT_VALUE_C = 1;
 template<typename T>
 class AllocatedArray{
     std::vector<std::optional<T>> arr;
@@ -64,7 +63,7 @@ T ri(){
     }
 }
 ASTNode aread(){
-    return {ri<std::uint64_t>(),ri<std::uint32_t>()};
+    return {ri<std::uint64_t>(),ri<std::uint64_t>()};
 }
 template<typename T> requires(std::is_integral_v<T> && std::is_unsigned_v<T>)
 void wi(std::type_identity_t<T> x){
@@ -75,27 +74,29 @@ void wi(std::type_identity_t<T> x){
     std::fwrite(&x,sizeof(T),1uz,stdout);
 }
 int main(){
-    std::optional<ASTNode> root{std::nullopt};
+    Function main{u8"main"s,nullptr,{},ASTNode()};
     freopen(nullptr,"rb",stdin);
     freopen(nullptr,"wb",stdout);
-    std::uint32_t naddr;
-    std::uint32_t arg;
-    Compiler env{default_amd64()};
+    std::uint64_t naddr;
+    std::uint64_t arg;
+    Default_AMD64 compiler;
+    wi<std::uint64_t>(reinterpret_cast<std::uint64_t>(&main.ast()));
     while(true){
         switch(bread()){
-            case 0_b: // Create root
-                root = aread();
-                wi<std::uint64_t>(reinterpret_cast<std::uint64_t>(&*root));
-                std::fflush(stdout);
-                break;
-            case 1_b: { // Create child
+            case 0_b: { // Set node
                 naddr = ri<std::uint64_t>();
-                arg = ri<std::uint64_t>();
-                std::fflush(stdout);
-                wi<std::uint64_t>(reinterpret_cast<std::uint64_t>(&reinterpret_cast<ASTNode*>(naddr)->emplace(arg,aread())));
+                *reinterpret_cast<ASTNode*>(naddr) = aread();
                 break;
             }
-            case 2_b: // Set primitive
+            case 1_b: // Add child
+                naddr = ri<std::uint64_t>();
+                wi<std::uint64_t>(reinterpret_cast<std::uint64_t>(&reinterpret_cast<ASTNode*>(naddr)->children().emplace_back(aread())));
+                std::fflush(stdout);
+                break;
+            case 2_b: // Delete (in fact, blank) node
+                *reinterpret_cast<ASTNode*>(naddr) = {};
+                break;
+            case 3_b: // Set primitive
                 naddr = ri<std::uint64_t>();
                 arg = ri<std::uint64_t>();
                 switch(bread()){
@@ -104,19 +105,10 @@ int main(){
                         break;
                 }
                 break;
-            case 4_b: // Delete node
-                break;
-            case 12_b: // List autocomplete contexts
-                wi<std::uint64_t>(2);
-                wi<std::uint32_t>(CONTEXT_IDENTIFIER_C);
-                wi<std::uint32_t>(CONTEXT_VALUE_C);
-                std::fflush(stdout);
-                break;
             case 40_b: { // Compile
                 Text text;
-                FunctionCompilationContext cc{text};
                 DBGPRINT("Comp.A");
-                env.compile(*root,cc);
+                compiler.compile(main,text);
                 DBGPRINT("Comp.B");
                 wi<std::uint64_t>(text.text().size());
                 DBGPRINT("Comp.C");

@@ -4,24 +4,20 @@
         {
             "label": "Compile Test",
             "command": "make",
-            "type": "shell",
+            "windows": {
+                "type": "shell"
+            },
             "args": [],
-            "problemMatcher": "$gcc",
-            "presentation": {
-                "clear": true,
-                "showReuseMessage": false
-            }
+            "problemMatcher": "$gcc"
         },
         {
             "label": "Run Test",
-            "command": "test.exe",
-            "type": "process",
+            "command": "${workspaceFolder}/test",
+            "windows": {
+                "command": "${workspaceFolder}/test.exe"
+            },
             "args": [],
             "problemMatcher": [],
-            "presentation": {
-                "clear": true,
-                "showReuseMessage": false
-            },
             "dependsOn": [
                 "Compile Test"
             ],
@@ -29,9 +25,15 @@
         },
         {
             "label": "Compile Backend",
-            "command": "make backend.exe",
-            "type": "shell",
-            "args": [],
+            "command": "make",
+            "args": [
+                "backend"
+            ],
+            "windows": {
+                "command": "make backend.exe",
+                "args": [],
+                "type": "shell"
+            },
             "problemMatcher": "$gcc",
             "presentation": {
                 "clear": true,

@@ -5,7 +5,7 @@ using namespace bbe;
 using namespace std::literals;
 int main(){
     Text text;
-    Default_AMD64 compiler;
+    targets::Defaultx64 compiler;
     ASTNode seven{2,1,data_tag};
     seven.setp(0,7);
     ASTNode one{2,1,data_tag};
