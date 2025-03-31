@@ -1,9 +1,11 @@
 #pragma once
-#include"commons.hpp"
-#include<cppp/bytearray.hpp>
 #include<unordered_map>
 #include<vector>
 #include<queue>
+#include<cppp/bytearray.hpp>
+#include<cppp/virtual.hpp>
+#include"function.hpp"
+#include"commons.hpp"
 namespace bbe::impl{
     using cppp::bytes;
     struct RelocationList{
@@ -52,15 +54,15 @@ namespace bbe::impl{
             }
     };
     class FunctionCompilationContext{
-        Text* _text;
+        bytes _text;
         Allocator _stack;
         public:
-            FunctionCompilationContext(Text& t) : _text(&t){}
-            Text& text(){
-                return *_text;
+            FunctionCompilationContext(){}
+            bytes& text(){
+                return _text;
             }
-            const Text& text() const{
-                return *_text;
+            const bytes& text() const{
+                return _text;
             }
             Allocator& stack(){
                 return _stack;
@@ -69,10 +71,20 @@ namespace bbe::impl{
                 return _stack;
             }
     };
+    class Compiler : public cppp::virtual_class{
+        public:
+            virtual void compile(const Function&,Text&) const = 0;
+    };
+    class Default_AMD64 : public Compiler{
+        public:
+            void compile(const Function&,Text&) const override;
+    };
 }
 namespace bbe{
     BBE_EXPORT bytes;
     BBE_EXPORT RelocationList;
     BBE_EXPORT Text;
     BBE_EXPORT FunctionCompilationContext;
+    BBE_EXPORT Compiler;
+    BBE_EXPORT Default_AMD64;
 }

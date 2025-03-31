@@ -80,7 +80,7 @@ int main(){
     freopen(nullptr,"wb",stdout);
     std::uint32_t naddr;
     std::uint32_t arg;
-    ASTNodeDefs env{default_ast_defs()};
+    Compiler env{default_amd64()};
     while(true){
         switch(bread()){
             case 0_b: // Create root
