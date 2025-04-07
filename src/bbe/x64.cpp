@@ -125,6 +125,9 @@ namespace bbe::impl{
                 }
                 void store_d(std::uint64_t v,x86::Reg reg){
                     Value& value = values.at(v);
+                    if(value.kind()==Value::REG && value.get<Value::REG>() == reg){
+                        return;
+                    }
                     reg_evict(reg);
                     switch(value.kind()){
                         case Value::STACK:
@@ -179,6 +182,11 @@ namespace bbe::impl{
                             break;
                         }
                         case Value::REG:
+                            if constexpr(std::is_same_v<Ins,x86::encode::mov> && srck == Value::REG){
+                                if(dst.get<Value::REG>() == src){
+                                    break;
+                                }
+                            }
                             insd<Ins,Value::REG,srck>(dst.get<Value::REG>(),src);
                             break;
                         case Value::CST:
