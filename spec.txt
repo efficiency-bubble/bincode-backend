@@ -1,7 +1,0 @@
-C0(category) -> id[u64] : Create root AST Node
-
-
-category:
-
-Builtin 0
-  Return 44

@@ -3,15 +3,18 @@
 #include<assembly/instruction.hpp>
 #include<cppp/freelist.hpp>
 #include<type_traits>
+#include<stdexcept>
 #include<optional>
 #include<variant>
 #include<cstdio>
 #include<map>
-namespace bbe::impl{
+namespace bbe::impl::targets{
     namespace x64{
+        using asm_generic::operator ""_b;
+        using Reg = std::byte; //TODO: Rich class with REX support (AH, R8, ...)
         class FunctionCompilationContext{
             bytes _text;
-            constexpr static std::array<x86::Reg,3> GENERIC_REGS{x86::reg::A,x86::reg::C,x86::reg::D};
+            constexpr static std::array<Reg,3> GENERIC_REGS{x86::reg::A,x86::reg::C,x86::reg::D};
             class Value{
                 public:
                     enum Kind : std::uint8_t{
@@ -21,7 +24,7 @@ namespace bbe::impl{
                     using type_of = cppp::compat::index_pack<
                         static_cast<std::size_t>(k),
                         std::uint32_t,
-                        x86::Reg,
+                        Reg,
                         std::uint32_t
                     >;
                 private:
@@ -34,12 +37,32 @@ namespace bbe::impl{
                     Value(data_t d) : _data(std::move(d)){}
                 public:
                     template<Kind k>
-                    static Value construct(type_of<k> value){
-                        return data_t(std::in_place_index<static_cast<std::size_t>(k)>,value);
-                    }
-                    template<Kind k>
                     type_of<k> get() const{
                         return std::get<static_cast<std::size_t>(k)>(_data);
+                    }
+                    void set_rm(x86::Instruction& ins){
+                        switch(kind()){
+                            case STACK:
+                                ins.mod_rm(0b10_b,0b101_b);
+                                ins.displacement(-get<STACK>());
+                                break;
+                            case REG:
+                                ins.mod_rm(0b11_b,get<REG>());
+                                break;
+                            case CST:
+                                throw std::logic_error("Value::set_rm: Not R/M");
+                        }
+                    }
+                    void set_r(x86::Instruction& ins){
+                        if(kind()==REG){
+                            ins.rm_reg(get<REG>());
+                        }else{
+                            throw std::logic_error("Value::set_r: Not R");
+                        }
+                    }
+                    template<Kind k>
+                    static Value construct(type_of<k> value){
+                        return data_t(std::in_place_index<static_cast<std::size_t>(k)>,value);
                     }
                     Kind kind() const{
                         return static_cast<Kind>(_data.index());
@@ -54,19 +77,19 @@ namespace bbe::impl{
             using vals_t = std::map<std::uint64_t,Value>;
             vals_t values;
             struct reg_less{
-                constexpr static bool operator()(x86::Reg lhs,x86::Reg rhs){
-                    return static_cast<std::uint8_t>(lhs.value()) < static_cast<std::uint8_t>(rhs.value());
+                constexpr static bool operator()(Reg lhs,Reg rhs){
+                    return static_cast<std::uint8_t>(lhs) < static_cast<std::uint8_t>(rhs);
                 }
             };
-            std::map<x86::Reg,std::uint64_t,reg_less> used_regs;
-            void reg_evict(x86::Reg r){
+            std::map<Reg,Value*,reg_less> used_regs;
+            void reg_evict(Reg r){
                 auto node{used_regs.extract(r)};
                 if(node){
-                    values.at(node.mapped()).set<Value::STACK>(stack.allocate());
+                    node.mapped()->set<Value::STACK>(4*stack.allocate());
                 }
             }
-            x86::Reg free_reg(){
-                for(const x86::Reg r : GENERIC_REGS){
+            Reg free_reg(){
+                for(const Reg r : GENERIC_REGS){
                     if(!used_regs.contains(r)){
                         return r;
                     }
@@ -74,16 +97,60 @@ namespace bbe::impl{
                 reg_evict(GENERIC_REGS.front());
                 return GENERIC_REGS.front();
             }
-            template<Value::Kind k>
-            void store_v_d(Value& v,x86::Reg d){
-                insd<x86::encode::mov,Value::REG,k>(d,v.get<k>());
-                v.set<Value::REG>(d);
+            void reg_set(Reg d,std::uint32_t c){
+                x86::Instruction mov;
+                x86::encode::mov::rm_imm(mov);
+                mov.immediate(c);
+                mov.mod_rm(0b11_b,d);
+                mov.encode(_text);
             }
-            template<Value::Kind k>
-            x86::Reg store_v(Value& v){
-                x86::Reg reg{free_reg()};
-                store_v_d<k>(v,reg);
-                return reg;
+            void load_constant_to_reg(Value& v,Reg dr){
+                reg_set(dr,v.get<Value::CST>());
+                v.set<Value::REG>(dr);
+            }
+            void load_stack_to_reg(Value& v,Reg dr){
+                x86::Instruction mov;
+                x86::encode::mov::r_rm(mov);
+                mov.rm_reg(dr);
+                mov.mod_rm(0b10_b,0b011_b); // [B+disp32]
+                mov.displacement(-v.get<Value::STACK>());
+                mov.encode(_text);
+                v.set<Value::REG>(dr);
+            }
+            void load_to_reg(Value& v){
+                switch(v.kind()){
+                    case Value::STACK: {
+                        Reg dr{free_reg()};
+                        load_stack_to_reg(v,dr);
+                        used_regs.try_emplace(dr,&v);
+                        break;
+                    }
+                    case Value::REG:
+                        break;
+                    case Value::CST: {
+                        Reg dr{free_reg()};
+                        load_constant_to_reg(v,dr);
+                        used_regs.try_emplace(dr,&v);
+                        break;
+                    }
+                }
+            }
+            void load_and_set_rm(x86::Instruction& ins,Value& v){
+                if(v.kind()==Value::CST){
+                    Reg dr{free_reg()};
+                    load_constant_to_reg(v,dr);
+                    used_regs.try_emplace(dr,&v);
+                }
+                v.set_rm(ins);
+            }
+            void load_and_set_r(x86::Instruction& ins,Value& v){
+                load_to_reg(v);
+                v.set_r(ins);
+            }
+            void reseat_reg(Reg r,Value& nv){
+                reg_evict(r);
+                nv.set<Value::REG>(r);
+                used_regs.try_emplace(r,&nv);
             }
             public:
                 FunctionCompilationContext(){}
@@ -102,7 +169,7 @@ namespace bbe::impl{
                     vals_t::node_type node{values.extract(id)};
                     switch(node.mapped().kind()){
                         case Value::STACK:
-                            stack.deallocate(node.mapped().get<Value::STACK>());
+                            stack.deallocate(node.mapped().get<Value::STACK>()/4);
                             break;
                         case Value::REG:
                             used_regs.erase(node.mapped().get<Value::REG>());
@@ -112,123 +179,42 @@ namespace bbe::impl{
                     }
                     id_list.deallocate(id);
                 }
-                x86::Reg store(std::uint64_t v){
+                void write_to_reg(std::uint64_t v,Reg dr){
                     Value& value = values.at(v);
-                    switch(value.kind()){
-                        case Value::STACK:
-                            return store_v<Value::STACK>(value);
-                        case Value::REG:
-                            return store_v<Value::REG>(value);
-                        case Value::CST:
-                            return store_v<Value::CST>(value);
+                    if(value.kind() != Value::REG || value.get<Value::REG>() != dr){
+                        reseat_reg(dr,value);
                     }
                 }
-                void store_d(std::uint64_t v,x86::Reg reg){
+                Reg write_to_free_reg(std::uint64_t v){
                     Value& value = values.at(v);
-                    if(value.kind()==Value::REG && value.get<Value::REG>() == reg){
-                        return;
+                    if(value.kind() != Value::REG){
+                        reseat_reg(free_reg(),value);
                     }
-                    reg_evict(reg);
-                    switch(value.kind()){
-                        case Value::STACK:
-                            return store_v_d<Value::STACK>(value,reg);
-                        case Value::REG:
-                            return store_v_d<Value::REG>(value,reg);
-                        case Value::CST:
-                            return store_v_d<Value::CST>(value,reg);
-                    }
+                    return value.get<Value::REG>();
                 }
-                template<typename Ins,Value::Kind dstk,Value::Kind srck>
-                void insd(Value::type_of<dstk> dst,Value::type_of<srck> src){
-                    if constexpr(dstk == Value::STACK){
-                        if constexpr(srck == Value::STACK){
-                            static_assert(false,"Stack-to-stack move requires an intermediate register");
-                        }else if constexpr(srck == Value::REG){
-                            Ins::rm_r(_text,x86::width::W32,x86::DisplacementRM<x86::width::W32>(x86::reg::BP),4*dst,src);
-                        }else if constexpr(srck == Value::CST){
-                            Ins::template rm_imm<x86::width::W32>(_text,x86::DisplacementRM<x86::width::W32>(x86::reg::BP),src,4*dst);
-                        }else{
-                            static_assert(false,"What type is src?");
-                        }
-                    }else if constexpr(dstk == Value::REG){
-                        if constexpr(srck == Value::STACK){
-                            Ins::r_rm(_text,x86::width::W32,dst,x86::DisplacementRM<x86::width::W32>(x86::reg::BP),4*src);
-                        }else if constexpr(srck == Value::REG){
-                            Ins::rm_r(_text,x86::width::W32,x86::RM(dst),src);
-                        }else if constexpr(srck == Value::CST){
-                            Ins::template rm_imm<x86::width::W32>(_text,x86::RM(dst),src);
-                        }else{
-                            static_assert(false,"What type is src?");
-                        }
-                    }else if constexpr(dstk == Value::CST){
-                        static_assert(false,"Cannot modify constant");
-                    }else{
-                        static_assert(false,"What type is dst?");
-                    }
-                }
-                template<typename Ins,Value::Kind srck>
-                void insvd(std::uint64_t dsti,Value::type_of<srck> src){
-                    Value& dst = values.at(dsti);
-                    if constexpr(std::is_same_v<Ins,x86::encode::mov> && srck == Value::CST){
-                        dst.set<Value::CST>(src);
-                    }else switch(dst.kind()){
-                        case Value::STACK: {
-                            Value::type_of<Value::STACK> dstoff = dst.get<Value::STACK>();
-                            if constexpr(srck == Value::STACK){
-                                insd<Ins,Value::REG,srck>(store_v<Value::STACK>(dst),src);
-                            }else{
-                                insd<Ins,Value::STACK,srck>(dstoff,src);
-                            }
-                            break;
-                        }
-                        case Value::REG:
-                            if constexpr(std::is_same_v<Ins,x86::encode::mov> && srck == Value::REG){
-                                if(dst.get<Value::REG>() == src){
-                                    break;
-                                }
-                            }
-                            insd<Ins,Value::REG,srck>(dst.get<Value::REG>(),src);
-                            break;
-                        case Value::CST:
-                            insd<Ins,Value::REG,srck>(store_v<Value::CST>(dst),src);
-                            break;
-                    }
-                }
-                template<typename Ins,Value::Kind dstk>
-                void insdv(Value::type_of<dstk> dst,std::uint64_t srci){
-                    static_assert(dstk != Value::CST,"Cannot modify constant");
-                    Value& src = values.at(srci);
-                    switch(src.kind()){
-                        case Value::STACK:
-                            Value::type_of<Value::STACK> srcoff = src.get<Value::STACK>();
-                            if constexpr(dstk == Value::STACK){
-                                insd<Ins,dstk,Value::REG>(dst,store_v<Value::STACK>(src));
-                            }else{
-                                insd<Ins,dstk,Value::STACK>(dst,src.get<Value::STACK>());
-                            }
-                            break;
-                        case Value::REG:
-                            insd<Ins,dstk,Value::REG>(dst,src.get<Value::REG>());
-                            break;
-                        case Value::CST:
-                            insd<Ins,dstk,Value::CST>(dst,src.get<Value::CST>());
-                            break;
-                    }
+                template<typename Ins,typename Imm>
+                void ins_imm(std::uint64_t rm,Imm imm){
+                    x86::Instruction ins;
+                    Ins::rm_imm(ins);
+                    load_and_set_rm(ins,values.at(rm));
+                    ins.immediate(imm);
+                    ins.encode(_text);
                 }
                 template<typename Ins>
-                void ins(std::uint64_t dsti,std::uint64_t srci){
-                    Value& src = values.at(srci);
-                    switch(src.kind()){
-                        case Value::STACK:
-                            insvd<Ins,Value::STACK>(dsti,src.get<Value::STACK>());
-                            break;
-                        case Value::REG:
-                            insvd<Ins,Value::REG>(dsti,src.get<Value::REG>());
-                            break;
-                        case Value::CST:
-                            insvd<Ins,Value::CST>(dsti,src.get<Value::CST>());
-                            break;
+                void ins(std::uint64_t dst,std::uint64_t src){
+                    x86::Instruction ins;
+                    Value& dstv = values.at(dst);
+                    Value& srcv = values.at(src);
+                    if(dstv.kind() == Value::STACK){
+                        Ins::rm_r(ins);
+                        dstv.set_rm(ins);
+                        load_and_set_r(ins,srcv);
+                    }else{
+                        Ins::r_rm(ins);
+                        load_and_set_r(ins,dstv);
+                        load_and_set_rm(ins,srcv);
                     }
+                    ins.encode(_text);
                 }
                 std::uint64_t max_stack_size() const{
                     return stack.max_size();
@@ -238,8 +224,9 @@ namespace bbe::impl{
             switch(nd.type()){
                 case 0:{ // ret
                     std::uint64_t value{compile_node(nd.getc(0),fcc)};
-                    fcc.store_d(value,x86::reg::A);
+                    fcc.write_to_reg(value,x86::reg::A);
                     x86::encode::leave(fcc.text());
+                    fcc.done(value);
                     return std::numeric_limits<std::uint64_t>::max();
                 }
                 case 1:{ // sub
@@ -258,9 +245,17 @@ namespace bbe::impl{
         }
     }
     void targets::Defaultx64::compile(const Function& fn,Text& t) const{
-        x64::FunctionCompilationContext fcc;
+        using asm_generic::operator ""_b;
+        targets::x64::FunctionCompilationContext fcc;
         compile_node(fn.ast(),fcc);
-        x86::encode::sub::rm_imm<x86::width::W32>(t.text(),x86::RM(x86::reg::BP),4*fcc.max_stack_size());
+        x86::Instruction ins;
+        x86::encode::push::r_c(ins,x86::reg::BP);
+        ins.encode(t.text());
+        ins.reset();
+        x86::encode::sub::rm_imm(ins);
+        ins.mod_rm(0b11_b,x86::reg::BP);
+        ins.displacement(std::uint32_t(4*fcc.max_stack_size()));
+        ins.encode(t.text());
         t.text().append(fcc.text());
     }
 }

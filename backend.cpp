@@ -1,4 +1,5 @@
 #include<cppp/bfile.hpp>
+#include<cppp/freelist.hpp>
 #include<assembly/common.hpp>
 #include<bbe/bbe.hpp>
 #include<type_traits>
@@ -13,11 +14,11 @@ using asm_generic::operator ""_b;
 template<typename T>
 class AllocatedArray{
     std::vector<std::optional<T>> arr;
-    bbe::impl::Allocator alloc;
+    cppp::freelist<std::uint64_t> alloc;
     public:
         template<typename ...A>
         std::uint64_t emplace(A&& ...v){
-            std::uint64_t indx = alloc.push();
+            std::uint64_t indx = alloc.allocate();
             if(indx > arr.size()){
                 throw std::runtime_error("allocator/array size mismatch");
             }
@@ -35,7 +36,7 @@ class AllocatedArray{
             return *arr[indx];
         }
         void free(std::uint64_t indx){
-            alloc.pop(indx);
+            alloc.deallocate(indx);
             arr[indx].reset();
         }
 };
@@ -77,31 +78,31 @@ int main(){
     Function main{u8"main"s,nullptr,{},ASTNode()};
     freopen(nullptr,"rb",stdin);
     freopen(nullptr,"wb",stdout);
-    std::uint64_t naddr;
+    ASTNode* naddr{nullptr};
     std::uint64_t arg;
-    Default_AMD64 compiler;
+    targets::Defaultx64 compiler;
     wi<std::uint64_t>(reinterpret_cast<std::uint64_t>(&main.ast()));
     while(true){
         switch(bread()){
             case 0_b: { // Set node
-                naddr = ri<std::uint64_t>();
-                *reinterpret_cast<ASTNode*>(naddr) = aread();
+                naddr = reinterpret_cast<ASTNode*>(ri<std::uint64_t>());
+                *naddr = aread();
                 break;
             }
             case 1_b: // Add child
-                naddr = ri<std::uint64_t>();
-                wi<std::uint64_t>(reinterpret_cast<std::uint64_t>(&reinterpret_cast<ASTNode*>(naddr)->children().emplace_back(aread())));
+                naddr = reinterpret_cast<ASTNode*>(ri<std::uint64_t>());
+                wi<std::uint64_t>(reinterpret_cast<std::uint64_t>(&naddr->children().emplace_back(aread())));
                 std::fflush(stdout);
                 break;
             case 2_b: // Delete (in fact, blank) node
-                *reinterpret_cast<ASTNode*>(naddr) = {};
+                *naddr = {};
                 break;
             case 3_b: // Set primitive
-                naddr = ri<std::uint64_t>();
+                naddr = reinterpret_cast<ASTNode*>(ri<std::uint64_t>());
                 arg = ri<std::uint64_t>();
                 switch(bread()){
                     case 32_b: // ui32
-                        reinterpret_cast<ASTNode*>(naddr)->setp(arg,ri<std::uint32_t>());
+                        naddr->setp(arg,ri<std::uint32_t>());
                         break;
                 }
                 break;
