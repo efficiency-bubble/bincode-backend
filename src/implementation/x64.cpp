@@ -1,4 +1,4 @@
-#include"assembly.hpp"
+#include<bbe/assembly.hpp>
 #include<cppp/polyfill/pack-indexing.hpp>
 #include<assembly/instruction.hpp>
 #include<cppp/freelist.hpp>

@@ -12,7 +12,10 @@
         },
         {
             "label": "Run Test",
-            "command": "${workspaceFolder}/test",
+            "command": "${workspaceFolder}/bin/test",
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
             "windows": {
                 "command": "${workspaceFolder}/test.exe"
             },

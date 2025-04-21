@@ -1,18 +1,19 @@
-COMPOPT := -std=c++26 -flto -fuse-linker-plugin -Wall -Wextra -Wpedantic -m64 -O3 -I"src" $(cppinclude)
+COMPOPT := -std=c++26 -flto -fuse-linker-plugin -Wall -Wextra -Wpedantic -m64 -O3 -I"src/include" $(cppinclude)
 FINALOPT := $(COMPOPT) -s -static
-HEADERS := $(wildcard src/bbe/*.hpp)
-SOURCES := $(wildcard src/bbe/*.cpp)
-OBJECTS := $(patsubst %.cpp,%.o,$(SOURCES))
+LIBNAME := bbe
+HEADERS := $(wildcard src/include/$(LIBNAME)/*.hpp)
+SOURCES := $(wildcard src/implementation/*.cpp)
+OBJECTS := $(patsubst src/implementation/%.cpp,obj/%.o,$(SOURCES))
 ifeq ($(OS),"Windows_NT")
 TARGET_SUFFIX := .exe
 else
 TARGET_SUFFIX :=
 endif
-test$(TARGET_SUFFIX): test.cpp bbe.a
-	g++ $< bbe.a -o $@ $(FINALOPT)
-backend$(TARGET_SUFFIX): backend.cpp bbe.a
-	g++ $< bbe.a -o $@ $(FINALOPT)
-bbe.a: $(OBJECTS)
+bin/test$(TARGET_SUFFIX): src/test.cpp lib/$(LIBNAME).a
+	g++ $< lib/bbe.a -o $@ $(FINALOPT)
+backend$(TARGET_SUFFIX): src/backend.cpp lib/$(LIBNAME).a
+	g++ $< lib/bbe.a -o $@ $(FINALOPT)
+lib/$(LIBNAME).a: $(OBJECTS)
 	ar rcs $@ $(OBJECTS)
-%.o: %.cpp $(HEADERS)
+obj/%.o: src/implementation/%.cpp $(HEADERS)
 	g++ -c $< -o $@ $(COMPOPT)

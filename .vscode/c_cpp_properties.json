@@ -5,7 +5,7 @@
             "cppStandard": "c++23",
             "includePath": [
                 "${default}",
-                "src"
+                "src/include"
             ],
             "intelliSenseMode": "${default}",
             "defines": [

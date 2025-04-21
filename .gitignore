@@ -1,6 +1,5 @@
-test
-test.exe
-*.a
-test
+bin
+lib
+obj
+test.bin
 .vscode/settings.json
-src/bbe/*.o
