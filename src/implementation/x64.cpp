@@ -165,6 +165,9 @@ namespace bbe::impl::targets{
                     values.try_emplace(id,Value::construct<Value::CST>(v));
                     return id;
                 }
+                bool is_constant(std::uint64_t x,std::uint32_t v){
+                    return values.at(x).kind() == Value::CST && values.at(x).get<Value::CST>() == v;
+                }
                 void done(std::uint64_t id){
                     vals_t::node_type node{values.extract(id)};
                     switch(node.mapped().kind()){
@@ -232,7 +235,9 @@ namespace bbe::impl::targets{
                 case 1:{ // sub
                     std::uint64_t lhv{compile_node(nd.getc(0),fcc)};
                     std::uint64_t rhv{compile_node(nd.getc(1),fcc)};
-                    fcc.ins<x86::encode::sub>(lhv,rhv);
+                    if(!fcc.is_constant(rhv,0)){
+                        fcc.ins<x86::encode::sub>(lhv,rhv);
+                    }
                     fcc.done(rhv);
                     return lhv;
                 }
@@ -251,11 +256,13 @@ namespace bbe::impl::targets{
         x86::Instruction ins;
         x86::encode::push::r_c(ins,x86::reg::BP);
         ins.encode(t.text());
-        ins.reset();
-        x86::encode::sub::rm_imm(ins);
-        ins.mod_rm(0b11_b,x86::reg::BP);
-        ins.displacement(std::uint32_t(4*fcc.max_stack_size()));
-        ins.encode(t.text());
+        if(std::uint64_t ss=fcc.max_stack_size()){
+            ins.reset();
+            x86::encode::sub::rm_imm(ins);
+            ins.mod_rm(0b11_b,x86::reg::BP);
+            ins.displacement(std::uint32_t(4*ss));
+            ins.encode(t.text());
+        }
         t.text().append(fcc.text());
     }
 }
