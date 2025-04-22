@@ -17,7 +17,6 @@ namespace bbe::impl{
             std::vector<std::uint32_t>
         > data;
         public:
-            constexpr static std::uint64_t empty{std::numeric_limits<std::uint64_t>::max()};
             explicit operator bool() const{
                 return std::holds_alternative<std::monostate>(data);
             }
