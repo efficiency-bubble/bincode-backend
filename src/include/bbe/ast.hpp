@@ -18,7 +18,7 @@ namespace bbe::impl{
         > data;
         public:
             explicit operator bool() const{
-                return std::holds_alternative<std::monostate>(data);
+                return !std::holds_alternative<std::monostate>(data);
             }
             std::uint64_t type() const{
                 return _type;
