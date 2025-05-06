@@ -4,15 +4,11 @@
 #include<vector>
 namespace bbe::impl{
     class Function{
-        str _name;
         const Type* ret;
         std::vector<const Type*> argt;
         ASTNode root;
         public:
-            Function(str n,const Type* r,std::vector<const Type*>&& a,ASTNode&& root) : _name(std::move(n)), ret(r), argt(std::move(a)), root(std::move(root)){}
-            const str& name() const{
-                return _name;
-            }
+            Function(const Type* r,std::vector<const Type*>&& a,ASTNode&& root) :  ret(r), argt(std::move(a)), root(std::move(root)){}
             const Type* return_type() const{
                 return ret;
             }
