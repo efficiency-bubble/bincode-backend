@@ -26,7 +26,7 @@ int main(){
     text.add_function(u8"example"s,[&compiler,&example](Text& text){
         compiler.compile(example,text);
     });
-    cppp::BinaryFile bf{u8"test.elf"sv,std::ios::binary | std::ios::out};
+    cppp::BinaryFile bf{u8"test.o"sv,std::ios::binary | std::ios::out};
     formats::elf::Elf elf;
     elf.add_text(text);
     bf.write(elf.encode());

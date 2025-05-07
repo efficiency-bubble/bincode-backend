@@ -228,7 +228,9 @@ namespace bbe::targets::x64::impl{
                 std::uint64_t value{compile_node(nd.getc(0),fcc)};
                 fcc.write_to_reg(value,x86::reg::A);
                 fcc.done(value);
-                x86::encode::leave(fcc.text());
+                x86::Instruction i;
+                x86::encode::pop::r64_16(i,x86::reg::BP);
+                i.encode(fcc.text());
                 x86::encode::ret::near(fcc.text());
                 return std::numeric_limits<std::uint64_t>::max();
             }
@@ -253,7 +255,7 @@ namespace bbe::targets::x64::impl{
         FunctionCompilationContext fcc;
         compile_node(fn.ast(),fcc);
         x86::Instruction ins;
-        x86::encode::push::r_c(ins,x86::reg::BP);
+        x86::encode::push::r64_16(ins,x86::reg::BP);
         ins.encode(t.text());
         if(std::uint64_t ss=fcc.max_stack_size()){
             ins.reset();
