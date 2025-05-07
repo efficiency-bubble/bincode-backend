@@ -1,5 +1,6 @@
 #include<cppp/bfile.hpp>
 #include<bbe/bbe.hpp>
+#include<bbe/targets/x64.hpp>
 #include<iostream>
 using namespace bbe;
 using namespace std::literals;
@@ -20,7 +21,7 @@ int main(){
     sub715.emplace(1,std::move(five));
     ASTNode ret{0,1};
     ret.emplace(0,std::move(sub715));
-    Function main{u8"main"s,nullptr,{},std::move(ret)};
+    Function main{nullptr,{},std::move(ret)};
     compiler.compile(main,text);
     cppp::BinaryFile bf{u8"test.bin"sv,std::ios::binary | std::ios::out};
     bf.write(text.text());

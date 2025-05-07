@@ -1,14 +1,18 @@
 #pragma once
+#include"../assembly.hpp"
 #include"commons.hpp"
 #include<cppp/bytearray.hpp>
 #include<cppp/string.hpp>
 #include<vector>
 #include<span>
 namespace bbe::formats::elf::impl{
+    using namespace std::string_literals;
     class ElfFile{
+        cppp::str names{u8"\0.shstrtab"s};
         struct Section{
-            cppp::str name;
-            std::byte* data; // std::span(nullptr,nonzero_size) is UB.
+            std::uint32_t name;
+            std::uint32_t type;
+            const std::byte* data; // std::span(nullptr,nonzero_size) is UB.
             std::size_t size;
             std::uint64_t m_addr;
             std::uint64_t align;
@@ -17,13 +21,45 @@ namespace bbe::formats::elf::impl{
         };
         bool wide; // 64-bit if true, else 32-bit
         std::uint64_t entry_point;
-        std::vector<Section> sections;
+        mutable std::vector<Section> sections;
+        std::uint32_t add_name(cppp::sv name){
+            std::uint32_t begin = names.size();
+            names.append(name);
+            return begin;
+        }
         public:
-            ElfFile(bool wide=true) : wide(wide){}
-            void add_section(cppp::str&& name,std::byte* data,std::size_t size,std::uint64_t m_addr,std::uint64_t align,bool writable,bool executable){
-                sections.emplace_back(std::move(name),data,size,m_addr,align,writable,executable);
+            ElfFile(bool wide=true) : wide(wide){
+                sections.emplace_back(
+                    1,
+                    3, // string table
+                    nullptr,
+                    0uz,
+                    0,
+                    0,
+                    false,
+                    false
+                );
+            }
+            void add_text(const Text& text){
+                cppp::bytes symtab;
+                for(const auto& [name,position] : text.exports()){
+                    symtab.appendl(add_name(name));
+                    symtab.append((1 << 4) | 2); // HI 1: global binding / linkage, LO 2: function / code export
+                    symtab.append(0); // default visibility (allow interposing)
+                    symtab.appendl(static_cast<std::uint16_t>(sections.size())); // linked section ID
+                    symtab.appendl<std::uint64_t>(position);
+                    symtab.appendl<std::uint64_t>(0); // unsized or variably-sized
+                }
+                add_section(u8".text"s,1/*binary data*/,text.text().data(),text.text().size(),0x1000,0x10,false,true);
+                add_section(u8".symtab"s,3/*string table*/,text.text().data(),text.text().size(),0x1000,0x10,false,true);
+            }
+            void add_section(cppp::sv name,std::uint32_t type,const std::byte* data,std::size_t size,std::uint64_t m_addr,std::uint64_t align,bool writable,bool executable){
+                sections.emplace_back(add_name(name),type,data,size,m_addr,align,writable,executable);
             }
             cppp::bytes encode() const{
+                sections.front().data = reinterpret_cast<const std::byte*>(names.data());
+                sections.front().size = names.size()+1; // + null terminator
+                
                 cppp::bytes data{
                     0x7F_b,'E'_b,'L'_b,'F'_b, // magic
                     wide?2_b:1_b, // bitness, 2 = 64-bit, 1 = 32-bit
@@ -55,17 +91,6 @@ namespace bbe::formats::elf::impl{
                 // section data
                 std::vector<std::uint64_t> sdaddr;
                 std::vector<std::uint64_t> nameindex;
-                std::size_t name_table_begin = data.size();
-                // name table
-                data.append(std::byte{0});
-                std::size_t name_table_size = 1; // must begin with zero
-                data.append(as_bytes(std::span<const char8_t>(u8".shstrtab",10)));
-                for(const Section& sec : sections){
-                    nameindex.emplace_back(name_table_size);
-                    std::size_t buffer_length = sec.name.length()+1; // +1 for null terminator
-                    name_table_size += buffer_length;
-                    data.append(as_bytes(std::span<const char8_t>(sec.name.c_str(),buffer_length)));
-                }
                 // sections
                 for(const Section& sec : sections){
                     sdaddr.emplace_back(data.size());
@@ -74,23 +99,11 @@ namespace bbe::formats::elf::impl{
                     }
                 }
                 // SHT
-                // name table
-                data.appendl<std::uint32_t>(1); // name index
-                data.appendl<std::uint32_t>(3); // content type, 3 = string table
-                data.appendl<std::uint64_t>(0); // flags
-                data.appendl<std::uint64_t>(0); // loaded memory address
-                data.appendl(static_cast<std::uint64_t>(name_table_begin)); // file address
-                data.appendl(static_cast<std::uint64_t>(name_table_size)); // size
-                data.appendl<std::uint32_t>(0); // link
-                data.appendl<std::uint32_t>(0); // info
-                data.appendl<std::uint64_t>(0); // align
-                data.appendl<std::uint64_t>(0); // table entry size
-                
                 // sections
                 std::size_t index = 0uz;
                 for(const Section& sec : sections){
                     data.appendl(static_cast<std::uint32_t>(nameindex[index])); // name index
-                    data.appendl<std::uint32_t>(1); // content type, 1 = binary data
+                    data.appendl(sec.type); // content type
                     std::uint64_t flags{
                         2 // loaded in memory
                     };
@@ -111,6 +124,7 @@ namespace bbe::formats::elf::impl{
                 }
             }
     };
+    
 }
 namespace bbe::formats::elf{
     BBE_EXPORT ElfFile;

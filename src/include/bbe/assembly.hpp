@@ -4,16 +4,15 @@
 #include<queue>
 #include<cppp/bytearray.hpp>
 #include<cppp/virtual.hpp>
+#include<cppp/strmap.hpp>
+#include<cppp/string.hpp>
 #include"function.hpp"
 #include"commons.hpp"
 namespace bbe::impl{
     using cppp::bytes;
-    struct RelocationList{
-        std::vector<std::size_t> offsets;
-    };
     class Text{
         bytes instr;
-        std::unordered_map<std::uint64_t,RelocationList> refs;
+        cppp::strmap<std::uint64_t> function_exports;
         public:
             bytes& text(){
                 return instr;
@@ -21,22 +20,20 @@ namespace bbe::impl{
             const bytes& text() const{
                 return instr;
             }
+            const cppp::strmap<std::uint64_t>& exports() const{
+                return function_exports;
+            }
+            void start_function(cppp::str&& s){
+                function_exports.try_emplace(std::move(s),instr.size());
+            }
     };
     class Compiler : public cppp::virtual_class{
         public:
             virtual void compile(const Function&,Text&) const = 0;
     };
-    namespace targets{
-        class Defaultx64 : public Compiler{
-            public:
-                void compile(const Function&,Text&) const override;
-        };
-    }
 }
 namespace bbe{
     BBE_EXPORT bytes;
-    BBE_EXPORT RelocationList;
     BBE_EXPORT Text;
     BBE_EXPORT Compiler;
-    namespace targets = impl::targets;
 }
