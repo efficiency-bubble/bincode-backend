@@ -227,8 +227,9 @@ namespace bbe::targets::x64::impl{
             case 0:{ // ret
                 std::uint64_t value{compile_node(nd.getc(0),fcc)};
                 fcc.write_to_reg(value,x86::reg::A);
-                x86::encode::leave(fcc.text());
                 fcc.done(value);
+                x86::encode::leave(fcc.text());
+                x86::encode::ret::near(fcc.text());
                 return std::numeric_limits<std::uint64_t>::max();
             }
             case 1:{ // sub
