@@ -1,12 +1,12 @@
 #include<cppp/bfile.hpp>
 #include<bbe/bbe.hpp>
 #include<bbe/targets/x64.hpp>
+#include<bbe/formats/elf.hpp>
 #include<iostream>
 using namespace bbe;
 using namespace std::literals;
 int main(){
-    Text text;
-    targets::Defaultx64 compiler;
+    targets::x64::X64Compiler compiler;
     ASTNode seven{2,1,data_tag};
     seven.setp(0,7);
     ASTNode one{2,1,data_tag};
@@ -21,9 +21,14 @@ int main(){
     sub715.emplace(1,std::move(five));
     ASTNode ret{0,1};
     ret.emplace(0,std::move(sub715));
-    Function main{nullptr,{},std::move(ret)};
-    compiler.compile(main,text);
-    cppp::BinaryFile bf{u8"test.bin"sv,std::ios::binary | std::ios::out};
-    bf.write(text.text());
+    Function example{nullptr,{},std::move(ret)};
+    Text text;
+    text.add_function(u8"example"s,[&compiler,&example](Text& text){
+        compiler.compile(example,text);
+    });
+    cppp::BinaryFile bf{u8"test.elf"sv,std::ios::binary | std::ios::out};
+    formats::elf::Elf elf;
+    elf.add_text(text);
+    bf.write(elf.encode());
     return 0;
 }
