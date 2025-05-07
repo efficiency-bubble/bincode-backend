@@ -12,12 +12,9 @@
         },
         {
             "label": "Run Test",
-            "command": "${workspaceFolder}/bin/test",
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
+            "command": "${workspaceFolder}/test-example.sh",
             "windows": {
-                "command": "${workspaceFolder}/test.exe"
+                "command": "${workspaceFolder}/test-example.cmd"
             },
             "args": [],
             "problemMatcher": [],
