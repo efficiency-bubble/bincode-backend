@@ -23,9 +23,8 @@ int main(){
     ret.emplace(0,std::move(sub715));
     Function example{nullptr,{},std::move(ret)};
     Text text;
-    text.add_function(u8"example"s,[&compiler,&example](Text& text){
-        compiler.compile(example,text);
-    });
+    text.start_function(u8"example"s);
+    compiler.compile(example,text);
     cppp::BinaryFile bf{u8"test.o"sv,std::ios::binary | std::ios::out};
     formats::elf::Elf elf;
     elf.add_text(text);

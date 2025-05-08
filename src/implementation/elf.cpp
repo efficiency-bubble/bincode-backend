@@ -10,7 +10,7 @@ namespace bbe::formats::elf::impl{
             symtab.append(0); // default visibility (allow interposing)
             symtab.appendl(static_cast<std::uint16_t>(sections.size())); // linked section ID (to .text; adding after registering .text therefore +1, because of null section)
             symtab.appendl<std::uint64_t>(data.offset);
-            symtab.appendl<std::uint64_t>(data.size);
+            symtab.appendl<std::uint64_t>(0);
         }
         add_section(u8".symtab"sv,2/*symbol table*/,symtab.data(),symtab.size(),0,0,false,false,false,0x18,static_cast<std::uint32_t>(SYMBOL_NAME_TABLE_INDEX+1));
     }
