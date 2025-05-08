@@ -2,4 +2,6 @@ bin
 lib
 obj
 test.bin
+test.o
+test-main
 .vscode/settings.json
