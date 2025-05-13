@@ -11,11 +11,8 @@ namespace bbe::impl{
     class ASTNode{
         std::uint64_t _type;
         using chld_t = std::vector<ASTNode>;
-        std::variant<
-            std::monostate,
-            chld_t,
-            std::vector<std::uint32_t>
-        > data;
+        using prim_t = std::vector<std::uint64_t>;
+        std::variant<std::monostate,chld_t,prim_t> data;
         public:
             explicit operator bool() const{
                 return !std::holds_alternative<std::monostate>(data);
@@ -29,11 +26,11 @@ namespace bbe::impl{
             ASTNode& getc(std::uint64_t ind){
                 return std::get<chld_t>(data)[ind];
             }
-            std::uint32_t getp(std::uint64_t ind) const{
-                return std::get<std::vector<std::uint32_t>>(data)[ind];
+            std::uint64_t getp(std::uint64_t ind) const{
+                return std::get<prim_t>(data)[ind];
             }
-            void setp(std::uint64_t ind,std::uint32_t p){
-                std::get<std::vector<std::uint32_t>>(data)[ind] = p;
+            void setp(std::uint64_t ind,std::uint64_t p){
+                std::get<prim_t>(data)[ind] = p;
             }
             ASTNode& emplace(std::uint64_t ind,ASTNode&& n){
                 return std::get<chld_t>(data)[ind] = std::move(n);
@@ -46,7 +43,7 @@ namespace bbe::impl{
             }
             ASTNode() : _type(0), data(std::in_place_type<std::monostate>){}
             ASTNode(std::uint64_t tp,std::uint64_t nchld) : _type(tp), data(std::in_place_type<chld_t>,nchld){}
-            ASTNode(std::uint64_t tp,std::uint64_t nchld,data_tag_t) : _type(tp), data(std::in_place_type<std::vector<std::uint32_t>>,nchld){}
+            ASTNode(std::uint64_t tp,std::uint64_t nchld,data_tag_t) : _type(tp), data(std::in_place_type<prim_t>,nchld){}
     };
 }
 namespace bbe{
