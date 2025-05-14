@@ -1,7 +1,9 @@
+#include<iostream>
 #include<bbe/targets/x64.hpp>
 #include<cppp/polyfill/pack-indexing.hpp>
 #include<assembly/instruction.hpp>
 #include<cppp/freelist.hpp>
+#include<cppp/string.hpp> // for symbol imports
 #include<type_traits>
 #include<stdexcept>
 #include<optional>
@@ -14,13 +16,14 @@ namespace bbe::targets::x64::impl{
     class Value{
         public:
             enum Kind : std::uint8_t{
-                STACK = 0, REG = 1, CST = 2
+                STACK = 0, REG = 1, CST = 2, SYM = 3
             };
             template<Kind k>
             using type_of = cppp::compat::index_pack<
                 static_cast<std::size_t>(k),
                 std::uint32_t,
                 Reg,
+                std::uint64_t,
                 std::uint64_t
             >;
         private:
@@ -28,10 +31,10 @@ namespace bbe::targets::x64::impl{
             struct _variant_of_these{
                 using type = std::variant<type_of<k>...>;
             };
-            using data_t = _variant_of_these<Kind::STACK,Kind::REG,Kind::CST>::type;
+            using data_t = _variant_of_these<Kind::STACK,Kind::REG,Kind::CST,Kind::SYM>::type;
             data_t _data;
-            x86::width width;
-            Value(data_t d,x86::width width) : _data(std::move(d)), width(width){}
+            x86::width _width;
+            Value(data_t d,x86::width width) : _data(std::move(d)), _width(width){}
             void set_rm(x86::Instruction& ins) const{
                 switch(kind()){
                     case STACK:
@@ -42,6 +45,7 @@ namespace bbe::targets::x64::impl{
                         ins.mod_rm(0b11_b,get<REG>());
                         break;
                     case CST:
+                    case SYM:
                         throw std::logic_error("Value::set_rm: Not R/M");
                 }
             }
@@ -75,9 +79,9 @@ namespace bbe::targets::x64::impl{
                 encode_instruction_dst(ins,dst);
                 encode_instruction_src(ins,src);
                 if(ins.encoding().dst_size_as_width()){
-                    ins.set_width(dst.width);
+                    ins.set_width(dst._width);
                 }else{
-                    ins.set_width(src.width);
+                    ins.set_width(src._width);
                 }
             }
             template<Kind k>
@@ -87,6 +91,9 @@ namespace bbe::targets::x64::impl{
             template<Kind k>
             static Value construct(type_of<k> value,x86::width width){
                 return {data_t(std::in_place_index<static_cast<std::size_t>(k)>,value),width};
+            }
+            x86::width width() const{
+                return _width;
             }
             Kind kind() const{
                 return static_cast<Kind>(_data.index());
@@ -98,6 +105,7 @@ namespace bbe::targets::x64::impl{
     };
     class FunctionCompilationContext{
         bytes _text;
+        std::vector<Relocation> rels;
         constexpr static std::array<Reg,3> GENERIC_REGS{x86::reg::A,x86::reg::C,x86::reg::D};
         cppp::freelist<std::uint64_t> id_list;
         cppp::freelist<std::uint64_t> stack;
@@ -124,15 +132,25 @@ namespace bbe::targets::x64::impl{
             reg_evict(GENERIC_REGS.front());
             return GENERIC_REGS.front();
         }
-        void reg_set(Reg d,std::uint32_t c){
-            x86::Instruction mov{x86::encode::mov::rm_imm};
-            mov.immediate(c);
-            mov.set_width(x86::width::W32);
-            mov.mod_rm(0b11_b,d);
-            mov.encode(_text);
-        }
         void load_constant_to_reg(Value& v,Reg dr){
-            reg_set(dr,v.get<Value::CST>());
+            x86::Instruction mov{x86::encode::mov::rm_imm};
+            if(v.width() == x86::width::W64){
+                throw std::logic_error("64-bit constants not yet supported");
+            }
+            mov.immediate(static_cast<std::uint32_t>(v.get<Value::CST>()));
+            mov.set_width(x86::width::W32);
+            mov.mod_rm(0b11_b,dr);
+            mov.encode(_text);
+            v.set<Value::REG>(dr);
+        }
+        void load_sym_to_reg(Value& v,Reg dr){
+            x86::Instruction mov{x86::encode::mov::r_rm};
+            mov.set_width(v.width());
+            mov.mod_rm(0b00_b,0b101_b); // rip + disp32
+            mov.rm_reg(dr);
+            mov.displacement(std::uint32_t(0));
+            rels.emplace_back(mov.encode_and_return_disp(_text),v.get<Value::SYM>());
+            rels.back().isize = _text.size()-rels.back().offset;
             v.set<Value::REG>(dr);
         }
         void load_stack_to_reg(Value& v,Reg dr){
@@ -145,27 +163,31 @@ namespace bbe::targets::x64::impl{
             v.set<Value::REG>(dr);
         }
         void load_to_reg(Value& v){
+            if(v.kind()==Value::REG)return;
+            Reg dr{free_reg()};
             switch(v.kind()){
-                case Value::STACK: {
-                    Reg dr{free_reg()};
+                case Value::STACK:
                     load_stack_to_reg(v,dr);
-                    used_regs.try_emplace(dr,&v);
                     break;
-                }
-                case Value::REG:
-                    break;
-                case Value::CST: {
-                    Reg dr{free_reg()};
+                case Value::CST: 
                     load_constant_to_reg(v,dr);
-                    used_regs.try_emplace(dr,&v);
                     break;
-                }
+                case Value::SYM:
+                    load_sym_to_reg(v,dr);
+                    break;
+                default: std::unreachable();
             }
+            used_regs.try_emplace(dr,&v);
         }
         void load_to_rm(Value& v){
-            if(v.kind()==Value::CST){
+            if(v.kind()!=Value::STACK){
+                load_to_reg(v);
+            }
+        }
+        void load_sym_to_rm(Value& v){
+            if(v.kind()==Value::SYM){
                 Reg dr{free_reg()};
-                load_constant_to_reg(v,dr);
+                load_sym_to_reg(v,dr);
                 used_regs.try_emplace(dr,&v);
             }
         }
@@ -176,19 +198,24 @@ namespace bbe::targets::x64::impl{
         }
         public:
             using value_handle = std::uint64_t;
-            FunctionCompilationContext(){}
             bytes& text(){
                 return _text;
             }
             const bytes& text() const{
                 return _text;
             }
-            value_handle constant(std::uint32_t v){
+            template<x86::width w>
+            value_handle constant(x86::wv<w> v){
                 value_handle id = id_list.allocate();
-                values.try_emplace(id,Value::construct<Value::CST>(v,x86::width::W32));
+                values.try_emplace(id,Value::construct<Value::CST>(v,w));
                 return id;
             }
-            bool is_constant(value_handle x,std::uint32_t v){
+            value_handle symbol(std::uint64_t v,x86::width w){
+                value_handle id = id_list.allocate();
+                values.try_emplace(id,Value::construct<Value::SYM>(v,w));
+                return id;
+            }
+            bool is_constant(value_handle x,std::uint64_t v){
                 return values.at(x).kind() == Value::CST && values.at(x).get<Value::CST>() == v;
             }
             void done(value_handle id){
@@ -201,6 +228,7 @@ namespace bbe::targets::x64::impl{
                         used_regs.erase(node.mapped().get<Value::REG>());
                         break;
                     case Value::CST:
+                    case Value::SYM:
                         break;
                 }
                 id_list.deallocate(id);
@@ -230,6 +258,10 @@ namespace bbe::targets::x64::impl{
                         ins.reset(Ins::rm_imm);
                         load_to_rm(dstv);
                         goto end;
+                    }else if(srcv.kind()==Value::SYM){
+                        ins.reset(Ins::rm_imm);
+                        load_sym_to_rm(dstv);
+                        goto end;
                     }
                 }
                 if constexpr(requires{
@@ -256,7 +288,18 @@ namespace bbe::targets::x64::impl{
             value_handle max_stack_size() const{
                 return stack.max_size();
             }
+            const std::vector<Relocation>& relocations() const{
+                return rels;
+            }
     };
+    /*
+    Node type conventions:
+    0 = return node($0);
+    1 = node($0)-node($1);
+    2 = uint32($0);
+    3 = uint32(SYMTAB[uint64($0)]);
+    4 = uint64(SYMTAB[uint64($0)]);
+    */
     static FunctionCompilationContext::value_handle compile_node(const ASTNode& nd,FunctionCompilationContext& fcc){
         using value_handle = FunctionCompilationContext::value_handle;
         switch(nd.type()){
@@ -277,25 +320,32 @@ namespace bbe::targets::x64::impl{
                 fcc.done(rhv);
                 return lhv;
             }
-            case 2:{ // lit
-                return fcc.constant(nd.getp(0));
-            }
+            case 2: // u32
+                return fcc.constant<x86::width::W32>(nd.getp(0));
+            case 3: // sym32
+                return fcc.symbol(nd.getp(0),x86::width::W32);
+            case 4: // sym64
+                return fcc.symbol(nd.getp(0),x86::width::W64);
             default:
                 throw 3;
         }
     }
-    void X64Compiler::compile(const Function& fn,Text& t) const{
+    void X64Program::compile(const Function& fn){
         using asm_generic::operator ""_b;
         FunctionCompilationContext fcc;
         compile_node(fn.ast(),fcc);
-        x86::encode::push::r64(t.text(),x86::reg::BP);
+        x86::encode::push::r64(_text,x86::reg::BP);
         if(std::uint64_t ss=fcc.max_stack_size()){
             x86::Instruction ins{x86::encode::sub::rm_imm};
             ins.mod_rm(0b11_b,x86::reg::BP);
             ins.set_width(x86::width::W64);
             ins.displacement(std::uint32_t(4*ss));
-            ins.encode(t.text());
+            ins.encode(_text);
         }
-        t.text().append(fcc.text());
+        for(Relocation rel : fcc.relocations()){
+            rel.offset += _text.size();
+            _relocations.emplace_back(rel);
+        }
+        _text.append(fcc.text());
     }
 }

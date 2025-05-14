@@ -1,12 +1,13 @@
 #pragma once
-#include"../assembly.hpp"
 #include"commons.hpp"
 #include<cppp/bytearray.hpp>
 #include<cppp/string.hpp>
+#include"../targets/x64.hpp"
 #include<vector>
-#include<deque>
 #include<span>
 namespace bbe::formats::elf::impl{
+    using namespace bbe::impl;
+    using namespace bbe::formats::impl;
     class Nametable{
         cppp::bytes buf;
         public:
@@ -29,7 +30,7 @@ namespace bbe::formats::elf::impl{
         Nametable section_names;
         constexpr static std::size_t SYMBOL_NAME_TABLE_INDEX = 1uz;
         Nametable symbol_names;
-        std::deque<cppp::bytes> sym_tabs;
+        std::vector<cppp::bytes> section_data;
         struct Section{
             std::uint32_t name;
             std::uint32_t type;
@@ -42,6 +43,7 @@ namespace bbe::formats::elf::impl{
             bool exec;
             std::uint64_t entsize;
             std::uint32_t link;
+            std::uint32_t info;
         };
         bool wide; // 64-bit if true, else 32-bit
         std::uint64_t entry_point;
@@ -55,9 +57,9 @@ namespace bbe::formats::elf::impl{
                 add_string_table(u8".shstrtab"sv);
                 add_string_table(u8".strtab"sv);
             }
-            void add_text(const Text& text);
-            void add_section(cppp::sv name,std::uint32_t type,const std::byte* data,std::size_t size,std::uint64_t m_addr,std::uint64_t align,bool load,bool writable,bool executable,std::uint64_t entsize,std::uint32_t link){
-                sections.emplace_back(section_names.add(name),type,data,size,m_addr,align,load,writable,executable,entsize,link);
+            void add_text(const targets::x64::X64Program& text);
+            void add_section(cppp::sv name,std::uint32_t type,const std::byte* data,std::size_t size,std::uint64_t m_addr,std::uint64_t align,bool load=false,bool writable=false,bool executable=false,std::uint64_t entsize=0,std::uint32_t link=0,std::uint32_t info=0){
+                sections.emplace_back(section_names.add(name),type,data,size,m_addr,align,load,writable,executable,entsize,link,info);
             }
             cppp::bytes encode() const;
     };

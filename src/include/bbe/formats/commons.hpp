@@ -1,7 +1,7 @@
 #pragma once
 #include"../commons.hpp"
 #include<cppp/bfile.hpp>
-namespace bbe::formats{
+namespace bbe::formats::impl{
     consteval inline std::byte operator ""_b(unsigned long long x){
         return static_cast<std::byte>(x);
     }
