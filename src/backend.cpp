@@ -75,7 +75,7 @@ int main(){
                 arg = ri<std::uint64_t>();
                 switch(bread()){
                     case 32_b: // ui32
-                        naddr->setp(arg,ri<std::uint32_t>());
+                        naddr->setp(arg,ri<std::uint64_t>());
                         break;
                 }
                 break;
