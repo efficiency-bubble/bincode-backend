@@ -27,10 +27,10 @@
             "label": "Compile Backend",
             "command": "make",
             "args": [
-                "backend"
+                "bin/backend"
             ],
             "windows": {
-                "command": "make backend.exe",
+                "command": "make bin/backend.exe",
                 "args": [],
                 "type": "shell"
             },

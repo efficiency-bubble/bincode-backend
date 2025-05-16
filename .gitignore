@@ -4,4 +4,5 @@ obj
 test.bin
 test.o
 test-main
+test-main.o
 .vscode/settings.json

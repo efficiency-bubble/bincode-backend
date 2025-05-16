@@ -11,7 +11,7 @@ TARGET_SUFFIX :=
 endif
 bin/test$(TARGET_SUFFIX): src/test.cpp lib/$(LIBNAME).a
 	g++ $< lib/bbe.a -o $@ $(FINALOPT)
-backend$(TARGET_SUFFIX): src/backend.cpp lib/$(LIBNAME).a
+bin/backend$(TARGET_SUFFIX): src/backend.cpp lib/$(LIBNAME).a
 	g++ $< lib/bbe.a -o $@ $(FINALOPT)
 lib/$(LIBNAME).a: $(OBJECTS)
 	ar rcs $@ $(OBJECTS)

@@ -1,7 +1,10 @@
 #include<cppp/bfile.hpp>
 #include<cppp/freelist.hpp>
 #include<assembly/common.hpp>
+#include<cppp/indexed-array-pool.hpp>
 #include<bbe/bbe.hpp>
+#include<bbe/targets/x64.hpp>
+#include<bbe/formats/elf.hpp>
 #include<type_traits>
 #include<cinttypes>
 #include<optional>
@@ -11,35 +14,6 @@
 using namespace bbe;
 using namespace std::literals;
 using asm_generic::operator ""_b;
-template<typename T>
-class AllocatedArray{
-    std::vector<std::optional<T>> arr;
-    cppp::freelist<std::uint64_t> alloc;
-    public:
-        template<typename ...A>
-        std::uint64_t emplace(A&& ...v){
-            std::uint64_t indx = alloc.allocate();
-            if(indx > arr.size()){
-                throw std::runtime_error("allocator/array size mismatch");
-            }
-            if(indx == arr.size()){
-                arr.emplace_back(std::in_place,std::forward<A>(v)...);
-            }else{
-                arr[indx].emplace(std::forward<A>(v)...);
-            }
-            return indx;
-        }
-        T& operator[](std::uint64_t indx){
-            return *arr[indx];
-        }
-        const T& operator[](std::uint64_t indx) const{
-            return *arr[indx];
-        }
-        void free(std::uint64_t indx){
-            alloc.deallocate(indx);
-            arr[indx].reset();
-        }
-};
 char8_t read(){
     using it = std::char_traits<char8_t>::int_type;
     it ch = static_cast<it>(std::getchar());
@@ -75,12 +49,11 @@ void wi(std::type_identity_t<T> x){
     std::fwrite(&x,sizeof(T),1uz,stdout);
 }
 int main(){
-    Function main{u8"main"s,nullptr,{},ASTNode()};
+    Function main{nullptr,{},ASTNode()};
     freopen(nullptr,"rb",stdin);
     freopen(nullptr,"wb",stdout);
     ASTNode* naddr{nullptr};
     std::uint64_t arg;
-    targets::Defaultx64 compiler;
     wi<std::uint64_t>(reinterpret_cast<std::uint64_t>(&main.ast()));
     while(true){
         switch(bread()){
@@ -107,13 +80,16 @@ int main(){
                 }
                 break;
             case 40_b: { // Compile
-                Text text;
+                targets::x64::X64Program prog;
                 DBGPRINT("Comp.A");
-                compiler.compile(main,text);
+                prog.compile(main);
                 DBGPRINT("Comp.B");
-                wi<std::uint64_t>(text.text().size());
+                wi<std::uint64_t>(prog.text().size());
                 DBGPRINT("Comp.C");
-                fwrite(text.text().data(),text.text().size(),1uz,stdout);
+                formats::elf::Elf elf;
+                elf.add_text(prog);
+                cppp::bytes elfdata{elf.encode()};
+                fwrite(elfdata.data(),elfdata.size(),1uz,stdout);
                 DBGPRINT("Comp.D");
                 std::fflush(stdout);
                 DBGPRINT("Comp.E");
