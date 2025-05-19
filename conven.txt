@@ -1,6 +1,11 @@
 Node type conventions (subject to change):
-0 = return node($0);
-1 = node($0)-node($1);
-2 = uint32($0);
-3 = uint32(SYMTAB[uint64($0)]);
-4 = uint64(SYMTAB[uint64($0)]);
+0 = uint32($0);
+1 = uint64($0);
+2 = node($0)+node($1);
+3 = node($0)-node($1);
+4 = unsigned node($0)*node($1);
+5 = return node($0);
+
+
+100 = uint32(SYMTAB[uint64($0)]);
+101 = uint64(SYMTAB[uint64($0)]);

@@ -295,15 +295,20 @@ namespace bbe::targets::x64::impl{
     static FunctionCompilationContext::value_handle compile_node(const ASTNode& nd,FunctionCompilationContext& fcc){
         using value_handle = FunctionCompilationContext::value_handle;
         switch(nd.type()){
-            case 0:{ // ret
-                value_handle value{compile_node(nd.getc(0),fcc)};
-                fcc.write_to_reg(value,x86::reg::A);
-                fcc.done(value);
-                x86::encode::pop::r64(fcc.text(),x86::reg::BP);
-                x86::encode::ret::near(fcc.text());
-                return std::numeric_limits<value_handle>::max();
+            case 0: // u32
+                return fcc.constant<x86::width::W32>(nd.getp(0));
+            case 1: // u64
+                return fcc.constant<x86::width::W64>(nd.getp(0));
+            case 2:{ // add
+                value_handle lhv{compile_node(nd.getc(0),fcc)};
+                value_handle rhv{compile_node(nd.getc(1),fcc)};
+                if(!fcc.is_constant(rhv,0)){
+                    fcc.encode<x86::encode::add>(lhv,rhv);
+                }
+                fcc.done(rhv);
+                return lhv;
             }
-            case 1:{ // sub
+            case 3:{ // sub
                 value_handle lhv{compile_node(nd.getc(0),fcc)};
                 value_handle rhv{compile_node(nd.getc(1),fcc)};
                 if(!fcc.is_constant(rhv,0)){
@@ -312,11 +317,17 @@ namespace bbe::targets::x64::impl{
                 fcc.done(rhv);
                 return lhv;
             }
-            case 2: // u32
-                return fcc.constant<x86::width::W32>(nd.getp(0));
-            case 3: // sym32
+            case 5:{ // ret
+                value_handle value{compile_node(nd.getc(0),fcc)};
+                fcc.write_to_reg(value,x86::reg::A);
+                fcc.done(value);
+                x86::encode::pop::r64(fcc.text(),x86::reg::BP);
+                x86::encode::ret::near(fcc.text());
+                return std::numeric_limits<value_handle>::max();
+            }
+            case 100: // sym32
                 return fcc.symbol(nd.getp(0),x86::width::W32);
-            case 4: // sym64
+            case 101: // sym64
                 return fcc.symbol(nd.getp(0),x86::width::W64);
             default:
                 throw 3;
