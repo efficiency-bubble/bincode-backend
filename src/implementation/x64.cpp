@@ -292,14 +292,6 @@ namespace bbe::targets::x64::impl{
                 return rels;
             }
     };
-    /*
-    Node type conventions:
-    0 = return node($0);
-    1 = node($0)-node($1);
-    2 = uint32($0);
-    3 = uint32(SYMTAB[uint64($0)]);
-    4 = uint64(SYMTAB[uint64($0)]);
-    */
     static FunctionCompilationContext::value_handle compile_node(const ASTNode& nd,FunctionCompilationContext& fcc){
         using value_handle = FunctionCompilationContext::value_handle;
         switch(nd.type()){
