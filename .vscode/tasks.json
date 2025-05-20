@@ -4,18 +4,12 @@
         {
             "label": "Compile Test",
             "command": "make",
-            "windows": {
-                "type": "shell"
-            },
             "args": [],
             "problemMatcher": "$gcc"
         },
         {
             "label": "Run Test",
             "command": "${workspaceFolder}/test-example.sh",
-            "windows": {
-                "command": "${workspaceFolder}/test-example.cmd"
-            },
             "args": [],
             "problemMatcher": [],
             "dependsOn": [
@@ -29,11 +23,6 @@
             "args": [
                 "bin/backend"
             ],
-            "windows": {
-                "command": "make bin/backend.exe",
-                "args": [],
-                "type": "shell"
-            },
             "problemMatcher": "$gcc",
             "presentation": {
                 "clear": true,
