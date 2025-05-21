@@ -2,8 +2,11 @@
 #include<cstdint>
 #include<cstdio>
 extern "C"{
-    std::uint32_t plus_n(std::uint32_t x);
+    std::uint32_t plus_n(std::uint32_t(*fn)(std::uint32_t),std::uint32_t x);
     std::uint32_t n = 7;
+    std::uint32_t twice(std::uint32_t val){
+        return val + val;
+    }
 }
 constexpr static std::uint32_t MAX_ERRORS = 15;
 int main(){
@@ -12,11 +15,11 @@ int main(){
     for(n=0;n<256;++n){
         for(std::uint32_t i=0;i<256;++i){
             ++all;
-            std::uint32_t result = plus_n(i);
-            std::uint32_t expected = i+n;
+            std::uint32_t result = plus_n(&twice,i);
+            std::uint32_t expected = twice(i+n);
             if(result!=expected){
                 if(fail < MAX_ERRORS){
-                    printf("FAIL: Code erroneously says %" PRIu32 " + %" PRIu32 " is %" PRIu32 " (should be %" PRIu32 ") \n",n,i,result,expected);
+                    printf("FAIL: Code erroneously says that twice %" PRIu32 " + %" PRIu32 " is %" PRIu32 " (should be %" PRIu32 ") \n",n,i,result,expected);
                 }
                 ++fail;
             }

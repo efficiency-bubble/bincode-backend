@@ -1,4 +1,3 @@
-#include<iostream>
 #include<bbe/targets/x64.hpp>
 #include<cppp/polyfill/pack-indexing.hpp>
 #include<assembly/instruction.hpp>
@@ -58,25 +57,33 @@ namespace bbe::targets::x64::impl{
                     throw std::logic_error("Value::set_r: Not R");
                 }
             }
-            static void encode_instruction_dst(x86::Instruction& ins,const Value& v){
+        public:
+            void encode_instruction_dst(x86::Instruction& ins) const{
+                if(ins.encoding().dst_size_as_width()){
+                    ins.set_width(_width);
+                }
                 if(ins.encoding().modrm_is_dst()){
-                    v.set_rm(ins);
+                    set_rm(ins);
                 }else{
-                    v.set_r(ins);
+                    set_r(ins);
                 }
             }
-            static void encode_instruction_src(x86::Instruction& ins,const Value& v){
+            void encode_instruction_src(x86::Instruction& ins) const{
+                if(!ins.encoding().dst_size_as_width()){
+                    ins.set_width(_width);
+                }
                 if(ins.encoding().has_immediate()){
-                    if(v.get<CST>()>static_cast<std::uint64_t>(1<<31)){
+                    if(get<CST>()>static_cast<std::uint64_t>(1<<31)){
                         throw std::logic_error("Cannot load immediate value larger than 31 bits");
                     }
                     // If immediate is narrower than 32-bit, the higher bits will get automatically ignored.
-                    ins.immediate(static_cast<std::uint32_t>(v.get<CST>()));
+                    ins.immediate(static_cast<std::uint32_t>(get<CST>()));
+                }else if(ins.encoding().has_modrm()&&!ins.encoding().modrm_is_dst()){
+                    set_rm(ins);
                 }else{
-                    v.set_r(ins);
+                    set_r(ins);
                 }
             }
-        public:
             template<Kind k>
             constexpr static value_kind_t<k> value_kind{};
             Value() = default;
@@ -84,15 +91,6 @@ namespace bbe::targets::x64::impl{
             Value(Value&&) = delete;
             Value& operator=(const Value&) = delete;
             Value& operator=(Value&&) = delete;
-            static void encode_instruction(x86::Instruction& ins,const Value& dst,const Value& src){
-                encode_instruction_dst(ins,dst);
-                encode_instruction_src(ins,src);
-                if(ins.encoding().dst_size_as_width()){
-                    ins.set_width(dst._width);
-                }else{
-                    ins.set_width(src._width);
-                }
-            }
             template<Kind k>
             type_of<k> get() const{
                 return std::get<static_cast<std::size_t>(k)>(_data);
@@ -120,7 +118,7 @@ namespace bbe::targets::x64::impl{
             constexpr static std::array<Reg,3> GENERIC_REGS{x86::reg::A,x86::reg::C,x86::reg::D};
             cppp::freelist<std::uint64_t> id_list;
             cppp::freelist<value_handle> stack;
-            using vals_t = std::map<value_handle,Value>;
+            using vals_t = std::map<value_handle,std::pair<Value,std::uint32_t>>;
             vals_t values;
             struct reg_less{
                 constexpr static bool operator()(Reg lhs,Reg rhs){
@@ -128,20 +126,37 @@ namespace bbe::targets::x64::impl{
                 }
             };
             std::map<Reg,value_handle> used_regs;
+            void reg_into_stack(value_handle vh){
+                Value& v = values.at(vh).first;
+                x86::Instruction mov{x86::encode::mov::rm_r};
+                v.encode_instruction_src(mov);
+                mov.mod_rm(0b10_b,0b011_b); // [BP+disp32]
+                std::uint32_t soff = static_cast<std::uint32_t>(4*stack.allocate());
+                mov.displacement(soff);
+                v.set<Value::STACK>(soff);
+            }
             void reg_evict(Reg r){
                 if(auto it=used_regs.find(r);it!=used_regs.end()){
-                    move_elsewhere(values.at(it->second));
+                    Reg sr = it->first;
+                    for(const Reg r : GENERIC_REGS){
+                        if(!used_regs.contains(r)){
+                            Value& v = values.at(it->second).first;
+                            
+                            x86::Instruction mov{x86::encode::mov::rm_r};
+                            mov.set_width(v.width());
+                            v.encode_instruction_src(mov);
+                            mov.mod_rm(0b11_b,r);
+                            v.set<Value::REG>(r);
+                            used_regs.try_emplace(r,it->second);
+                            mov.encode(_text);
+                            
+                            used_regs.erase(sr);
+                            return;
+                        }
+                    }
+                    reg_into_stack(it->second);
                     used_regs.erase(it);
                 }
-            }
-            void move_elsewhere(Value& v){
-                for(const Reg r : GENERIC_REGS){
-                    if(!used_regs.contains(r)){
-                        v.set<Value::REG>(r);
-                        return;
-                    }
-                }
-                v.set<Value::STACK>(4*stack.allocate());
             }
             Reg free_reg(){
                 for(const Reg r : GENERIC_REGS){
@@ -152,79 +167,81 @@ namespace bbe::targets::x64::impl{
                 reg_evict(GENERIC_REGS.front());
                 return GENERIC_REGS.front();
             }
-            void load_constant_to_reg(value_handle vh,Reg dr){
-                Value& v = values.at(vh);
-                x86::Instruction mov{x86::encode::mov::rm_imm};
-                if(v.width() == x86::width::W64){
-                    throw std::logic_error("64-bit constants not yet supported");
-                }
-                mov.immediate(static_cast<std::uint32_t>(v.get<Value::CST>()));
-                mov.set_width(x86::width::W32);
-                mov.mod_rm(0b11_b,dr);
-                mov.encode(_text);
-                v.set<Value::REG>(dr);
-                used_regs.try_emplace(dr,vh);
-            }
-            void load_sym_to_reg(value_handle vh,Reg dr){
-                Value& v = values.at(vh);
-                x86::Instruction mov{x86::encode::mov::r_rm};
+            void load_to_reg(value_handle vh,Reg dr){
+                Value& v = values.at(vh).first;
+                bool cst = v.kind() == Value::CST;
+                x86::Instruction mov{cst?x86::encode::mov::rm_imm:x86::encode::mov::r_rm};
                 mov.set_width(v.width());
-                mov.mod_rm(0b00_b,0b101_b); // rip + disp32
-                mov.rm_reg(dr);
-                mov.displacement(std::uint32_t(0));
-                rels.emplace_back(mov.encode_and_return_disp(_text),v.get<Value::SYM>());
-                rels.back().isize = _text.size()-rels.back().offset;
+                if(cst){
+                    mov.mod_rm(0b11_b,dr);
+                }else{
+                    mov.rm_reg(dr);
+                }
+                if(v.kind() == Value::SYM){
+                    mov.mod_rm(0b00_b,0b101_b); // rip + disp32
+                    mov.displacement(std::uint32_t(0));
+                    rels.emplace_back(mov.encode_and_return_disp(_text),v.get<Value::SYM>());
+                    rels.back().isize = _text.size()-rels.back().offset;
+                }else{
+                    v.encode_instruction_src(mov);
+                    mov.encode(_text);
+                }
                 v.set<Value::REG>(dr);
                 used_regs.try_emplace(dr,vh);
             }
-            void load_stack_to_reg(value_handle vh,Reg dr){
-                Value& v = values.at(vh);
-                x86::Instruction mov{x86::encode::mov::r_rm};
-                mov.rm_reg(dr);
-                mov.set_width(x86::width::W32);
-                mov.mod_rm(0b10_b,0b011_b); // [BP+disp32]
-                mov.displacement(-v.get<Value::STACK>());
-                mov.encode(_text);
-                v.set<Value::REG>(dr);
-                used_regs.try_emplace(dr,vh);
-            }
-            void load_to_reg(value_handle vh){
-                Value& v = values.at(vh);
-                if(v.kind()==Value::REG)return;
-                Reg dr{free_reg()};
-                switch(v.kind()){
-                    case Value::STACK:
-                        load_stack_to_reg(vh,dr);
-                        break;
-                    case Value::CST: 
-                        load_constant_to_reg(vh,dr);
-                        break;
-                    case Value::SYM:
-                        load_sym_to_reg(vh,dr);
-                        break;
-                    default: std::unreachable();
-                }
-            }
-            void load_to_rm(value_handle vh){
-                Value& v = values.at(vh);
-                if(v.kind()!=Value::STACK){
-                    load_to_reg(vh);
-                }
+            void load_to_free_reg(value_handle vh){
+                if(values.at(vh).first.kind()==Value::REG)return;
+                load_to_reg(vh,free_reg());
             }
             void load_sym_to_rm(value_handle vh){
-                Value& v = values.at(vh);
+                Value& v = values.at(vh).first;
                 if(v.kind()==Value::SYM){
-                    Reg dr{free_reg()};
-                    load_sym_to_reg(vh,dr);
+                    load_to_free_reg(vh);
                 }
             }
             void reseat_reg(Reg r,value_handle vh){
-                Value& nv = values.at(vh);
                 reg_evict(r);
+
+                load_to_rm(vh);
+                Value& nv = values.at(vh).first;
+                
+                x86::Instruction mov{x86::encode::mov::r_rm};
+                mov.set_width(nv.width());
+                nv.encode_instruction_src(mov);
+                mov.rm_reg(r);
+                mov.encode(_text);
+                
+                used_regs.erase(nv.get<Value::REG>());
                 nv.set<Value::REG>(r);
                 used_regs.try_emplace(r,vh);
             }
         public:
+            void debug() const{
+                printf("debug values\n");
+                for(const auto& [vh,_] : values){
+                    printf("v %lu\n",vh);
+                }
+                printf("debug register status\n");
+                for(const auto& [r,v] : used_regs){
+                    printf("R %d > v %lu\n",int(r),v);
+                }
+                printf("debug end\n");
+            }
+            void reg_evacuate(){
+                for(const auto& [_,v] : used_regs){
+                    reg_into_stack(v);
+                }
+                used_regs.clear();
+            }
+            const Value& operator[](std::size_t i) const{
+                return values.at(i).first;
+            }
+            void load_to_rm(value_handle vh){
+                Value& v = values.at(vh).first;
+                if(v.kind()!=Value::STACK){
+                    load_to_free_reg(vh);
+                }
+            }
             bytes& text(){
                 return _text;
             }
@@ -234,49 +251,53 @@ namespace bbe::targets::x64::impl{
             template<x86::width w>
             value_handle constant(x86::wv<w> v){
                 value_handle id = id_list.allocate();
-                values.try_emplace(id,Value::value_kind<Value::CST>,v,w);
+                values.try_emplace(id,std::piecewise_construct,std::forward_as_tuple(Value::value_kind<Value::CST>,v,w),std::forward_as_tuple(1));
                 return id;
             }
             value_handle symbol(std::uint64_t v,x86::width w){
                 value_handle id = id_list.allocate();
-                values.try_emplace(id,Value::value_kind<Value::SYM>,v,w);
+                values.try_emplace(id,std::piecewise_construct,std::forward_as_tuple(Value::value_kind<Value::SYM>,v,w),std::forward_as_tuple(1));
                 return id;
             }
             bool is_constant(value_handle x,std::uint64_t v){
-                return values.at(x).kind() == Value::CST && values.at(x).get<Value::CST>() == v;
+                return values.at(x).first.kind() == Value::CST && values.at(x).first.get<Value::CST>() == v;
             }
             void done(value_handle id){
-                vals_t::node_type node{values.extract(id)};
-                switch(node.mapped().kind()){
-                    case Value::STACK:
-                        stack.deallocate(node.mapped().get<Value::STACK>()/4);
+                vals_t::iterator m{values.find(id)};
+                if(!--m->second.second){
+                    switch(m->second.first.kind()){
+                        case Value::STACK:
+                        stack.deallocate(m->second.first.get<Value::STACK>()/4);
                         break;
-                    case Value::REG:
-                        used_regs.erase(node.mapped().get<Value::REG>());
+                        case Value::REG:
+                        used_regs.erase(m->second.first.get<Value::REG>());
                         break;
-                    case Value::CST:
-                    case Value::SYM:
+                        case Value::CST:
+                        case Value::SYM:
                         break;
+                    }
+                    id_list.deallocate(id);
+                    values.erase(m);
                 }
-                id_list.deallocate(id);
             }
             value_handle value_in_reg(Reg r,x86::width w){
                 if(auto it=used_regs.find(r);it!=used_regs.end()){
+                    ++values.at(it->second).second;
                     return it->second;
                 }
                 value_handle id = id_list.allocate();
-                values.try_emplace(id,Value::value_kind<Value::REG>,r,w);
+                values.try_emplace(id,std::piecewise_construct,std::forward_as_tuple(Value::value_kind<Value::REG>,r,w),std::forward_as_tuple(1));
                 used_regs.try_emplace(r,id);
                 return id;
             }
             void write_to_reg(value_handle v,Reg dr){
-                Value& value = values.at(v);
+                Value& value = values.at(v).first;
                 if(value.kind() != Value::REG || value.get<Value::REG>() != dr){
                     reseat_reg(dr,v);
                 }
             }
             Reg write_to_free_reg(value_handle v){
-                Value& value = values.at(v);
+                Value& value = values.at(v).first;
                 if(value.kind() != Value::REG){
                     reseat_reg(free_reg(),v);
                 }
@@ -284,8 +305,8 @@ namespace bbe::targets::x64::impl{
             }
             template<typename Ins>
             void encode(value_handle dst,value_handle src){
-                Value& dstv = values.at(dst);
-                Value& srcv = values.at(src);
+                Value& dstv = values.at(dst).first;
+                Value& srcv = values.at(src).first;
                 x86::Instruction ins;
                 if constexpr(requires{
                     Ins::rm_imm;
@@ -305,20 +326,21 @@ namespace bbe::targets::x64::impl{
                 }){
                     ins.reset(Ins::rm_r);
                     load_to_rm(dst);
-                    load_to_reg(src);
+                    load_to_free_reg(src);
                     goto end;
                 }
                 if constexpr(requires{
                     Ins::r_rm;
                 }){
                     ins.reset(Ins::r_rm);
-                    load_to_reg(dst);
+                    load_to_free_reg(dst);
                     load_to_rm(src);
                     goto end;
                 }
                 throw std::logic_error("Can't find suitable encoding for instruction");
                 end:
-                Value::encode_instruction(ins,dstv,srcv);
+                dstv.encode_instruction_dst(ins);
+                srcv.encode_instruction_src(ins);
                 ins.encode(_text);
             }
             value_handle max_stack_size() const{
@@ -328,7 +350,7 @@ namespace bbe::targets::x64::impl{
                 return rels;
             }
     };
-    static FunctionCompilationContext::value_handle compile_node(const ASTNode& nd,FunctionCompilationContext& fcc){
+    static FunctionCompilationContext::value_handle compile_node(const ASTNode& nd,FunctionCompilationContext& fcc,bool& subfns){
         static Reg X86_ABI_ARG_REGS[]{x86::reg::DI,x86::reg::SI,x86::reg::D,x86::reg::C};
         using value_handle = FunctionCompilationContext::value_handle;
         switch(nd.type()){
@@ -337,8 +359,8 @@ namespace bbe::targets::x64::impl{
             case 1: // u64
                 return fcc.constant<x86::width::W64>(nd.getp(0));
             case 2:{ // add
-                value_handle lhv{compile_node(nd.getc(0),fcc)};
-                value_handle rhv{compile_node(nd.getc(1),fcc)};
+                value_handle lhv{compile_node(nd.getc(0),fcc,subfns)};
+                value_handle rhv{compile_node(nd.getc(1),fcc,subfns)};
                 if(!fcc.is_constant(rhv,0)){
                     fcc.encode<x86::encode::add>(lhv,rhv);
                 }
@@ -346,27 +368,42 @@ namespace bbe::targets::x64::impl{
                 return lhv;
             }
             case 3:{ // sub
-                value_handle lhv{compile_node(nd.getc(0),fcc)};
-                value_handle rhv{compile_node(nd.getc(1),fcc)};
+                value_handle lhv{compile_node(nd.getc(0),fcc,subfns)};
+                value_handle rhv{compile_node(nd.getc(1),fcc,subfns)};
                 if(!fcc.is_constant(rhv,0)){
                     fcc.encode<x86::encode::sub>(lhv,rhv);
                 }
                 fcc.done(rhv);
                 return lhv;
             }
-            case 5:{ // arg32
+            case 5: // arg32
                 return fcc.value_in_reg(X86_ABI_ARG_REGS[nd.getp(0)],x86::width::W32);
-            }
             case 6:{ // arg64
-                return fcc.value_in_reg(X86_ABI_ARG_REGS[nd.getp(1)],x86::width::W32);
+                return fcc.value_in_reg(X86_ABI_ARG_REGS[nd.getp(0)],x86::width::W64);
             }
             case 7:{ // ret
-                value_handle value{compile_node(nd.getc(0),fcc)};
+                value_handle value{compile_node(nd.getc(0),fcc,subfns)};
                 fcc.write_to_reg(value,x86::reg::A);
                 fcc.done(value);
                 x86::encode::pop::r64(fcc.text(),x86::reg::BP);
                 x86::encode::ret::near(fcc.text());
                 return std::numeric_limits<value_handle>::max();
+            }
+            case 8:{ // callf
+                subfns = true;
+                value_handle dst = compile_node(nd.getc(0),fcc,subfns);
+                for(std::size_t i=1uz;i<nd.children().size();++i){
+                    value_handle arg = compile_node(nd.getc(i),fcc,subfns);
+                    fcc.write_to_reg(arg,X86_ABI_ARG_REGS[i-1uz]);
+                    fcc.done(arg);
+                }
+                x86::Instruction ins{x86::encode::call::rm};
+                fcc.load_to_rm(dst);
+                fcc[dst].encode_instruction_dst(ins);
+                fcc.reg_evacuate();
+                ins.encode(fcc.text());
+                fcc.done(dst);
+                return fcc.value_in_reg(x86::reg::A,x86::width::W32);
             }
             case 100: // sym32
                 return fcc.symbol(nd.getp(0),x86::width::W32);
@@ -379,13 +416,17 @@ namespace bbe::targets::x64::impl{
     void X64Program::compile(const Function& fn){
         using asm_generic::operator ""_b;
         FunctionCompilationContext fcc;
-        compile_node(fn.ast(),fcc);
+        bool subfns = false;
+        compile_node(fn.ast(),fcc,subfns);
         x86::encode::push::r64(_text,x86::reg::BP);
         if(std::uint64_t ss=fcc.max_stack_size()){
+            if(subfns){
+                ss = (ss+1)&-std::uint64_t(2);
+            }
             x86::Instruction ins{x86::encode::sub::rm_imm};
             ins.mod_rm(0b11_b,x86::reg::BP);
             ins.set_width(x86::width::W64);
-            ins.displacement(std::uint32_t(4*ss));
+            ins.immediate(std::uint32_t(4*ss));
             ins.encode(_text);
         }
         for(Relocation rel : fcc.relocations()){

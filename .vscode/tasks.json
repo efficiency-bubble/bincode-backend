@@ -9,8 +9,11 @@
         },
         {
             "label": "Run Test",
-            "command": "${workspaceFolder}/test-example.sh",
+            "command": "${workspaceFolder}/test/test-example.sh",
             "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}/test"
+            },
             "problemMatcher": [],
             "dependsOn": [
                 "Compile Test"
