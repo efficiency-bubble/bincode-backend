@@ -33,7 +33,7 @@ int main(){
     ASTNode ret{NT_RET,1};
     ret.emplace(0,std::move(invk));
     Function example{nullptr,{},std::move(ret)};
-    prog.start_export(u8"plus_n"s);
+    prog.start_export(u8"plus_n_then_call"s);
     prog.compile(example);
     cppp::BinaryFile bf{u8"test.o"sv,std::ios::binary | std::ios::out};
     formats::elf::Elf elf;

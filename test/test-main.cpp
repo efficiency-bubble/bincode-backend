@@ -2,7 +2,7 @@
 #include<cstdint>
 #include<cstdio>
 extern "C"{
-    std::uint32_t plus_n(std::uint32_t(*fn)(std::uint32_t),std::uint32_t x);
+    std::uint32_t plus_n_then_call(std::uint32_t(*fn)(std::uint32_t),std::uint32_t x);
     std::uint32_t n = 7;
     std::uint32_t twice(std::uint32_t val){
         return val + val;
@@ -15,7 +15,7 @@ int main(){
     for(n=0;n<256;++n){
         for(std::uint32_t i=0;i<256;++i){
             ++all;
-            std::uint32_t result = plus_n(&twice,i);
+            std::uint32_t result = plus_n_then_call(&twice,i);
             std::uint32_t expected = twice(i+n);
             if(result!=expected){
                 if(fail < MAX_ERRORS){
