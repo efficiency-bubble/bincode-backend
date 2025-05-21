@@ -4,7 +4,7 @@
 extern "C"{
     std::uint32_t plus_n_then_call(std::uint32_t(*fn)(std::uint32_t),std::uint32_t x);
     std::uint32_t n = 7;
-    std::uint32_t twice(std::uint32_t val){
+    static std::uint32_t twice(std::uint32_t val){
         return val + val;
     }
 }
