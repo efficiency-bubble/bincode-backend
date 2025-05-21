@@ -1,7 +1,7 @@
 #include<cinttypes>
 #include<cstdint>
 #include<cstdio>
-extern "C"{
+extern "C" {
     std::uint32_t plus_n_then_call(std::uint32_t(*fn)(std::uint32_t),std::uint32_t x);
     std::uint32_t n = 7;
     static std::uint32_t twice(std::uint32_t val){
