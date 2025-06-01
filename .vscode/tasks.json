@@ -4,16 +4,15 @@
         {
             "label": "Compile Test",
             "command": "make",
-            "args": [],
+            "args": [
+                "bin/test-ssa"
+            ],
             "problemMatcher": "$gcc"
         },
         {
             "label": "Run Test",
-            "command": "${workspaceFolder}/test/test-example.sh",
+            "command": "bin/test-ssa",
             "args": [],
-            "options": {
-                "cwd": "${workspaceFolder}/test"
-            },
             "problemMatcher": [],
             "dependsOn": [
                 "Compile Test"

@@ -4,10 +4,10 @@ Node type conventions (subject to change):
 2 = node($0)+node($1);
 3 = node($0)-node($1);
 4 = unsigned node($0)*node($1);
-5 = uint32(ARGV[$0]);
+5 = uint32(ARGV[$0]); # TODO: check function signature to automatically determine argument width
 6 = uint64(ARGV[$0]);
 7 = return node($0);
 8 = callf(node($)...);
 
-100 = uint32(SYMTAB[uint64($0)]);
+100 = uint32(SYMTAB[uint64($0)]); # TODO: check symbol table to automatically determine value width
 101 = uint64(SYMTAB[uint64($0)]);
