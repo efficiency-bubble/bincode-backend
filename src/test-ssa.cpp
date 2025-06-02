@@ -16,7 +16,7 @@ constexpr static std::uint64_t NT_CALL = 8;
 constexpr static std::uint64_t NT_SYM32 = 100;
 constexpr static std::uint64_t NT_SYM64 = 101;
 int main(){
-    ASTNode x{NT_ARG64,1,data_tag};
+    ASTNode x{NT_ARG32,1,data_tag};
     x.setp(0,0);
     ASTNode y{NT_ARG32,1,data_tag};
     y.setp(0,1);
