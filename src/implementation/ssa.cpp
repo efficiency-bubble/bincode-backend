@@ -1,52 +1,69 @@
 #include<bbe/targets/ssa.hpp>
+#include<unordered_map>
+#include<functional>
+#include<compare>
+#include<ranges>
 namespace bbe::targets::ssa::impl{
-    std::uint32_t ProcedureIC::new_label_here(){
-        std::uint32_t lid = labels.size();
-        Label& l = labels.emplace_back();
-        for(std::uint32_t n=0;n<static_cast<std::uint32_t>(name_values.size());++n){
-            l.param_names.emplace_back(n);
-            _instructions.emplace_back(Operation::PUTV,n,name_values[n]);
-        }
-        l.begin = _instructions.size();
-        for(std::uint32_t n=0;n<static_cast<std::uint32_t>(name_values.size());++n){
-            operation(Operation::LOADV,n,n);
-        }
-        return lid;
+    std::uint32_t BasicBlock::new_value_for_name(std::uint32_t name){
+        std::uint32_t vid = next_value++;
+        name_values[name] = vid;
+        return vid;
     }
-    std::uint32_t compile_node(const ASTNode& nd,ProcedureIC& prog){
-        // new_name() doesn't allocate a name unless it's actually used, so this is always safe.
-        std::uint32_t name{prog.new_name()};
-        switch(nd.type()){
-            case 0: // u32
-                prog.imm32(name,nd.getp(0));
-                break;
-            case 1: // u64
-                prog.imm64(name,nd.getp(0));
-                break;
-            case 2: // add
-                prog.operation(Operation::ADD,name,prog.value_of(compile_node(nd.getc(0),prog)),prog.value_of(compile_node(nd.getc(1),prog)));
-                break;
-            case 3: // sub
-                prog.operation(Operation::SUB,name,prog.value_of(compile_node(nd.getc(0),prog)),prog.value_of(compile_node(nd.getc(1),prog)));
-                break;
-            case 5: // arg32
-            case 6: // arg64
-                prog.operation(Operation::LDAR,name,nd.getp(0));
-                break;
-            case 7: // ret
-                prog.statement(Operation::RET,prog.value_of(compile_node(nd.getc(0),prog)));
-                break;
-            // case 8: // callf // TODO
-            //     break;
-            // case 100: // sym32 // TODO
-            // case 101: // sym64
-            //     return fcc.symbol(nd.getp(0),x86::width::W64);
-            default:
-                throw 3;
+    class FunctionCompiler{
+        ProcedureIC* ic;
+        std::uint32_t compile_value(const ASTNode& nd,BasicBlock& block){
+            return block.value_of(compile_node(nd,block));
         }
-        return name;
-    }
+        std::uint32_t compile_node(const ASTNode& nd,BasicBlock& block){
+            std::uint32_t name;
+            switch(nd.type()){
+                case 0: // u32
+                    block.imm32(name = block.new_name(),nd.getp(0));
+                    break;
+                case 1: // u64
+                    block.imm64(name = block.new_name(),nd.getp(0));
+                    break;
+                case 2: // add
+                    block.operation(Operation::ADD,name = block.new_name(),{compile_value(nd.getc(0),block),compile_value(nd.getc(1),block)});
+                    break;
+                case 3: // sub
+                    block.operation(Operation::SUB,name = block.new_name(),{compile_value(nd.getc(0),block),compile_value(nd.getc(1),block)});
+                    break;
+                case 5: // arg32
+                case 6: // arg64
+                case 22: // argb
+                    block.operation(Operation::LDAR,name = block.new_name(),{static_cast<std::uint32_t>(nd.getp(0))});
+                    break;
+                case 7: // ret
+                    block.retf(compile_value(nd.getc(0),block));
+                    return 0;
+                // case 8: // callf // TODO
+                //     break;
+                case 21:{ // fork
+                    std::uint32_t cond = compile_value(nd.getc(0),block);
+                    std::uint32_t lhb = compile_block(nd.getc(1));
+                    std::uint32_t rhb = compile_block(nd.getc(2));
+                    block.operation(Operation::BRC,name = block.new_name(),{cond,lhb,rhb});
+                    break;
+                }
+                // case 100: // sym32 // TODO
+                // case 101: // sym64
+                //     return fcc.symbol(nd.getp(0),x86::width::W64);
+                default:
+                    throw 3;
+            }
+            return name;
+        }
+        public:
+            FunctionCompiler(ProcedureIC& c) : ic(&c){}
+            std::uint32_t compile_block(const ASTNode& nd){
+                std::uint32_t bid = ic->new_block();
+                ic->blocks()[bid].retb(compile_value(nd,ic->blocks()[bid]));
+                return bid;
+            }
+    };
     void ProcedureIC::compile(const Function& fn){
-        compile_node(fn.ast(),*this);
+        FunctionCompiler fc{*this};
+        fc.compile_block(fn.ast());
     }
 }

@@ -5,106 +5,91 @@
 #include"commons.hpp"
 #include"../function.hpp"
 #include<vector>
+#include<deque>
 namespace bbe::targets::ssa::impl{
     using namespace std::literals;
-    /*
-    Example C++:
-    
-    void loop(unsigned int a){
-        while(a){
-            a = run(a);
-        }
-    }
-    
-    Example SSA in C syntax:
-    
-    static unsigned int __jargbuf[1];
-    void loop(const unsigned int __var0){
-        __jargbuf[0] = __var0;
-        __label0:
-        const unsigned int __var1 = __jargbuf[0];
-        const unsigned int __var2 = run(__var1);
-        const unsigned int __var3 = 0;
-        const unsigned int __var4 = __var3 < __var2;
-        if(__var4){
-            __jargbuf[0] = __var2;
-            goto __label0;
-        }
-    }  
-    */
     #define BBE_DEBUG_STRINGIFY_ENUMERATOR(x) u8 ## #x ## sv
     #define BBE_DEBUG_NAMED_ENUM(e,...) enum class e { __VA_ARGS__ }; constexpr cppp::sv stringify_enum(e v){ constexpr static cppp::sv enum_strings[]{ CPPP_FOR_EACH(BBE_DEBUG_STRINGIFY_ENUMERATOR,__VA_ARGS__) }; return enum_strings[static_cast<std::size_t>(v)]; }
-    BBE_DEBUG_NAMED_ENUM(Operation,IMMB,IMM32,IMM64,PUTV,LOADV,JMP,MOV,RET,ADD,SUB,CMPL,LDAR);
+    BBE_DEBUG_NAMED_ENUM(Operation,IMMB,IMM32,IMM64,PUTV,CALL,JMP,BRC,MOV,RET,ADD,SUB,CMPL,LDAR);
     struct Instruction{
         Operation opcode;
         std::uint32_t dst;
-        std::uint32_t srcp;
-        std::uint32_t srcq;
+        std::vector<std::uint32_t> src;
         cppp::str debug() const{
             cppp::str string{cppp::tou8(std::to_string(dst))};
             string.append(u8": "sv);
             string.append(stringify_enum(opcode));
-            string.push_back(u8' ');
-            string.append(cppp::tou8(std::to_string(srcp)));
-            string.push_back(u8' ');
-            string.append(cppp::tou8(std::to_string(srcq)));
+            for(std::uint32_t s : src){
+                string.push_back(u8' ');
+                string.append(cppp::tou8(std::to_string(s)));
+            }
             return string;
         }
     };
-    class ProcedureIC{
+    class BasicBlock{
         std::uint32_t next_value = 0;
+        std::uint32_t retval;
         std::vector<Instruction> _instructions;
         std::vector<std::uint32_t> name_values;
-        struct Label{
-            std::uint32_t begin;
-            std::vector<std::uint32_t> param_names;
-        };
-        std::vector<Label> labels;
-        std::uint32_t new_value_for_name(std::uint32_t name){
-            std::uint32_t vid = next_value++;
-            if(name==new_name()){
-                name_values.emplace_back(vid);
-            }else{
-                name_values[name] = vid;
-            }
-            return vid;
-        }
+        std::uint32_t new_value_for_name(std::uint32_t name);
         public:
-            std::uint32_t new_label_here();
-            std::uint32_t new_name() const{
-                return static_cast<std::uint32_t>(name_values.size());
+            std::uint32_t new_name(){
+                std::uint32_t name = name_values.size();
+                name_values.emplace_back();
+                return name;
             }
             std::uint32_t value_of(std::uint32_t name){
                 return name_values[name];
             }
-            void goto_label(std::uint32_t label){
-                for(std::uint32_t param : labels[label].param_names){
-                    _instructions.emplace_back(Operation::PUTV,param,name_values[param]);
-                }
-                _instructions.emplace_back(Operation::JMP,label);
+            void instruction(const Instruction& ins){
+                _instructions.emplace_back(ins);
             }
-            void statement(Operation op,std::uint32_t lhsv=0,std::uint32_t rhsv=0){
-                _instructions.emplace_back(op,0,lhsv,rhsv);
+            void retb(std::uint32_t val){
+                retval = val;
             }
-            void operation(Operation op,std::uint32_t name,std::uint32_t lhsv=0,std::uint32_t rhsv=0){
-                _instructions.emplace_back(op,new_value_for_name(name),lhsv,rhsv);
+            void retf(std::uint32_t val){
+                _instructions.emplace_back(Operation::RET,val);
+            }
+            void operation(Operation op,std::uint32_t name,std::vector<std::uint32_t>&& argv={}){
+                _instructions.emplace_back(op,new_value_for_name(name),std::move(argv));
             }
             void immb(std::uint32_t name,bool val){
-                operation(Operation::IMMB,name,val);
+                operation(Operation::IMMB,name,{val});
             }
             void imm32(std::uint32_t name,std::uint32_t val){
-                operation(Operation::IMM32,name,val);
+                operation(Operation::IMM32,name,{val});
             }
             void imm64(std::uint32_t name,std::uint64_t val){
-                operation(Operation::IMM64,name,static_cast<std::uint32_t>(val),static_cast<std::uint32_t>(val>>32uz));
+                operation(Operation::IMM64,name,{static_cast<std::uint32_t>(val),static_cast<std::uint32_t>(val>>32uz)});
             }
             const std::vector<Instruction>& instructions() const{
                 return _instructions;
             }
+            std::uint32_t return_value() const{
+                return retval;
+            }
+    };
+    class ProcedureIC{
+        std::deque<BasicBlock> _blocks; // no iterator invalidation
+        public:
+            std::uint32_t new_block(){
+                std::uint32_t bid = _blocks.size();
+                _blocks.emplace_back();
+                return bid;
+            }
+            std::deque<BasicBlock>& blocks(){
+                return _blocks;
+            }
+            const std::deque<BasicBlock>& blocks() const{
+                return _blocks;
+            }
             void compile(const Function&);
     };
+    BasicBlock dce(const BasicBlock& prog);
 }
 namespace bbe::targets::ssa{
     BBE_EXPORT Instruction;
+    BBE_EXPORT BasicBlock;
     BBE_EXPORT ProcedureIC;
+    BBE_EXPORT dce;
 }
