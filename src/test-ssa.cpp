@@ -42,9 +42,9 @@ int main(){
     targets::ssa::ProcedureIC prog;
     prog.compile(example);
     for(const auto& [i,b] : prog.blocks() | std::ranges::views::enumerate){
-        std::cout << "Block #" << i << '\n';
+        std::cout << "Block #"sv << i << '\n';
         for(const targets::ssa::Instruction& ins : b.instructions()){
-            std::cout << cppp::cview(ins.debug()) << '\n';
+            std::cout << "    "sv << cppp::cview(ins.debug()) << '\n';
         }
     }
     std::cout.flush();
