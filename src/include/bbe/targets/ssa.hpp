@@ -62,6 +62,9 @@ namespace bbe::targets::ssa::impl{
             const std::unordered_map<std::uint32_t,std::uint32_t>& imports() const{
                 return _imports;
             }
+            const std::unordered_map<std::uint32_t,std::uint32_t>& nametable() const{
+                return name_values;
+            }
             std::uint32_t return_value() const{
                 return retval;
             }

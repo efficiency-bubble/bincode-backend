@@ -59,6 +59,13 @@ ASTNode compound(T&& ...n){
     (...,x.children().emplace_back(std::move(n)));
     return x;
 }
+void print_nvtable(const std::unordered_map<std::uint32_t,std::uint32_t>& t){
+    std::cout << '(';
+    for(const auto& [n,v] : t){
+        std::cout << " n"sv << n << "=v"sv << v;
+    }
+    std::cout <<  " )"sv;
+}
 int main(){
     Function example{nullptr,{},compound(
         setvar(0,add(arg32(0),arg32(1))),
@@ -71,14 +78,14 @@ int main(){
     targets::ssa::ProcedureIC prog;
     prog.compile(example);
     for(const auto& [i,b] : prog.blocks() | std::ranges::views::enumerate){
-        std::cout << "Block # "sv << i << " ("sv;
-        for(const auto& [n,v] : b.imports()){
-            std::cout << " n"sv << n << "=v"sv << v;
-        }
-        std::cout <<  " )\n"sv;
+        std::cout << "Block # "sv << i << ' ';
+        print_nvtable(b.imports());
+        std::cout << '\n';
         for(const targets::ssa::Instruction& ins : b.instructions()){
             std::cout << "    "sv << cppp::cview(ins.debug()) << '\n';
         }
+        print_nvtable(b.nametable());
+        std::cout << '\n';
     }
     std::cout.flush();
     return 0;
