@@ -7,7 +7,7 @@
 namespace bbe::targets::ssa::impl{
     cppp::str Instruction::debug() const{
         cppp::str string{cppp::tou8(std::to_string(dst))};
-        string.append(u8": "sv);
+        string.append(u8" = "sv);
         string.append(stringify_enum(opcode));
         for(std::uint32_t s : src){
             string.push_back(u8' ');
