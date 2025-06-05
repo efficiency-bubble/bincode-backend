@@ -355,12 +355,12 @@ namespace bbe::targets::x64::impl{
         using value_handle = FunctionCompilationContext::value_handle;
         switch(nd.type()){
             case 0: // u32
-                return fcc.constant<x86::width::W32>(nd.getp(0));
+                return fcc.constant<x86::width::W32>(nd.getp());
             case 1: // u64
-                return fcc.constant<x86::width::W64>(nd.getp(0));
+                return fcc.constant<x86::width::W64>(nd.getp());
             case 2:{ // add
-                value_handle lhv{compile_node(nd.getc(0),fcc,subfns)};
-                value_handle rhv{compile_node(nd.getc(1),fcc,subfns)};
+                value_handle lhv{compile_node(nd.children()[0],fcc,subfns)};
+                value_handle rhv{compile_node(nd.children()[1],fcc,subfns)};
                 if(!fcc.is_constant(rhv,0)){
                     fcc.encode<x86::encode::add>(lhv,rhv);
                 }
@@ -368,8 +368,8 @@ namespace bbe::targets::x64::impl{
                 return lhv;
             }
             case 3:{ // sub
-                value_handle lhv{compile_node(nd.getc(0),fcc,subfns)};
-                value_handle rhv{compile_node(nd.getc(1),fcc,subfns)};
+                value_handle lhv{compile_node(nd.children()[0],fcc,subfns)};
+                value_handle rhv{compile_node(nd.children()[1],fcc,subfns)};
                 if(!fcc.is_constant(rhv,0)){
                     fcc.encode<x86::encode::sub>(lhv,rhv);
                 }
@@ -377,12 +377,12 @@ namespace bbe::targets::x64::impl{
                 return lhv;
             }
             case 5: // arg32
-                return fcc.value_in_reg(X86_ABI_ARG_REGS[nd.getp(0)],x86::width::W32);
+                return fcc.value_in_reg(X86_ABI_ARG_REGS[nd.getp()],x86::width::W32);
             case 6:{ // arg64
-                return fcc.value_in_reg(X86_ABI_ARG_REGS[nd.getp(0)],x86::width::W64);
+                return fcc.value_in_reg(X86_ABI_ARG_REGS[nd.getp()],x86::width::W64);
             }
             case 7:{ // ret
-                value_handle value{compile_node(nd.getc(0),fcc,subfns)};
+                value_handle value{compile_node(nd.children()[0],fcc,subfns)};
                 fcc.write_to_reg(value,x86::reg::A);
                 fcc.done(value);
                 x86::encode::pop::r64(fcc.text(),x86::reg::BP);
@@ -391,9 +391,9 @@ namespace bbe::targets::x64::impl{
             }
             case 8:{ // callf
                 subfns = true;
-                value_handle dst = compile_node(nd.getc(0),fcc,subfns);
+                value_handle dst = compile_node(nd.children()[0],fcc,subfns);
                 for(std::size_t i=1uz;i<nd.children().size();++i){
-                    value_handle arg = compile_node(nd.getc(i),fcc,subfns);
+                    value_handle arg = compile_node(nd.children()[i],fcc,subfns);
                     fcc.write_to_reg(arg,X86_ABI_ARG_REGS[i-1uz]);
                     fcc.done(arg);
                 }
@@ -406,9 +406,9 @@ namespace bbe::targets::x64::impl{
                 return fcc.value_in_reg(x86::reg::A,x86::width::W32);
             }
             case 100: // sym32
-                return fcc.symbol(nd.getp(0),x86::width::W32);
+                return fcc.symbol(nd.getp(),x86::width::W32);
             case 101: // sym64
-                return fcc.symbol(nd.getp(0),x86::width::W64);
+                return fcc.symbol(nd.getp(),x86::width::W64);
             default:
                 throw 3;
         }

@@ -19,14 +19,10 @@ constexpr static std::uint64_t NT_ARGB = 22;
 constexpr static std::uint64_t NT_SYM32 = 100;
 constexpr static std::uint64_t NT_SYM64 = 101;
 ASTNode arg32(std::uint32_t id){
-    ASTNode x{NT_ARG32,1,data_tag};
-    x.setp(0,id);
-    return x;
+    return {NT_ARG32,id,0};
 }
 ASTNode argb(std::uint32_t id){
-    ASTNode x{NT_ARGB,1,data_tag};
-    x.setp(0,id);
-    return x;
+    return {NT_ARGB,id,0};
 }
 ASTNode add(ASTNode&& lhs,ASTNode&& rhs){
     ASTNode x{NT_ADD,2};

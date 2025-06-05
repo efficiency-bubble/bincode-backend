@@ -5,47 +5,38 @@
 #include<limits>
 #include<vector>
 namespace bbe::impl{
-    struct data_tag_t{};
-    constexpr inline data_tag_t data_tag{};
     class ASTNode{
         std::uint64_t _type;
-        using chld_t = std::vector<ASTNode>;
-        using prim_t = std::vector<std::uint64_t>;
-        std::variant<std::monostate,chld_t,prim_t> data;
+        std::uint64_t prim{0};
+        std::vector<ASTNode> chld;
         public:
+            constexpr static std::uint64_t NTYPE = std::numeric_limits<std::uint64_t>::max();
             explicit operator bool() const{
-                return !std::holds_alternative<std::monostate>(data);
+                return _type != NTYPE;
             }
             std::uint64_t type() const{
                 return _type;
             }
-            const ASTNode& getc(std::uint64_t ind) const{
-                return std::get<chld_t>(data)[ind];
+            std::vector<ASTNode>& children(){
+                return chld;
             }
-            ASTNode& getc(std::uint64_t ind){
-                return std::get<chld_t>(data)[ind];
+            const std::vector<ASTNode>& children() const{
+                return chld;
             }
-            std::uint64_t getp(std::uint64_t ind) const{
-                return std::get<prim_t>(data)[ind];
+            std::uint64_t getp() const{
+                return prim;
             }
-            void setp(std::uint64_t ind,std::uint64_t p){
-                std::get<prim_t>(data)[ind] = p;
+            void setp(std::uint64_t p){
+                prim = p;
             }
             ASTNode& emplace(std::uint64_t ind,ASTNode&& n){
-                return std::get<chld_t>(data)[ind] = std::move(n);
+                return chld[ind] = std::move(n);
             }
-            chld_t& children(){
-                return std::get<chld_t>(data);
-            }
-            const chld_t& children() const{
-                return std::get<chld_t>(data);
-            }
-            ASTNode() : _type(0), data(std::in_place_type<std::monostate>){}
-            ASTNode(std::uint64_t tp,std::uint64_t nchld) : _type(tp), data(std::in_place_type<chld_t>,nchld){}
-            ASTNode(std::uint64_t tp,std::uint64_t nchld,data_tag_t) : _type(tp), data(std::in_place_type<prim_t>,nchld){}
+            ASTNode() : _type(NTYPE){}
+            ASTNode(std::uint64_t tp,std::uint64_t nchld) : _type(tp), chld(nchld){}
+            ASTNode(std::uint64_t tp,std::uint64_t prim,std::uint64_t nchld) : _type(tp), prim(prim), chld(nchld){}
     };
 }
 namespace bbe{
     BBE_EXPORT ASTNode;
-    BBE_EXPORT data_tag;
 }
