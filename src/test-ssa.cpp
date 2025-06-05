@@ -14,8 +14,11 @@ constexpr static std::uint64_t NT_ARG32 = 5;
 constexpr static std::uint64_t NT_ARG64 = 6;
 constexpr static std::uint64_t NT_RET = 7;
 constexpr static std::uint64_t NT_CALL = 8;
+constexpr static std::uint64_t NT_SETVAR = 10;
+constexpr static std::uint64_t NT_GETVAR = 11;
 constexpr static std::uint64_t NT_FORK = 21;
 constexpr static std::uint64_t NT_ARGB = 22;
+constexpr static std::uint64_t NT_COMPOUND = 64;
 constexpr static std::uint64_t NT_SYM32 = 100;
 constexpr static std::uint64_t NT_SYM64 = 101;
 ASTNode arg32(std::uint32_t id){
@@ -42,11 +45,28 @@ ASTNode fork(ASTNode&& cond,ASTNode&& tru,ASTNode&& fals){
     x.emplace(2,std::move(fals));
     return x;
 }
+ASTNode setvar(std::uint64_t var,ASTNode&& val){
+    ASTNode x{NT_SETVAR,var,1};
+    x.emplace(0,std::move(val));
+    return x;
+}
+ASTNode getvar(std::uint64_t var){
+    return {NT_GETVAR,var,0};
+}
+template<typename ...T>
+ASTNode compound(T&& ...n){
+    ASTNode x{NT_COMPOUND,0};
+    (...,x.children().emplace_back(std::move(n)));
+    return x;
+}
 int main(){
-    Function example{nullptr,{},fork(
-        argb(2),
-        ret(add(arg32(0),arg32(1))),
-        ret(arg32(0))
+    Function example{nullptr,{},compound(
+        setvar(0,add(arg32(0),arg32(1))),
+        fork(
+            argb(2),
+            ret(getvar(0)),
+            ret(arg32(0))
+        )
     )};
     targets::ssa::ProcedureIC prog;
     prog.compile(example);
@@ -55,7 +75,7 @@ int main(){
         for(const auto& [n,v] : b.imports()){
             std::cout << " n"sv << n << "=v"sv << v;
         }
-        std::cout <<  ")\n"sv;
+        std::cout <<  " )\n"sv;
         for(const targets::ssa::Instruction& ins : b.instructions()){
             std::cout << "    "sv << cppp::cview(ins.debug()) << '\n';
         }

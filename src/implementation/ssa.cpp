@@ -1,6 +1,7 @@
 #include<bbe/targets/ssa.hpp>
 #include<unordered_map>
 #include<functional>
+#include<stdexcept>
 #include<compare>
 #include<ranges>
 namespace bbe::targets::ssa::impl{
@@ -19,7 +20,7 @@ namespace bbe::targets::ssa::impl{
             return block.value_of(compile_node(nd,block));
         }
         std::uint32_t compile_node(const ASTNode& nd,BasicBlock& block){
-            std::uint32_t name;
+            std::uint32_t name = BasicBlock::NNAME;
             switch(nd.type()){
                 case 0: // u32
                     block.imm32(name = new_name(),nd.getp());
@@ -40,12 +41,16 @@ namespace bbe::targets::ssa::impl{
                     break;
                 case 7: // ret
                     block.retf(compile_value(nd.children()[0],block));
-                    return BasicBlock::NNAME;
+                    break;
                 // case 8: // callf // TODO
                 //     break;
                 case 10: // setvar
                     // TODO: support over 100k intermediate results
                     block.operation(Operation::MOV,name = nd.getp()+100000,{compile_value(nd.children()[0],block)});
+                    break;
+                case 11: // getvar
+                    // TODO: support over 100k intermediate results
+                    block.operation(Operation::MOV,name = new_name(),{block.value_of(nd.getp()+100000)});
                     break;
                 case 21:{ // fork
                     std::uint32_t cond = compile_value(nd.children()[0],block);
@@ -54,11 +59,16 @@ namespace bbe::targets::ssa::impl{
                     block.operation(Operation::BRC,name = new_name(),{cond,lhb,rhb});
                     break;
                 }
+                case 64: // compound
+                    for(const ASTNode& ch : nd.children()){
+                        name = compile_node(ch,block);
+                    }
+                    break;
                 // case 100: // sym32 // TODO
                 // case 101: // sym64
                 //     return fcc.symbol(nd.getp(),x86::width::W64);
                 default:
-                    throw 3;
+                    throw std::logic_error("SSA compile: unknown node type "s+std::to_string(nd.type()));
             }
             return name;
         }
