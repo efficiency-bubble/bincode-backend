@@ -8,6 +8,7 @@ Node type conventions (subject to change):
 6 = uint64(ARGV[$0]);
 7 = return node($0);
 8 = callf(node($)...);
+10 = setvar(uint64($0),node($1));
 20 = bool($0);
 21 = (bool($0) ? node($1) : node($2));
 22 = bool(ARGV[$0]);
