@@ -4,6 +4,8 @@
 #include<cppp/string.hpp> // printing enum names
 #include"commons.hpp"
 #include"../function.hpp"
+#include<unordered_map>
+#include<limits>
 #include<vector>
 #include<deque>
 namespace bbe::targets::ssa::impl{
@@ -30,16 +32,17 @@ namespace bbe::targets::ssa::impl{
         std::uint32_t next_value = 0;
         std::uint32_t retval;
         std::vector<Instruction> _instructions;
-        std::vector<std::uint32_t> name_values;
+        std::unordered_map<std::uint32_t,std::uint32_t> name_values;
+        std::unordered_map<std::uint32_t,std::uint32_t> _imports;
         std::uint32_t new_value_for_name(std::uint32_t name);
         public:
-            std::uint32_t new_name(){
-                std::uint32_t name = name_values.size();
-                name_values.emplace_back();
-                return name;
-            }
+            constexpr static std::uint32_t NNAME = std::numeric_limits<std::uint32_t>::max();
             std::uint32_t value_of(std::uint32_t name){
-                return name_values[name];
+                if(name==NNAME) return name;
+                if(!name_values.contains(name)){
+                    _imports.try_emplace(name,new_value_for_name(name));
+                }
+                return name_values.at(name);
             }
             void instruction(const Instruction& ins){
                 _instructions.emplace_back(ins);
@@ -64,6 +67,9 @@ namespace bbe::targets::ssa::impl{
             }
             const std::vector<Instruction>& instructions() const{
                 return _instructions;
+            }
+            const std::unordered_map<std::uint32_t,std::uint32_t>& imports() const{
+                return _imports;
             }
             std::uint32_t return_value() const{
                 return retval;

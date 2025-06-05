@@ -18,31 +18,48 @@ constexpr static std::uint64_t NT_FORK = 21;
 constexpr static std::uint64_t NT_ARGB = 22;
 constexpr static std::uint64_t NT_SYM32 = 100;
 constexpr static std::uint64_t NT_SYM64 = 101;
-int main(){
+ASTNode arg32(std::uint32_t id){
     ASTNode x{NT_ARG32,1,data_tag};
-    x.setp(0,0);
-    ASTNode y{NT_ARG32,1,data_tag};
-    y.setp(0,1);
-    ASTNode addxy{NT_ADD,2};
-    addxy.emplace(0,std::move(x));
-    addxy.emplace(1,std::move(y));
-    ASTNode retaxy{NT_RET,1};
-    retaxy.emplace(0,std::move(addxy));
-    ASTNode zero{NT_U32,1,data_tag};
-    zero.setp(0,0);
-    ASTNode retzero{NT_RET,1};
-    retzero.emplace(0,std::move(zero));
-    ASTNode flag{NT_ARGB,1,data_tag};
-    flag.setp(0,2);
-    ASTNode branch{NT_FORK,3};
-    branch.emplace(0,std::move(flag));
-    branch.emplace(1,std::move(retaxy));
-    branch.emplace(2,std::move(retzero));
-    Function example{nullptr,{},std::move(branch)};
+    x.setp(0,id);
+    return x;
+}
+ASTNode argb(std::uint32_t id){
+    ASTNode x{NT_ARGB,1,data_tag};
+    x.setp(0,id);
+    return x;
+}
+ASTNode add(ASTNode&& lhs,ASTNode&& rhs){
+    ASTNode x{NT_ADD,2};
+    x.emplace(0,std::move(lhs));
+    x.emplace(1,std::move(rhs));
+    return x;
+}
+ASTNode ret(ASTNode&& val){
+    ASTNode x{NT_RET,1};
+    x.emplace(0,std::move(val));
+    return x;
+}
+ASTNode fork(ASTNode&& cond,ASTNode&& tru,ASTNode&& fals){
+    ASTNode x{NT_FORK,3};
+    x.emplace(0,std::move(cond));
+    x.emplace(1,std::move(tru));
+    x.emplace(2,std::move(fals));
+    return x;
+}
+int main(){
+    Function example{nullptr,{},fork(
+        argb(2),
+        ret(add(arg32(0),arg32(1))),
+        ret(arg32(0))
+    )};
     targets::ssa::ProcedureIC prog;
     prog.compile(example);
     for(const auto& [i,b] : prog.blocks() | std::ranges::views::enumerate){
-        std::cout << "Block #"sv << i << '\n';
+        std::cout << "Block # "sv << i << " ("sv;
+        for(const auto& [n,v] : b.imports()){
+            std::cout << " n"sv << n << "=v"sv << v;
+        }
+        std::cout <<  ")\n"sv;
         for(const targets::ssa::Instruction& ins : b.instructions()){
             std::cout << "    "sv << cppp::cview(ins.debug()) << '\n';
         }
