@@ -115,7 +115,7 @@ namespace bbe::targets::x64::impl{
         private:
             bytes _text;
             std::vector<Relocation> rels;
-            constexpr static std::array<Reg,6> GENERIC_REGS{x86::reg::A,x86::reg::C,x86::reg::D,x86::reg::SI,x86::reg::DI};
+            constexpr static std::array<Reg,5> GENERIC_REGS{x86::reg::A,x86::reg::C,x86::reg::D,x86::reg::SI,x86::reg::DI};
             cppp::freelist<std::uint64_t> id_list;
             cppp::freelist<value_handle> stack;
             using vals_t = std::map<value_handle,std::pair<Value,std::uint32_t>>;
