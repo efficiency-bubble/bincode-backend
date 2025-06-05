@@ -5,6 +5,16 @@
 #include<compare>
 #include<ranges>
 namespace bbe::targets::ssa::impl{
+    cppp::str Instruction::debug() const{
+        cppp::str string{cppp::tou8(std::to_string(dst))};
+        string.append(u8": "sv);
+        string.append(stringify_enum(opcode));
+        for(std::uint32_t s : src){
+            string.push_back(u8' ');
+            string.append(cppp::tou8(std::to_string(s)));
+        }
+        return string;
+    }
     std::uint32_t BasicBlock::new_value_for_name(std::uint32_t name){
         std::uint32_t vid = next_value++;
         name_values.insert_or_assign(name,vid);

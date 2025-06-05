@@ -17,16 +17,7 @@ namespace bbe::targets::ssa::impl{
         Operation opcode;
         std::uint32_t dst;
         std::vector<std::uint32_t> src;
-        cppp::str debug() const{
-            cppp::str string{cppp::tou8(std::to_string(dst))};
-            string.append(u8": "sv);
-            string.append(stringify_enum(opcode));
-            for(std::uint32_t s : src){
-                string.push_back(u8' ');
-                string.append(cppp::tou8(std::to_string(s)));
-            }
-            return string;
-        }
+        cppp::str debug() const;
     };
     class BasicBlock{
         std::uint32_t next_value = 0;
