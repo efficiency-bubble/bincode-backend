@@ -9,7 +9,7 @@ Node type conventions (subject to change):
 7 = return node($0);
 8 = callf(node($)...);
 20 = bool($0);
-21 = if(bool($0)){ $1 }else{ $2 };
+21 = (bool($0) ? node($1) : node($2));
 22 = bool(ARGV[$0]);
 
 100 = uint32(SYMTAB[uint64($0)]); # TODO: check symbol table to automatically determine value width
