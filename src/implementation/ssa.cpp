@@ -74,9 +74,9 @@ namespace bbe::targets::ssa::impl{
                         name = compile_node(ch,block);
                     }
                     break;
-                // case 100: // sym32 // TODO
-                // case 101: // sym64
-                //     return fcc.symbol(nd.getp(),x86::width::W64);
+                case 100: // sym32 // TODO
+                case 101: // sym64
+                    block.operation(Operation::LDS,name = new_name(),{static_cast<std::uint32_t>(nd.getp())});
                 default:
                     throw std::logic_error("SSA compile: unknown node type "s+std::to_string(nd.type()));
             }
