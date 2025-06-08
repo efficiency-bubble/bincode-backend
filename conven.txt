@@ -16,7 +16,7 @@ Node type conventions (subject to change):
 
 64 = { $0; $1; $2; ...; $n; } -> $n
 
-100 = uint32(SYMTAB[uint64($0)]); # TODO: check symbol table to automatically determine value width
-101 = uint64(SYMTAB[uint64($0)]);
+100 = uint32(SYMTAB[$0]); # TODO: check symbol table to automatically determine value width
+101 = uint64(SYMTAB[$0]);
 
 256 = (nop)
