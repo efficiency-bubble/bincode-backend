@@ -69,11 +69,11 @@ void print_nvtable(const std::unordered_map<std::uint32_t,std::uint32_t>& t){
 int main(){
     Function example{nullptr,{},compound(
         setvar(0,add(arg32(0),arg32(1))),
-        fork(
+        ret(fork(
             argb(2),
-            ret(getvar(0)),
-            ret(arg32(0))
-        )
+            getvar(0),
+            arg32(0)
+        ))
     )};
     targets::ssa::ProcedureIC prog;
     prog.compile(example);
@@ -85,6 +85,13 @@ int main(){
             std::cout << "    "sv << cppp::cview(ins.debug()) << '\n';
         }
         print_nvtable(b.nametable());
+        if(b.retcond()==targets::ssa::BasicBlock::NCOND){
+            if(!b.retlocs().empty()){
+                std::cout << " -> b"sv << b.retlocs()[0];
+            }
+        }else{
+            std::cout << " -> v"sv << b.retcond() << " ? b"sv << b.retlocs()[0] << " : b"sv << b.retlocs()[1];
+        }
         std::cout << '\n';
     }
     std::cout.flush();

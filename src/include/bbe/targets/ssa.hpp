@@ -12,7 +12,7 @@ namespace bbe::targets::ssa::impl{
     using namespace std::literals;
     #define BBE_DEBUG_STRINGIFY_ENUMERATOR(x) u8 ## #x ## sv
     #define BBE_DEBUG_NAMED_ENUM(e,...) enum class e { __VA_ARGS__ }; constexpr cppp::sv stringify_enum(e v){ constexpr static cppp::sv enum_strings[]{ CPPP_FOR_EACH(BBE_DEBUG_STRINGIFY_ENUMERATOR,__VA_ARGS__) }; return enum_strings[static_cast<std::size_t>(v)]; }
-    BBE_DEBUG_NAMED_ENUM(Operation,IMMB,IMM32,IMM64,PUTV,CALL,JMP,BRC,MOV,RET,ADD,SUB,CMPL,LDAR,LDS);
+    BBE_DEBUG_NAMED_ENUM(Operation,IMMB,IMM32,IMM64,PUTV,CALL,RET,JMP,MOV,ADD,SUB,CMPL,LDAR,LDS);
     struct Instruction{
         Operation opcode;
         std::uint32_t dst;
@@ -21,12 +21,14 @@ namespace bbe::targets::ssa::impl{
     };
     class BasicBlock{
         std::uint32_t next_value = 0;
-        std::uint32_t retval;
+        std::uint32_t _retcond = NCOND;
+        std::vector<std::uint32_t> _retlocs;
         std::vector<Instruction> _instructions;
         std::unordered_map<std::uint32_t,std::uint32_t> name_values;
         std::unordered_map<std::uint32_t,std::uint32_t> _imports;
         std::uint32_t new_value_for_name(std::uint32_t name);
         public:
+            constexpr static std::uint32_t NCOND = std::numeric_limits<std::uint32_t>::max();
             constexpr static std::uint32_t NNAME = std::numeric_limits<std::uint32_t>::max();
             std::uint32_t value_of(std::uint32_t name){
                 if(name==NNAME) return name;
@@ -38,8 +40,20 @@ namespace bbe::targets::ssa::impl{
             void instruction(const Instruction& ins){
                 _instructions.emplace_back(ins);
             }
-            void retb(std::uint32_t val){
-                retval = val;
+            void r_always(std::uint32_t to){
+                _retlocs.assign_range(std::span<const std::uint32_t,1uz>(&to,1));
+            }
+            const std::vector<std::uint32_t>& retlocs() const{
+                return _retlocs;
+            }
+            void r_branch(std::uint32_t cond,std::uint32_t tru,std::uint32_t fals){
+                _retcond = cond;
+                _retlocs.clear();
+                _retlocs.emplace_back(tru);
+                _retlocs.emplace_back(fals);
+            }
+            std::uint32_t retcond() const{
+                return _retcond;
             }
             void retf(std::uint32_t val){
                 _instructions.emplace_back(Operation::RET,val);
@@ -65,13 +79,11 @@ namespace bbe::targets::ssa::impl{
             const std::unordered_map<std::uint32_t,std::uint32_t>& nametable() const{
                 return name_values;
             }
-            std::uint32_t return_value() const{
-                return retval;
-            }
     };
     class ProcedureIC{
         std::deque<BasicBlock> _blocks; // no iterator invalidation
         public:
+            constexpr static std::uint32_t NBLOCK = std::numeric_limits<std::uint32_t>::max();
             std::uint32_t new_block(){
                 std::uint32_t bid = _blocks.size();
                 _blocks.emplace_back();
