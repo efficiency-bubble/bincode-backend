@@ -107,7 +107,7 @@ namespace bbe::targets::ssa::impl{
                         name = compile_node(ch);
                     }
                     break;
-                case 100: // sym32 // TODO
+                case 100: // sym32
                 case 101: // sym64
                     operation(Operation::LDS,name = new_name(),{static_cast<std::uint32_t>(nd.getp())});
                     break;
