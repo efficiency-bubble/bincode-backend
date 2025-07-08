@@ -2,15 +2,12 @@
     "configurations": [
         {
             "name": "Default",
-            "cppStandard": "c++23",
+            "cppStandard": "c++26",
             "includePath": [
                 "${default}",
                 "src/include"
             ],
-            "intelliSenseMode": "${default}",
-            "defines": [
-                "__cplusplus=202400L"
-            ]
+            "intelliSenseMode": "${default}"
         }
     ],
     "version": 4
