@@ -124,8 +124,8 @@ namespace bbe::targets::ssa::impl{
                 compile_value(nd);
             }
     };
-    void ProcedureIC::compile(const Function& fn){
+    ProcedureIC::ProcedureIC(const Function& fn) : _blocks{{}}{
         FunctionCompiler fc{*this};
-        fc.compile_block(new_block(),fn.ast());
+        fc.compile_block(0,fn.ast());
     }
 }
