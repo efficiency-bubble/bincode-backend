@@ -57,11 +57,8 @@ namespace bbe::targets::ssa::impl{
                 case 1: // u64
                     current_block().imm64(name = new_name(),nd.getp());
                     break;
-                case 2: // add
-                    name = opnode(Operation::ADD,nd);
-                    break;
-                case 3: // sub
-                    name = opnode(Operation::SUB,nd);
+                case 2: // pack
+                    name = opnode(Operation::PACK,nd);
                     break;
                 case 5: // arg32
                 case 6: // arg64
@@ -73,8 +70,12 @@ namespace bbe::targets::ssa::impl{
                     current_block().retf(retv);
                     break;
                 }
-                // case 8: // callf // TODO
-                //     break;
+                case 8: // callf
+                    name = opnode(Operation::CALL,nd);
+                    break;
+                case 9: // builtin-fn
+                    operation(Operation::MAGIC,name = new_name(),{static_cast<std::uint32_t>(nd.getp())});
+                    break;
                 case 10: // setvar
                     // TODO: support over 100k intermediate results
                     operation(Operation::MOV,name = nd.getp()+100000,{compile_value(nd.children()[0])});
