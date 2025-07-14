@@ -7,7 +7,7 @@
 using namespace std::literals;
 int main(){
     Function example{nullptr,{},compound(
-        ret(call(fn(FN_ADD),pack(arg32(0),arg32(1))))
+        ret(cmag(FN_ADD,pack(arg32(0),arg32(1))))
     )};
     targets::ljf::ProcedureIC prog{example};
     std::vector<std::uint32_t> l = prog.labels();

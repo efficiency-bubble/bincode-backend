@@ -8,7 +8,7 @@ constexpr static std::uint64_t NT_ARG32 = 5;
 constexpr static std::uint64_t NT_ARG64 = 6;
 constexpr static std::uint64_t NT_RET = 7;
 constexpr static std::uint64_t NT_CALL = 8;
-constexpr static std::uint64_t NT_FN = 9;
+constexpr static std::uint64_t NT_CMAG = 9;
 constexpr static std::uint64_t NT_SETVAR = 10;
 constexpr static std::uint64_t NT_GETVAR = 11;
 constexpr static std::uint64_t NT_FORK = 21;
@@ -36,8 +36,10 @@ ASTNode call(ASTNode&& fn,ASTNode&& arg){
     x.emplace(1,std::move(arg));
     return x;
 }
-ASTNode fn(std::uint64_t id){
-    return {NT_FN,id,0};
+ASTNode cmag(std::uint64_t magic,ASTNode&& arg){
+    ASTNode x{NT_CMAG,magic,2};
+    x.emplace(0,std::move(arg));
+    return x;
 }
 ASTNode ret(ASTNode&& val){
     ASTNode x{NT_RET,1};

@@ -10,7 +10,7 @@
 #include<deque>
 namespace bbe::targets::ssa::impl{
     using namespace std::literals;
-    BBE_DEBUG_NAMED_ENUM(Operation,IMMB,IMM32,IMM64,PUTV,PACK,CALL,MAGIC,RET,MOV,LDAR,LDS,
+    BBE_DEBUG_NAMED_ENUM(Operation,IMMB,IMM32,IMM64,PUTV,PACK,CALL,CMAG,RET,MOV,LDAR,LDS,
         JMP // used for LJF
     );
     struct Instruction{

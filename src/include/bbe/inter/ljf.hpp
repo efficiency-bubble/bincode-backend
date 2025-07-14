@@ -41,7 +41,7 @@ namespace bbe::inter::ljf::impl{
                         throw std::logic_error("inter::ljf::run(): Illegal call");
                     }
                     break;
-                case MAGIC:
+                case CMAG:
                     lc[ins.dst].value().emplace<magic_ref>(ins.src.front());
                     break;
                 case RET:

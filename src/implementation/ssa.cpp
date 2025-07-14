@@ -73,8 +73,8 @@ namespace bbe::targets::ssa::impl{
                 case 8: // callf
                     name = opnode(Operation::CALL,nd);
                     break;
-                case 9: // builtin-fn
-                    operation(Operation::MAGIC,name = new_name(),{static_cast<std::uint32_t>(nd.getp())});
+                case 9: // call magic
+                    operation(Operation::CMAG,name = new_name(),{static_cast<std::uint32_t>(nd.getp()),compile_value(nd.children()[0])});
                     break;
                 case 10: // setvar
                     // TODO: support over 100k intermediate results
