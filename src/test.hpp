@@ -18,6 +18,9 @@ constexpr static std::uint64_t NT_SYM32 = 100;
 constexpr static std::uint64_t NT_SYM64 = 101;
 
 constexpr static std::uint32_t FN_ADD = 10;
+ASTNode u32(std::uint32_t val){
+    return {NT_U32,val,0};
+}
 ASTNode arg32(std::uint32_t id){
     return {NT_ARG32,id,0};
 }
