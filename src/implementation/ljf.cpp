@@ -48,7 +48,7 @@ namespace bbe::inter::ljf::impl{
                             lc[ins.dst].value().emplace<uint32v>(uint32v(packv.front().get<uint32v>().value+packv.back().get<uint32v>().value));
                             break;
                         default:
-                            throw std::logic_error("inter::ljf::run(): Unknown magic function "s+std::to_string(lc[ins.dst].get<magic_ref>().value));
+                            throw std::logic_error("inter::ljf::run(): Unknown magic function "s+std::to_string(ins.src.front()));
                     }
                     break;
                 }
