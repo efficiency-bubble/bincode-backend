@@ -13,11 +13,10 @@ void print_nvtable(const std::unordered_map<std::uint32_t,std::uint32_t>& t){
 }
 int main(){
     Function example{nullptr,{},compound(
-        ret(call(fn(FN_ADD),pack(arg32(0),arg32(1))))
+        ret(fork(arg32(2),cmag(FN_ADD,pack(arg32(0),arg32(1))),arg32(0)))
     )};
-    targets::ssa::ProcedureIC prog;
-    prog.compile(example);
-    for(const auto& [i,b] : prog.blocks() | std::ranges::views::enumerate){
+    targets::ssa::ProcedureIC prog{example};
+    for(const auto& [i,b] : prog.blocks() | std::views::enumerate){
         std::cout << "Block # "sv << i << ' ';
         print_nvtable(b.imports());
         std::cout << '\n';

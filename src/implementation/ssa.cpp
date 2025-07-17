@@ -90,15 +90,15 @@ namespace bbe::targets::ssa::impl{
                     std::uint32_t rhb = ic->new_block();
                     std::uint32_t continuation = ic->new_block();
                     name = new_name();
-                    current_block().r_branch(cond,lhb,rhb);
-                    
-                    current_block_id = lhb;
-                    current_block().r_always(continuation);
-                    operation(Operation::MOV,name,{compile_value(nd.children()[1])});
+                    current_block().r_branch(cond,rhb,lhb);
                     
                     current_block_id = rhb;
                     current_block().r_always(continuation);
+                    
                     operation(Operation::MOV,name,{compile_value(nd.children()[2])});
+                    current_block_id = lhb;
+                    current_block().r_always(continuation);
+                    operation(Operation::MOV,name,{compile_value(nd.children()[1])});
                     
                     current_block_id = continuation;
                     break;

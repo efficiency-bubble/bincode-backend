@@ -3,9 +3,6 @@
 #include<vector>
 #include<cassert>
 namespace bbe::inter::impl{
-    struct magic_ref{
-        std::uint32_t value;
-    };
     struct uint32v{
         std::uint32_t value;
     };
@@ -20,7 +17,7 @@ namespace bbe::inter::impl{
                 return new T(v);
             }
         };
-        using val_t = cppp::heap_variant<uint32v,magic_ref,boolv,pack>;
+        using val_t = cppp::heap_variant<uint32v,boolv,pack>;
         val_t _value;
         public:
             Value() = default;
@@ -47,6 +44,11 @@ namespace bbe::inter::impl{
                 assert(holds<T>());
                 return _value.get<T>();
             }
+            template<typename T>
+            constexpr static std::size_t index_of = val_t::index_of<T>;
+            std::size_t index() const{
+                return _value.index();
+            }
             val_t& value(){
                 return _value;
             }
@@ -60,7 +62,6 @@ namespace bbe::inter::impl{
     };
 }
 namespace bbe::inter{
-    BBE_EXPORT magic_ref;
     BBE_EXPORT uint32v;
     BBE_EXPORT boolv;
     BBE_EXPORT pack;

@@ -7,7 +7,7 @@
 using namespace std::literals;
 int main(){
     Function example{nullptr,{},compound(
-        ret(cmag(FN_ADD,pack(arg32(0),arg32(1))))
+        ret(fork(arg32(2),cmag(FN_ADD,pack(arg32(0),arg32(1))),arg32(0)))
     )};
     targets::ljf::ProcedureIC prog{example};
     std::vector<std::uint32_t> l = prog.labels();
@@ -26,6 +26,6 @@ int main(){
     }
     std::cout.flush();
     inter::ljf::GlobalEnvironment env;
-    std::cout << inter::ljf::run(env,prog,{inter::uint32v(3),inter::uint32v(5)}).get<inter::uint32v>().value << std::endl;
+    std::cout << inter::ljf::run(env,prog,{inter::uint32v(3),inter::uint32v(5),inter::boolv(true)}).get<inter::uint32v>().value << std::endl;
     return 0;
 }
