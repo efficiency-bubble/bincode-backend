@@ -10,8 +10,8 @@
 #include<deque>
 namespace bbe::targets::ssa::impl{
     using namespace std::literals;
-    BBE_DEBUG_NAMED_ENUM(Operation,IMMB,IMM32,IMM64,PUTV,PACK,CALL,CMAG,RET,MOV,LDAR,LDS,
-        JMP // used for LJF
+    BBE_DEBUG_NAMED_ENUM(Operation,IMMB,IMM32,IMM64,PUTV,PACK,CALL,CMAG,RET,LDAR,LDS,
+        MOV,JMP // used for LJF
     );
     struct Instruction{
         Operation opcode;
@@ -30,6 +30,9 @@ namespace bbe::targets::ssa::impl{
         public:
             constexpr static std::uint32_t NCOND = std::numeric_limits<std::uint32_t>::max();
             constexpr static std::uint32_t NNAME = std::numeric_limits<std::uint32_t>::max();
+            void bind_name(std::uint32_t name,std::uint32_t value){
+                name_values.insert_or_assign(name,value);
+            }
             std::uint32_t value_of(std::uint32_t name){
                 if(name==NNAME) return name;
                 if(!name_values.contains(name)){

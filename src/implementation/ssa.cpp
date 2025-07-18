@@ -17,7 +17,7 @@ namespace bbe::targets::ssa::impl{
     }
     std::uint32_t BasicBlock::new_value_for_name(std::uint32_t name){
         std::uint32_t vid = next_value++;
-        name_values.insert_or_assign(name,vid);
+        bind_name(name,vid);
         return vid;
     }
     class FunctionCompiler{
@@ -78,11 +78,11 @@ namespace bbe::targets::ssa::impl{
                     break;
                 case 10: // setvar
                     // TODO: support over 100k intermediate results
-                    operation(Operation::MOV,name = nd.getp()+100000,{compile_value(nd.children()[0])});
+                    current_block().bind_name(name = nd.getp()+100000,compile_value(nd.children()[0]));
                     break;
                 case 11: // getvar
                     // TODO: support over 100k intermediate results
-                    operation(Operation::MOV,name = new_name(),{current_block().value_of(nd.getp()+100000)});
+                    current_block().bind_name(name = new_name(),current_block().value_of(nd.getp()+100000));
                     break;
                 case 20: // bool
                     current_block().immb(name = new_name(),bool(nd.getp()));
@@ -98,10 +98,10 @@ namespace bbe::targets::ssa::impl{
                     current_block_id = rhb;
                     current_block().r_always(continuation);
                     
-                    operation(Operation::MOV,name,{compile_value(nd.children()[2])});
+                    current_block().bind_name(name,compile_value(nd.children()[2]));
                     current_block_id = lhb;
                     current_block().r_always(continuation);
-                    operation(Operation::MOV,name,{compile_value(nd.children()[1])});
+                    current_block().bind_name(name,compile_value(nd.children()[1]));
                     
                     current_block_id = continuation;
                     break;
