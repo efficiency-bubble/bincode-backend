@@ -84,6 +84,9 @@ namespace bbe::targets::ssa::impl{
                     // TODO: support over 100k intermediate results
                     operation(Operation::MOV,name = new_name(),{current_block().value_of(nd.getp()+100000)});
                     break;
+                case 20: // bool
+                    current_block().immb(name = new_name(),bool(nd.getp()));
+                    break;
                 case 21: { // fork
                     std::uint32_t cond = compile_value(nd.children()[0]);
                     std::uint32_t lhb = ic->new_block();

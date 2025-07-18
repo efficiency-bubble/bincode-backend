@@ -11,6 +11,7 @@ constexpr static std::uint64_t NT_CALL = 8;
 constexpr static std::uint64_t NT_CMAG = 9;
 constexpr static std::uint64_t NT_SETVAR = 10;
 constexpr static std::uint64_t NT_GETVAR = 11;
+constexpr static std::uint64_t NT_BOOL = 20;
 constexpr static std::uint64_t NT_FORK = 21;
 constexpr static std::uint64_t NT_ARGB = 22;
 constexpr static std::uint64_t NT_COMPOUND = 64;
@@ -21,16 +22,21 @@ constexpr static std::uint32_t FN_ADD = 10;
 ASTNode u32(std::uint32_t val){
     return {NT_U32,val,0};
 }
+ASTNode cbool(bool val){
+    return {NT_BOOL,val,0};
+}
 ASTNode arg32(std::uint32_t id){
     return {NT_ARG32,id,0};
 }
 ASTNode argb(std::uint32_t id){
     return {NT_ARGB,id,0};
 }
-ASTNode pack(ASTNode&& lhs,ASTNode&& rhs){
-    ASTNode x{NT_PACK,2};
-    x.emplace(0,std::move(lhs));
-    x.emplace(1,std::move(rhs));
+template<typename ...T>
+ASTNode pack(T&& ...children){
+    ASTNode x{NT_PACK,sizeof...(T)};
+    [&]<std::size_t ...i>(std::index_sequence<i...>){
+        (... , x.emplace(i,std::forward<T>(children)));
+    }(std::index_sequence_for<T...>());
     return x;
 }
 ASTNode call(ASTNode&& fn,ASTNode&& arg){

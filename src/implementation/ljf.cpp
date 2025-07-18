@@ -79,10 +79,10 @@ namespace bbe::inter::ljf::impl{
                     throw std::logic_error("inter::ljf::run(): Function calling not yet supported");
                     break;
                 case CMAG: {
-                    const auto& packv = lc[ins.src.back()].get<pack>().values;
+                    const auto& packv = lc[ins.src[1uz]].get<pack>().values;
                     switch(ins.src.front()){
                         case 10: // add
-                            lc[ins.dst].value().emplace<uint32v>(uint32v(packv.front().get<uint32v>().value+packv.back().get<uint32v>().value));
+                            lc[ins.dst].value().emplace<uint32v>(uint32v(packv.front().get<uint32v>().value+packv[1uz].get<uint32v>().value));
                             break;
                         default:
                             throw std::logic_error(std::format("inter::ljf::run(): Unknown magic function {}"sv,ins.src.front()));
