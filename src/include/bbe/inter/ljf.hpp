@@ -2,7 +2,6 @@
 #include"../targets/ljf.hpp"
 #include"value.hpp"
 #include<map>
-#include<iostream>
 namespace bbe::inter::ljf::impl{
     using namespace std::literals;
     using FunctionLocals = std::map<std::uint32_t,Value>;

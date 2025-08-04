@@ -1,4 +1,5 @@
 #pragma once
+#include"../commons.hpp"
 #include<cppp/variant.hpp>
 #include<vector>
 #include<cassert>
@@ -46,8 +47,8 @@ namespace bbe::inter::impl{
             }
             template<typename T>
             constexpr static std::size_t index_of = val_t::index_of<T>;
-            std::size_t index() const{
-                return _value.index();
+            std::size_t tell() const{
+                return _value.tell();
             }
             val_t& value(){
                 return _value;

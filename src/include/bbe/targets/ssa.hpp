@@ -11,7 +11,7 @@
 namespace bbe::targets::ssa::impl{
     using namespace std::literals;
     BBE_DEBUG_NAMED_ENUM(Operation,IMMB,IMM32,IMM64,PUTV,PACK,CALL,CMAG,RET,LDAR,LDS,
-        MOV,JMP // used for LJF
+        MOV,JMP,JCC // used for LJF
     );
     struct Instruction{
         Operation opcode;
@@ -19,16 +19,22 @@ namespace bbe::targets::ssa::impl{
         std::vector<std::uint32_t> src;
         cppp::str debug() const;
     };
-    class BasicBlock{
+    struct ValueAllocation{
         std::uint32_t next_value = 0;
+    };
+    class BasicBlock{
+        ValueAllocation* va;
         std::uint32_t _retcond = NCOND;
-        std::vector<std::uint32_t> _retlocs;
+        std::uint32_t _ret = NRET;
+        std::uint32_t _ret2;
         std::vector<Instruction> _instructions;
         std::unordered_map<std::uint32_t,std::uint32_t> name_values;
         std::unordered_map<std::uint32_t,std::uint32_t> _imports;
         std::uint32_t new_value_for_name(std::uint32_t name);
         public:
+            BasicBlock(ValueAllocation& va) : va(&va){}
             constexpr static std::uint32_t NCOND = std::numeric_limits<std::uint32_t>::max();
+            constexpr static std::uint32_t NRET = std::numeric_limits<std::uint32_t>::max();
             constexpr static std::uint32_t NNAME = std::numeric_limits<std::uint32_t>::max();
             void bind_name(std::uint32_t name,std::uint32_t value){
                 name_values.insert_or_assign(name,value);
@@ -40,20 +46,24 @@ namespace bbe::targets::ssa::impl{
                 }
                 return name_values.at(name);
             }
-            void instruction(const Instruction& ins){
-                _instructions.emplace_back(ins);
+            template<typename ...A>
+            void instruction(A&& ...a){
+                _instructions.emplace_back(std::forward<A>(a)...);
             }
             void r_always(std::uint32_t to){
-                _retlocs.assign_range(std::span<const std::uint32_t,1uz>(&to,1));
+                _retcond = NCOND;
+                _ret = to;
             }
-            const std::vector<std::uint32_t>& retlocs() const{
-                return _retlocs;
+            std::uint32_t ret() const{
+                return _ret;
+            }
+            std::uint32_t ret2() const{
+                return _ret2;
             }
             void r_branch(std::uint32_t cond,std::uint32_t tru,std::uint32_t fals){
                 _retcond = cond;
-                _retlocs.clear();
-                _retlocs.emplace_back(tru);
-                _retlocs.emplace_back(fals);
+                _ret = tru;
+                _ret2 = fals;
             }
             std::uint32_t retcond() const{
                 return _retcond;
@@ -84,13 +94,14 @@ namespace bbe::targets::ssa::impl{
             }
     };
     class ProcedureIC{
+        ValueAllocation alloc;
         std::deque<BasicBlock> _blocks; // no iterator invalidation
         public:
             ProcedureIC(const Function&);
             constexpr static std::uint32_t NBLOCK = std::numeric_limits<std::uint32_t>::max();
             std::uint32_t new_block(){
                 std::uint32_t bid = _blocks.size();
-                _blocks.emplace_back();
+                _blocks.emplace_back(alloc);
                 return bid;
             }
             std::deque<BasicBlock>& blocks(){
@@ -100,12 +111,10 @@ namespace bbe::targets::ssa::impl{
                 return _blocks;
             }
     };
-    BasicBlock dce(const BasicBlock& prog);
 }
 namespace bbe::targets::ssa{
     BBE_EXPORT Operation;
     BBE_EXPORT Instruction;
     BBE_EXPORT BasicBlock;
     BBE_EXPORT ProcedureIC;
-    BBE_EXPORT dce;
 }

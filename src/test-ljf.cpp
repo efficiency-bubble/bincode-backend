@@ -7,22 +7,19 @@
 using namespace std::literals;
 int main(){
     Function example{nullptr,{},compound(
-        ret(fork(arg32(2),cmag(FN_ADD,pack(arg32(0),arg32(1))),arg32(0)))
+        ret(fork(arg32(2),arg32(0),cmag(FN_ADD,pack(arg32(0),arg32(1)))))
     )};
     targets::ljf::ProcedureIC prog{example};
-    std::vector<std::uint32_t> l = prog.labels();
-    std::ranges::reverse(l);
-    std::uint32_t i = 0;
+    auto l = prog.labels().begin();
     std::uint32_t lc = 0;
-    for(const auto& ins : prog.instructions()){
-        if(!l.empty()&&i==l.back()){
+    for(auto it=prog.instructions().begin();it!=prog.instructions().end();++it){
+        if(l != prog.labels().end()&&it==*l){
             std::cout << std::setw(2) << lc++ << std::setw(1) << ": "sv;
-            l.pop_back();
+            ++l;
         }else{
             std::cout << "    "sv;
         }
-        std::cout << cppp::cview(ins.debug()) << '\n';
-        ++i;
+        std::cout << cppp::cview(it->debug()) << '\n';
     }
     std::cout.flush();
     inter::ljf::GlobalEnvironment env;

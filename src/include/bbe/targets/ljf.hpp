@@ -1,18 +1,20 @@
 #pragma once
 #include"ssa.hpp"
 #include<ranges>
-#include<variant>
+#include<vector>
+#include<list>
 namespace bbe::targets::ljf::impl{
     class ProcedureIC{
-        std::vector<ssa::Instruction> _instructions;
-        std::vector<std::uint32_t> _labels;
+        using insv_t = std::list<ssa::Instruction>;
+        insv_t _instructions;
+        std::vector<insv_t::iterator> _labels;
         public:
             ProcedureIC(const ssa::ProcedureIC& ssaf);
-            const std::vector<ssa::Instruction>& instructions() const{
+            const std::list<ssa::Instruction>& instructions() const{
                 return _instructions;
             }
             // sorted
-            const std::vector<std::uint32_t>& labels() const{
+            const std::vector<insv_t::iterator>& labels() const{
                 return _labels;
             }
     };

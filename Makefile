@@ -2,7 +2,7 @@ COMPOPT := -std=c++26 -flto -fuse-linker-plugin -Wall -Wextra -Wpedantic -m64 -O
 FINALOPT := $(COMPOPT) -static
 LIBNAME := bbe
 HEADERS := $(wildcard src/include/$(LIBNAME)/*.hpp) $(wildcard src/include/$(LIBNAME)/*/*.hpp)
-SOURCES := $(wildcard src/implementation/*.cpp)
+SOURCES := $(wildcard src/implementation/*.cpp) $(wildcard src/implementation/*/*.cpp)
 OBJECTS := $(patsubst src/implementation/%.cpp,obj/%.o,$(SOURCES))
 ifeq ($(OS),"Windows_NT")
 TARGET_SUFFIX := .exe

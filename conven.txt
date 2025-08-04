@@ -4,7 +4,6 @@ Node type conventions (subject to change):
 2 = pack(node($)...);
 5 = uint32(ARGV[$0]); # TODO: check function signature to automatically determine argument width # TODO: remove argument index
 6 = uint64(ARGV[$0]);
-7 = return node($0);
 8 = callf(node($0),node($1));
 9 = callf(BUILTIN_FN[$0],node($1));
 10 = setvar(uint64($0),node($1));
@@ -13,8 +12,6 @@ Node type conventions (subject to change):
 21 = (bool($0) ? node($1) : node($2));
 22 = bool(ARGV[$0]);
 
-64 = { $0; $1; $2; ...; $n; } -> $n
-
 100 = uint32(SYMTAB[$0]); # TODO: check symbol table to automatically determine value width
 101 = uint64(SYMTAB[$0]);
 
@@ -22,4 +19,4 @@ Node type conventions (subject to change):
 
 
 Built-in functions:
-10 = add
+10 = add uint32

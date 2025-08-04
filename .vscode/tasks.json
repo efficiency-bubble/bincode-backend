@@ -5,13 +5,13 @@
             "label": "Compile Test",
             "command": "make",
             "args": [
-                "bin/test-ljf"
+                "bin/test-dfg"
             ],
             "problemMatcher": "$gcc"
         },
         {
             "label": "Run Test",
-            "command": "bin/test-ljf",
+            "command": "bin/test-dfg",
             "args": [],
             "problemMatcher": [],
             "dependsOn": [

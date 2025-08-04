@@ -16,7 +16,7 @@ namespace bbe::targets::ssa::impl{
         return string;
     }
     std::uint32_t BasicBlock::new_value_for_name(std::uint32_t name){
-        std::uint32_t vid = next_value++;
+        std::uint32_t vid = va->next_value++;
         bind_name(name,vid);
         return vid;
     }
@@ -97,11 +97,11 @@ namespace bbe::targets::ssa::impl{
                     
                     current_block_id = rhb;
                     current_block().r_always(continuation);
+                    current_block().bind_name(name,compile_value(nd.children()[1]));
                     
-                    current_block().bind_name(name,compile_value(nd.children()[2]));
                     current_block_id = lhb;
                     current_block().r_always(continuation);
-                    current_block().bind_name(name,compile_value(nd.children()[1]));
+                    current_block().bind_name(name,compile_value(nd.children()[2]));
                     
                     current_block_id = continuation;
                     break;
@@ -127,8 +127,50 @@ namespace bbe::targets::ssa::impl{
                 compile_value(nd);
             }
     };
-    ProcedureIC::ProcedureIC(const Function& fn) : _blocks{{}}{
+    // struct ValTransfer{
+    //     std::uint32_t from;
+    //     std::uint32_t to;
+    // };
+    // struct BlockTransfer{
+    //     std::uint32_t to;
+    //     std::vector<ValTransfer> transfers;
+    // };
+    // void write_transfers(BasicBlock& blk,const BlockTransfer& tt){
+    //     for(const ValTransfer& vt : tt.transfers){
+    //         blk.instruction(Operation::MOV,vt.to,std::vector<std::uint32_t>{vt.from});
+    //     }
+    // }
+    // void add_transfers(ValueAllocation& alloc,std::deque<BasicBlock>& blocks){
+    //     std::size_t nblk = blocks.size();
+    //     std::vector<BlockTransfer> transfers;
+    //     for(auto& block : blocks){
+    //         if(block.retcond()==block.NCOND){
+    //             if(!block.retlocs().empty()){
+    //                 for(const auto& [n,v] : blocks[block.retlocs().front()].imports()){
+    //                     block.instruction(Operation::MOV,v,std::vector<std::uint32_t>{block.nametable().at(n)});
+    //                 }
+    //             }
+    //         }else{
+    //             for(std::uint32_t& dst : block.retlocs()){
+    //                 if(!blocks[dst].imports().empty()){
+    //                     std::uint32_t olddst = std::exchange(dst,nblk+transfers.size());
+    //                     std::vector<ValTransfer>& vtt = transfers.emplace_back(olddst).transfers;
+    //                     for(const auto& [n,v] : blocks[olddst].imports()){
+    //                         vtt.emplace_back(block.nametable().at(n),v);
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     for(const BlockTransfer& trans : transfers){
+    //         BasicBlock& tblk = blocks.emplace_back(alloc);
+    //         write_transfers(tblk,trans);
+    //         tblk.r_always(trans.to);
+    //     }
+    // }
+    ProcedureIC::ProcedureIC(const Function& fn) : _blocks{alloc}{
         FunctionCompiler fc{*this};
         fc.compile_block(0,fn.ast());
+        // add_transfers(alloc,_blocks);
     }
 }

@@ -34,26 +34,24 @@ namespace bbe::targets::mlog::impl{
     ProcedureIC::ProcedureIC(const ljf::ProcedureIC& ir){
         using argv = std::vector<Argument>;
         std::unordered_map<std::uint32_t,std::vector<std::uint32_t>> packs;
-        std::vector<std::uint32_t> ljf_labels{ir.labels()};
-        std::ranges::reverse(ljf_labels);
-        for(const auto& [ins_ljf,ins] : ir.instructions() | std::views::enumerate){
-            if(!ljf_labels.empty()&&ins_ljf==ljf_labels.back()){
+        auto current_label = ir.labels().rbegin();
+        for(auto it=ir.instructions().begin();it!=ir.instructions().end();++it){
+            if(current_label!=ir.labels().rend()&&it==*current_label){
                 labels.emplace_back(instructions.size());
-                ljf_labels.pop_back();
             }
-            switch(ins.opcode){
+            switch(it->opcode){
                 using enum ssa::Operation;
                 case IMMB:
                 case IMM32:
-                    instructions.emplace_back(ins::SET,argv{varref(ins.dst),double(ins.src.front())});
+                    instructions.emplace_back(ins::SET,argv{varref(it->dst),double(it->src.front())});
                     break;
                 case PACK:
-                    packs.emplace(ins.dst,ins.src);
+                    packs.emplace(it->dst,it->src);
                     break;
                 case CMAG: {
-                    switch(ins.src.front()){
+                    switch(it->src.front()){
                         case 1550: // print
-                            instructions.emplace_back(ins::PRINT,argv{varref(ins.src[1uz])});
+                            instructions.emplace_back(ins::PRINT,argv{varref(it->src[1uz])});
                             break;
                         case 1600: // printflush //TODO: allow selecting what to flush to
                             instructions.emplace_back(ins::PRINTFLUSH,argv{u8"message1"s});
@@ -62,13 +60,13 @@ namespace bbe::targets::mlog::impl{
                             instructions.emplace_back(ins::END);
                             break;
                         default: {
-                            const auto& packv = packs.at(ins.src[1uz]);
-                            switch(ins.src.front()){
+                            const auto& packv = packs.at(it->src[1uz]);
+                            switch(it->src.front()){
                                 case 10: // add
-                                    instructions.emplace_back(ins::OP,argv{operation(op::ADD),varref(ins.dst),varref(packv.front()),varref(packv[1uz])});
+                                    instructions.emplace_back(ins::OP,argv{operation(op::ADD),varref(it->dst),varref(packv.front()),varref(packv[1uz])});
                                     break;
                                 default:
-                                    throw std::logic_error("mlog::compile(): Unknown magic function "s+std::to_string(ins.dst));
+                                    throw std::logic_error("mlog::compile(): Unknown magic function "s+std::to_string(it->dst));
                             }
                             break;
                         }
@@ -76,16 +74,16 @@ namespace bbe::targets::mlog::impl{
                     break;
                 }
                 case MOV:
-                    instructions.emplace_back(ins::SET,argv{varref(ins.dst),varref(ins.src.front())});
+                    instructions.emplace_back(ins::SET,argv{varref(it->dst),varref(it->src.front())});
                     break;
                 case JMP:
-                    for(std::size_t i=ins.src.size();i-->1uz;){
-                        instructions.emplace_back(ins::JUMP,argv{label(ins.src[i]),jumpmode(jm::EQ),varref(ins.dst),double(i)});
+                    for(std::size_t i=it->src.size();i-->1uz;){
+                        instructions.emplace_back(ins::JUMP,argv{label(it->src[i]),jumpmode(jm::EQ),varref(it->dst),double(i)});
                     }
-                    instructions.emplace_back(ins::JUMP,argv{label(ins.src.front()),jumpmode(jm::ALWAYS)});
+                    instructions.emplace_back(ins::JUMP,argv{label(it->src.front()),jumpmode(jm::ALWAYS)});
                     break;
                 default:
-                    throw std::logic_error(cppp::tocs(u8"mlog::compile(): Illegal instruction "s+stringify_enum(ins.opcode)));
+                    throw std::logic_error(cppp::tocs(u8"mlog::compile(): Illegal instruction "s+stringify_enum(it->opcode)));
             }
         }
     }
