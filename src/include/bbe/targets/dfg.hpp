@@ -10,6 +10,7 @@ namespace bbe::targets::dfg::impl{
         const DataNode* _n;
         std::uint32_t _i;
         public:
+            NodeRef() : _n(nullptr){}
             NodeRef(const DataNode& nd,std::uint32_t index=0) : _n(&nd), _i(index){}
             const DataNode& node() const{
                 return *_n;

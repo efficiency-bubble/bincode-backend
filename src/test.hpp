@@ -4,6 +4,7 @@ using namespace bbe;
 constexpr static std::uint64_t NT_U32 = 0;
 constexpr static std::uint64_t NT_U64 = 1;
 constexpr static std::uint64_t NT_PACK = 2;
+constexpr static std::uint64_t NT_COMMA = 3;
 constexpr static std::uint64_t NT_ARG32 = 5;
 constexpr static std::uint64_t NT_ARG64 = 6;
 constexpr static std::uint64_t NT_RET = 7;
@@ -34,6 +35,14 @@ ASTNode argb(std::uint32_t id){
 template<typename ...T>
 ASTNode pack(T&& ...children){
     ASTNode x{NT_PACK,sizeof...(T)};
+    [&]<std::size_t ...i>(std::index_sequence<i...>){
+        (... , x.emplace(i,std::forward<T>(children)));
+    }(std::index_sequence_for<T...>());
+    return x;
+}
+template<typename ...T>
+ASTNode comma(std::size_t ind,T&& ...children){
+    ASTNode x{NT_COMMA,ind,sizeof...(T)};
     [&]<std::size_t ...i>(std::index_sequence<i...>){
         (... , x.emplace(i,std::forward<T>(children)));
     }(std::index_sequence_for<T...>());

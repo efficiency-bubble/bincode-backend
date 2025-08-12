@@ -49,7 +49,7 @@ std::unordered_map<std::uint32_t,cppp::sv> EXPLAIN{
     {21,u8"fork"sv}
 };
 int main(){
-    Function example{nullptr,{},fork(arg32(2),arg32(0),cmag(FN_ADD,pack(arg32(0),arg32(1))))};
+    Function example{nullptr,{},comma(2uz,setvar(0,arg32(0)),setvar(1,getvar(0)),cmag(FN_ADD,pack(getvar(0),getvar(1))))};
     targets::dfg::DataFlowGraph graph{example};
     DotFile df{u8"test/test.dot"s};
     for(const auto& node : graph.nodes()){

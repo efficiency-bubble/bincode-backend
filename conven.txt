@@ -2,6 +2,7 @@ Node type conventions (subject to change):
 0 = uint32($0);
 1 = uint64($0);
 2 = pack(node($)...);
+3 = (... , node($))[$0]
 5 = uint32(ARGV[$0]); # TODO: check function signature to automatically determine argument width # TODO: remove argument index
 6 = uint64(ARGV[$0]);
 8 = callf(node($0),node($1));
@@ -11,7 +12,6 @@ Node type conventions (subject to change):
 20 = bool($0);
 21 = (bool($0) ? node($1) : node($2));
 22 = bool(ARGV[$0]);
-
 100 = uint32(SYMTAB[$0]); # TODO: check symbol table to automatically determine value width
 101 = uint64(SYMTAB[$0]);
 
