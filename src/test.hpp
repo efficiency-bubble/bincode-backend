@@ -57,7 +57,7 @@ ASTNode call(ASTNode&& fn,ASTNode&& arg){
     return x;
 }
 ASTNode cmag(std::uint64_t magic,ASTNode&& arg){
-    ASTNode x{NT_CMAG,magic,2};
+    ASTNode x{NT_CMAG,magic,1};
     x.emplace(0,std::move(arg));
     return x;
 }
