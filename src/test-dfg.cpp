@@ -46,21 +46,22 @@ std::unordered_map<std::uint32_t,cppp::sv> EXPLAIN{
     {2,u8"pack"sv},
     {5,u8"arg32"sv},
     {9,u8"cmag"sv},
-    {21,u8"fork"sv}
+    {21,u8"fork"sv},
+    {std::numeric_limits<std::uint32_t>::max(),u8"env"sv}
 };
 int main(){
-    Function example{nullptr,{},comma(2uz,setvar(0,arg32(0)),setvar(1,getvar(0)),cmag(FN_ADD,pack(getvar(0),getvar(1))))};
+    Function example{nullptr,{},comma(1uz,cmag(FN_PRU32,pack(comma(2uz,setvar(0,arg32(0)),setvar(1,cmag(FN_ADD,pack(getvar(0),u32(42)))),cmag(FN_ADD,pack(getvar(0),getvar(1)))))),cmag(FN_PRU32,pack(u32(2))))};
     targets::dfg::DataFlowGraph graph{example};
     DotFile df{u8"test/test.dot"s};
     for(const auto& node : graph.nodes()){
         std::uintptr_t nt = reinterpret_cast<std::uintptr_t>(&node);
         df.add_node(nt,EXPLAIN[node.operation()]+u8";"s+cppp::tou8(std::to_string(node.primitive())));
         for(const auto& parent : node.parents()){
-            df.edge(nt,reinterpret_cast<std::uintptr_t>(&parent.node()));
+            df.edge(nt,reinterpret_cast<std::uintptr_t>(parent));
         }
     }
     df.close();
-    inter::dfg::FunctionCall call{.argv{inter::uint32v{3},inter::uint32v{4},inter::boolv{true}}};
-    std::println("{}"sv,inter::dfg::eval(call,graph.root()).get<inter::uint32v>().value);
+    inter::dfg::FunctionCall call{.argv{inter::uint32v{3}}};
+    inter::dfg::eval(call,graph.root().env());
     return 0;
 }

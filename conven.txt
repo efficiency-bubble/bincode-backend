@@ -20,3 +20,4 @@ Node type conventions (subject to change):
 
 Built-in functions:
 10 = add uint32
+25 = print uint32

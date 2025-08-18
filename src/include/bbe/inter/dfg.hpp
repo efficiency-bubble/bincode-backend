@@ -6,7 +6,7 @@ namespace bbe::inter::dfg::impl{
     struct FunctionCall{
         std::vector<Value> argv;
     };
-    Value eval(FunctionCall&,targets::dfg::NodeRef nd);
+    Value eval(FunctionCall&,const targets::dfg::DataNode* nd);
 }
 namespace bbe::inter::dfg{
     BBE_EXPORT FunctionCall;
