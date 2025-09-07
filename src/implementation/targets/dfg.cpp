@@ -89,7 +89,7 @@ namespace bbe::targets::dfg::impl{
                     return {nullptr,lctrl};
                 }
                 default:
-                    throw std::logic_error("df::compile_node(): Unknown node type "s+std::to_string(nd.type()));
+                    throw std::logic_error("DfgCompiler::compile_node(): Unknown node type "s+std::to_string(nd.type()));
             }
         }
         public:
