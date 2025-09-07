@@ -15,12 +15,16 @@ constexpr static std::uint64_t NT_GETVAR = 11;
 constexpr static std::uint64_t NT_BOOL = 20;
 constexpr static std::uint64_t NT_FORK = 21;
 constexpr static std::uint64_t NT_ARGB = 22;
+constexpr static std::uint64_t NT_FOREVER = 30;
+constexpr static std::uint64_t NT_BREAK = 31;
 constexpr static std::uint64_t NT_COMPOUND = 64;
 constexpr static std::uint64_t NT_SYM32 = 100;
 constexpr static std::uint64_t NT_SYM64 = 101;
 
-constexpr static std::uint32_t FN_ADD = 10;
+constexpr static std::uint32_t FN_ADD32 = 10;
 constexpr static std::uint32_t FN_PRU32 = 25;
+constexpr static std::uint32_t FN_EQ32 = 50;
+constexpr static std::uint32_t FN_BNOT = 51;
 
 ASTNode u32(std::uint32_t val){
     return {NT_U32,val,0};
@@ -60,6 +64,14 @@ ASTNode cmag(std::uint64_t magic,ASTNode&& arg){
     ASTNode x{NT_CMAG,magic,1};
     x.emplace(0,std::move(arg));
     return x;
+}
+ASTNode loop(ASTNode&& arg){
+    ASTNode x{NT_FOREVER,1};
+    x.emplace(0,std::move(arg));
+    return x;
+}
+ASTNode break_(){
+    return {NT_BREAK,0};
 }
 ASTNode ret(ASTNode&& val){
     ASTNode x{NT_RET,1};

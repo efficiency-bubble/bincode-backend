@@ -72,6 +72,22 @@ namespace bbe::targets::dfg::impl{
                     return {vars.at(nd.getp()),se_after};
                 case 21: // fork
                     return ast_to_node(nd,21,se_after);
+                case 30: { // loopwhile
+                    DataNode* lctrl = &nodes.emplace_back(301);
+                    lctrl->emplace(se_after);
+                    std::unordered_map<std::uint32_t,DataNode*> phin;
+                    for(auto& [k,v] : vars){
+                        DataNode* node = &nodes.emplace_back(300);
+                        phin.try_emplace(k,node);
+                        v = node;
+                    }
+                    DataNodeExecution body{compile_node(nd.children().front(),lctrl)};
+                    for(auto& [k,v] : vars){
+                        phin.at(k)->emplace(v);
+                    }
+                    lctrl->emplace(body.env());
+                    return {nullptr,lctrl};
+                }
                 default:
                     throw std::logic_error("df::compile_node(): Unknown node type "s+std::to_string(nd.type()));
             }

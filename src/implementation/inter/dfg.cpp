@@ -31,6 +31,12 @@ namespace bbe::inter::dfg::impl{
                     return eval(call,nr->parents()[2uz]);
                 }
             }
+            case 301: { // lctrl
+                eval(call,nr->parents().front()); // side effect dependency
+                while(true){
+                    eval(call,nr->parents()[1uz]);
+                }
+            }
             case std::numeric_limits<std::uint32_t>::max(): return {}; // env
             default: throw std::logic_error("bbe::inter::dfg::eval(): Unknown node type"s);
         }

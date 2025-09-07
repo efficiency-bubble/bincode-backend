@@ -4,6 +4,7 @@
 #include<bbe/targets/dfg.hpp>
 #include<bbe/inter/dfg.hpp>
 #include<unordered_map>
+#include<ranges>
 #include<print>
 using namespace std::literals;
 void wt(cppp::BinaryFile& f,cppp::sv s){
@@ -12,6 +13,11 @@ void wt(cppp::BinaryFile& f,cppp::sv s){
 class DotFile{
     bool directed;
     cppp::BinaryFile f;
+    void label(cppp::sv label){
+        wt(f,u8"[label=\""sv);
+        wt(f,label);
+        wt(f,u8"\"] "sv);
+    }
     public:
         DotFile(std::filesystem::path path,bool directed=true) : f(path,std::ios_base::out|std::ios_base::trunc){
             if(directed){
@@ -20,13 +26,11 @@ class DotFile{
                 wt(f,u8"graph{"sv);
             }
         }
-        void add_node(std::uint64_t id,cppp::sv label){
+        void add_node(std::uint64_t id,cppp::sv lb){
             wt(f,cppp::tou8(std::to_string(id)));
-            wt(f,u8"[label=\""sv);
-            wt(f,label);
-            wt(f,u8"\"] "sv);
+            label(lb);
         }
-        void edge(std::uint64_t p,std::uint64_t q){
+        void edge(std::uint64_t p,std::uint64_t q,cppp::sv lb){
             wt(f,cppp::tou8(std::to_string(p)));
             if(directed){
                 wt(f,u8"->"sv);
@@ -34,7 +38,7 @@ class DotFile{
                 wt(f,u8"--"sv);
             }
             wt(f,cppp::tou8(std::to_string(q)));
-            f.writeb(u8' ');
+            label(lb);
         }
         void close(){
             f.writeb(u8'}');
@@ -47,21 +51,23 @@ std::unordered_map<std::uint32_t,cppp::sv> EXPLAIN{
     {5,u8"arg32"sv},
     {9,u8"cmag"sv},
     {21,u8"fork"sv},
+    {300,u8"proxy"sv},
+    {301,u8"lctrl"sv},
     {std::numeric_limits<std::uint32_t>::max(),u8"env"sv}
 };
 int main(){
-    Function example{nullptr,{},comma(1uz,cmag(FN_PRU32,pack(comma(2uz,setvar(0,arg32(0)),setvar(1,cmag(FN_ADD,pack(getvar(0),u32(42)))),cmag(FN_ADD,pack(getvar(0),getvar(1)))))),cmag(FN_PRU32,pack(u32(2))))};
+    Function example{nullptr,{},loop(cmag(FN_PRU32,pack(u32(1))))};
     targets::dfg::DataFlowGraph graph{example};
     DotFile df{u8"test/test.dot"s};
     for(const auto& node : graph.nodes()){
         std::uintptr_t nt = reinterpret_cast<std::uintptr_t>(&node);
-        df.add_node(nt,EXPLAIN[node.operation()]+u8";"s+cppp::tou8(std::to_string(node.primitive())));
-        for(const auto& parent : node.parents()){
-            df.edge(nt,reinterpret_cast<std::uintptr_t>(parent));
+        df.add_node(nt,EXPLAIN.at(node.operation())+u8";"s+cppp::tou8(std::to_string(node.primitive())));
+        for(const auto& [i,parent] : std::views::enumerate(node.parents())){
+            df.edge(nt,reinterpret_cast<std::uintptr_t>(parent),cppp::tou8(std::to_string(i)));
         }
     }
     df.close();
-    inter::dfg::FunctionCall call{.argv{inter::uint32v{3}}};
+    [[maybe_unused]] inter::dfg::FunctionCall call{.argv{inter::uint32v{3}}};
     inter::dfg::eval(call,graph.root().env());
     return 0;
 }

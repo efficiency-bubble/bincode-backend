@@ -12,12 +12,19 @@ Node type conventions (subject to change):
 20 = bool($0);
 21 = (bool($0) ? node($1) : node($2));
 22 = bool(ARGV[$0]);
+30 = while(true) node($0);
+31 = break;
 100 = uint32(SYMTAB[$0]); # TODO: check symbol table to automatically determine value width
 101 = uint64(SYMTAB[$0]);
 
 256 = (nop)
 
+Additional DFG node types:
+300 = proxy (id)
+301 = loopcontrol
 
 Built-in functions:
 10 = add uint32
 25 = print uint32
+50 = uint32 == uint32
+51 = !bool
