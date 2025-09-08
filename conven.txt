@@ -5,7 +5,7 @@ Node type conventions (subject to change):
 3 = (... , node($))[$0]
 5 = uint32(ARGV[$0]); # TODO: check function signature to automatically determine argument width # TODO: remove argument index
 6 = uint64(ARGV[$0]);
-8 = callf(node($0),node($1));
+8 = callf(node($0),node($1)); # TODO: kill this
 9 = callf(BUILTIN_FN[$0],node($1));
 10 = setvar(uint64($0),node($1));
 11 = getvar(uint64($0));
@@ -16,6 +16,7 @@ Node type conventions (subject to change):
 31 = break;
 100 = uint32(SYMTAB[$0]); # TODO: check symbol table to automatically determine value width
 101 = uint64(SYMTAB[$0]);
+200 = FN[$0];
 
 256 = (nop)
 
@@ -24,6 +25,7 @@ Additional DFG node types:
 301 = loopcontrol
 
 Built-in functions:
+0 = call function
 10 = add uint32
 25 = print uint32
 50 = uint32 == uint32

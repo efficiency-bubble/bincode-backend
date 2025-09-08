@@ -2,43 +2,55 @@
 #include<bbe/inter/magic.hpp>
 #include<stdexcept>
 #include<string>
+#include<print>
 namespace bbe::inter::dfg::impl{
     using namespace bbe::inter::impl;
     using namespace std::literals;
-    Value eval(FunctionCall& call,const targets::dfg::DataNode* nr){
+    Value eval(const CompiledFunctionPool& pool,const targets::dfg::DataNode* nr,const std::vector<Value>& argv){
         switch(nr->operation()){
             case 0: // u32
                 return uint32v{nr->primitive()};
             case 2: { // pack
                 pack p;
                 for(const auto& ref : nr->parents()){
-                    p.values.emplace_back(eval(call,ref));
+                    p.values.emplace_back(eval(pool,ref,argv));
                 }
                 return Value(std::move(p));
             }
             case 5: // arg32
-                return call.argv[nr->primitive()];
+                return argv[nr->primitive()];
             case 9: // cmag
                 if(nr->parents().size()>1uz){
-                    eval(call,nr->parents()[1uz]); // side effect dependency
+                    eval(pool,nr->parents()[1uz],argv); // side effect dependency
                 }
-                return cmag(nr->primitive(),eval(call,nr->parents().front()));
-            case 21: { // fork
-                Value cond{eval(call,nr->parents().front())};
-                if(cond.get<boolv>().value){
-                    return eval(call,nr->parents()[1uz]);
+                if(!nr->primitive()){ // call function
+                    std::vector<Value> vals(eval(pool,nr->parents().front(),argv).get<pack>().values);
+                    auto func = vals.front().get<fptr>().id;
+                    return pool.call(func,{}); // TODO: argv passing
                 }else{
-                    return eval(call,nr->parents()[2uz]);
+                    return cmag(nr->primitive(),eval(pool,nr->parents().front(),argv));
+                }
+            case 21: { // fork
+                Value cond{eval(pool,nr->parents().front(),argv)};
+                if(cond.get<boolv>().value){
+                    return eval(pool,nr->parents()[1uz],argv);
+                }else{
+                    return eval(pool,nr->parents()[2uz],argv);
                 }
             }
+            case 200: // fn
+                return fptr{nr->primitive()};
             case 301: { // lctrl
-                eval(call,nr->parents().front()); // side effect dependency
+                eval(pool,nr->parents().front(),argv); // side effect dependency
                 while(true){
-                    eval(call,nr->parents()[1uz]);
+                    eval(pool,nr->parents()[1uz],argv);
                 }
             }
             case std::numeric_limits<std::uint32_t>::max(): return {}; // env
-            default: throw std::logic_error("bbe::inter::dfg::eval(): Unknown node type"s);
+            default: throw std::logic_error("bbe::inter::dfg::eval(pool,): Unknown node type"s);
         }
+    }
+    Value CompiledFunctionPool::call(ProjectEntitiesPool::index_type fn,const std::vector<Value>& argv) const{
+        return eval(*this,pool.at(fn).root().env(),argv);
     }
 }

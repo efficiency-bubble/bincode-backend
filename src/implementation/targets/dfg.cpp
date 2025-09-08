@@ -53,6 +53,7 @@ namespace bbe::targets::dfg::impl{
                     n.emplace(res.value());
                     const DataNode* envr;
                     switch(n.primitive()){
+                        case 0: // callf
                         case 25: // pru32
                             n.emplace(res.env());
                             envr = &n;
@@ -88,6 +89,8 @@ namespace bbe::targets::dfg::impl{
                     lctrl->emplace(body.env());
                     return {nullptr,lctrl};
                 }
+                case 200: // fn
+                    return {&nodes.emplace_back(200,nd.getp()),se_after};
                 default:
                     throw std::logic_error("DfgCompiler::compile_node(): Unknown node type "s+std::to_string(nd.type()));
             }

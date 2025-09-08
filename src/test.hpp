@@ -8,7 +8,6 @@ constexpr static std::uint64_t NT_COMMA = 3;
 constexpr static std::uint64_t NT_ARG32 = 5;
 constexpr static std::uint64_t NT_ARG64 = 6;
 constexpr static std::uint64_t NT_RET = 7;
-constexpr static std::uint64_t NT_CALL = 8;
 constexpr static std::uint64_t NT_CMAG = 9;
 constexpr static std::uint64_t NT_SETVAR = 10;
 constexpr static std::uint64_t NT_GETVAR = 11;
@@ -20,7 +19,9 @@ constexpr static std::uint64_t NT_BREAK = 31;
 constexpr static std::uint64_t NT_COMPOUND = 64;
 constexpr static std::uint64_t NT_SYM32 = 100;
 constexpr static std::uint64_t NT_SYM64 = 101;
+constexpr static std::uint64_t NT_FN = 200;
 
+constexpr static std::uint32_t FN_CALL = 0;
 constexpr static std::uint32_t FN_ADD32 = 10;
 constexpr static std::uint32_t FN_PRU32 = 25;
 constexpr static std::uint32_t FN_EQ32 = 50;
@@ -54,11 +55,8 @@ ASTNode comma(std::size_t ind,T&& ...children){
     }(std::index_sequence_for<T...>());
     return x;
 }
-ASTNode call(ASTNode&& fn,ASTNode&& arg){
-    ASTNode x{NT_CALL,2};
-    x.emplace(0,std::move(fn));
-    x.emplace(1,std::move(arg));
-    return x;
+ASTNode fn(std::uint32_t id){
+    return {NT_FN,id,0};
 }
 ASTNode cmag(std::uint64_t magic,ASTNode&& arg){
     ASTNode x{NT_CMAG,magic,1};

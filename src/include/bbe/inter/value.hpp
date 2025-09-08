@@ -10,6 +10,9 @@ namespace bbe::inter::impl{
     struct boolv{
         bool value;
     };
+    struct fptr{
+        std::uint32_t id;
+    };
     struct pack;
     class Value{
         struct copy_construct{
@@ -18,7 +21,7 @@ namespace bbe::inter::impl{
                 return new T(v);
             }
         };
-        using val_t = cppp::heap_variant<uint32v,boolv,pack>;
+        using val_t = cppp::heap_variant<uint32v,boolv,pack,fptr>;
         val_t _value;
         public:
             Value() = default;
@@ -36,14 +39,24 @@ namespace bbe::inter::impl{
                 return _value && _value.tell() == val_t::index_of<T>;
             }
             template<typename T>
-            T& get(){
+            T& get() &{
                 assert(holds<T>());
                 return _value.get<T>();
             }
             template<typename T>
-            const T& get() const{
+            const T& get() const &{
                 assert(holds<T>());
                 return _value.get<T>();
+            }
+            template<typename T>
+            T&& get() &&{
+                assert(holds<T>());
+                return std::move(_value.get<T>());
+            }
+            template<typename T>
+            const T&& get() const &&{
+                assert(holds<T>());
+                return std::move(_value.get<T>());
             }
             template<typename T>
             constexpr static std::size_t index_of = val_t::index_of<T>;
