@@ -20,9 +20,6 @@ namespace bbe::inter::dfg::impl{
             case 5: // arg32
                 return argv[nr->primitive()];
             case 9: // cmag
-                if(nr->parents().size()>1uz){
-                    eval(pool,nr->parents()[1uz],argv); // side effect dependency
-                }
                 if(!nr->primitive()){ // call function
                     std::vector<Value> vals(eval(pool,nr->parents().front(),argv).get<pack>().values);
                     auto func = vals.front().get<fptr>().id;
@@ -40,17 +37,11 @@ namespace bbe::inter::dfg::impl{
             }
             case 200: // fn
                 return fptr{nr->primitive()};
-            case 301: { // lctrl
-                eval(pool,nr->parents().front(),argv); // side effect dependency
-                while(true){
-                    eval(pool,nr->parents()[1uz],argv);
-                }
-            }
             case std::numeric_limits<std::uint32_t>::max(): return {}; // env
             default: throw std::logic_error("bbe::inter::dfg::eval(pool,): Unknown node type"s);
         }
     }
     Value CompiledFunctionPool::call(ProjectEntitiesPool::index_type fn,const std::vector<Value>& argv) const{
-        return eval(*this,pool.at(fn).root().env(),argv);
+        return eval(*this,pool.at(fn).root(),argv);
     }
 }

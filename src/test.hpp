@@ -1,5 +1,6 @@
 #pragma once
 #include<bbe/bbe.hpp>
+#include<cppp/string.hpp>
 using namespace bbe;
 constexpr static std::uint64_t NT_U32 = 0;
 constexpr static std::uint64_t NT_U64 = 1;
@@ -97,3 +98,14 @@ ASTNode compound(T&& ...n){
     (...,x.children().emplace_back(std::move(n)));
     return x;
 }
+using namespace std::literals;
+std::unordered_map<std::uint32_t,cppp::sv> EXPLAIN{
+    {0,u8"uint32"sv},
+    {2,u8"pack"sv},
+    {5,u8"arg32"sv},
+    {9,u8"cmag"sv},
+    {21,u8"fork"sv},
+    {300,u8"proxy"sv},
+    {301,u8"lctrl"sv},
+    {std::numeric_limits<std::uint32_t>::max(),u8"env"sv}
+};
