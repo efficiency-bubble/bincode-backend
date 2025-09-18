@@ -3,7 +3,6 @@
 #include"../entity_pool.hpp"
 #include<unordered_map>
 #include"value.hpp"
-#include<iostream>
 namespace bbe::inter::dfg::impl{
     using namespace bbe::inter::impl;
     class CompiledFunctionPool{
