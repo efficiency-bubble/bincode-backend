@@ -355,7 +355,7 @@ namespace bbe::targets::x64::impl{
         using value_handle = FunctionCompilationContext::value_handle;
         switch(nd.type()){
             case 0: // u32
-                return fcc.constant<x86::width::W32>(nd.getp());
+                return fcc.constant<x86::width::W32>(static_cast<std::uint32_t>(nd.getp()));
             case 1: // u64
                 return fcc.constant<x86::width::W64>(nd.getp());
             case 2:{ // add

@@ -14,9 +14,9 @@ namespace bbe::targets::dfg::impl{
             DataNode(std::uint32_t op,std::uint32_t prim) : op(op), prim(prim){}
             DataNode(std::uint32_t op,std::vector<const DataNode*>&& src) : op(op), src(std::move(src)){}
             DataNode(const DataNode&) = delete;
-            DataNode(DataNode&&) = delete; // moving breaks pointers to this
+            DataNode(DataNode&&) = default; // only use when nothing points to this
             DataNode& operator=(const DataNode&) = delete;
-            DataNode& operator=(DataNode&&) = delete;
+            DataNode& operator=(DataNode&&) = default;
             ~DataNode(){}
             std::uint32_t operation() const{
                 return op;
@@ -31,27 +31,15 @@ namespace bbe::targets::dfg::impl{
                 src.emplace_back(nd);
             }
     };
-    class DataNodeExecution{
-        const DataNode* _v;
-        const DataNode* _e;
-        public:
-            DataNodeExecution(const DataNode* v,const DataNode* e) : _v(v), _e(e){}
-            const DataNode* value() const{
-                return _v;
-            }
-            const DataNode* env() const{
-                return _e;
-            }
-    };
     class DataFlowGraph{
         std::deque<DataNode> _nodes;
-        DataNodeExecution _root;
+        const DataNode* _root;
         public:
             DataFlowGraph(const Function&);
             const std::deque<DataNode>& nodes() const{
                 return _nodes;
             }
-            DataNodeExecution root() const{
+            const DataNode* root() const{
                 return _root;
             }
     };
@@ -59,6 +47,5 @@ namespace bbe::targets::dfg::impl{
 namespace bbe::targets::dfg{
     BBE_EXPORT DataNode;
     BBE_EXPORT DataFlowGraph;
-    BBE_EXPORT DataNodeExecution;
 }
 

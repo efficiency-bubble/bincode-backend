@@ -23,6 +23,7 @@ Node type conventions (subject to change):
 Additional DFG node types:
 300 = proxy (id)
 301 = loopcontrol
+350 = sequence point
 
 Built-in functions:
 0 = call function

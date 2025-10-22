@@ -1,4 +1,4 @@
-COMPOPT := -std=c++26 -flto -fuse-linker-plugin -Wall -Wextra -Wpedantic -m64 -O0 -g -I"src/include" $(cppinclude)
+COMPOPT := -std=c++26 -flto -fuse-linker-plugin -Wall -Wextra -Wpedantic -Wconversion -m64 -O0 -g -I"src/include" $(cppinclude)
 FINALOPT := $(COMPOPT) -static
 LIBNAME := bbe
 HEADERS := $(wildcard src/include/$(LIBNAME)/*.hpp) $(wildcard src/include/$(LIBNAME)/*/*.hpp)

@@ -38,7 +38,7 @@ namespace bbe::formats::elf::impl{
                 reltab.appendl<std::uint64_t>(-rel.isize);
             }
             add_section(u8".rela.text"sv,4/*relocations table*/,reltab.data(),reltab.size(),0,0,false,false,false,0x18,
-sections.size(),sections.size()-1);
+static_cast<std::uint32_t>(sections.size()),static_cast<std::uint32_t>(sections.size()-1));
         }
     }
     cppp::bytes Elf::encode() const{

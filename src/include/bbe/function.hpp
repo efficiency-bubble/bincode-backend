@@ -8,6 +8,7 @@ namespace bbe::impl{
         std::vector<const Type*> argt;
         ASTNode root;
         public:
+            Function(const Type* r) :  ret(r){}
             Function(const Type* r,std::vector<const Type*>&& a) :  ret(r), argt(std::move(a)){}
             void set(ASTNode&& r){
                 root = std::move(r);

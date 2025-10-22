@@ -100,7 +100,7 @@ namespace bbe::targets::ssa::impl{
             ProcedureIC(const Function&);
             constexpr static std::uint32_t NBLOCK = std::numeric_limits<std::uint32_t>::max();
             std::uint32_t new_block(){
-                std::uint32_t bid = _blocks.size();
+                std::uint32_t bid = static_cast<std::uint32_t>(_blocks.size());
                 _blocks.emplace_back(alloc);
                 return bid;
             }

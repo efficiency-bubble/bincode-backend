@@ -1,20 +1,20 @@
 #pragma once
 #include"commons.hpp"
 #include<cstdint>
-#include<variant>
+#include<utility>
 #include<limits>
 #include<vector>
 namespace bbe::impl{
     class ASTNode{
-        std::uint64_t _type;
+        std::uint32_t _type{NTYPE};
         std::uint64_t prim{0};
         std::vector<ASTNode> chld;
         public:
-            constexpr static std::uint64_t NTYPE = std::numeric_limits<std::uint64_t>::max();
+            constexpr static std::uint32_t NTYPE = std::numeric_limits<std::uint32_t>::max();
             explicit operator bool() const{
                 return _type != NTYPE;
             }
-            std::uint64_t type() const{
+            std::uint32_t type() const{
                 return _type;
             }
             std::vector<ASTNode>& children(){
@@ -32,9 +32,21 @@ namespace bbe::impl{
             ASTNode& emplace(std::uint64_t ind,ASTNode&& n){
                 return chld[ind] = std::move(n);
             }
-            ASTNode() : _type(NTYPE){}
-            ASTNode(std::uint64_t tp,std::uint64_t nchld) : _type(tp), chld(nchld){}
-            ASTNode(std::uint64_t tp,std::uint64_t prim,std::uint64_t nchld) : _type(tp), prim(prim), chld(nchld){}
+            ASTNode() = default;
+            ASTNode(std::uint32_t tp,std::uint64_t nchld) : _type(tp), chld(nchld){}
+            ASTNode(std::uint32_t tp,std::uint64_t prim,std::uint64_t nchld) : _type(tp), prim(prim), chld(nchld){}
+            ASTNode(const ASTNode&) = default;
+            ASTNode(ASTNode&& other) : _type(std::exchange(other._type,NTYPE)), prim(std::exchange(other.prim,0)), chld(std::move(other.chld)){
+                other.chld.clear(); // vector move doesn't guarantee emptiness
+            }
+            ASTNode& operator=(const ASTNode&) = default;
+            ASTNode& operator=(ASTNode&& other){
+                _type = std::exchange(other._type,NTYPE);
+                prim = std::exchange(other.prim,0);
+                chld = std::move(other.chld);
+                other.chld.clear();
+                return *this;
+            }
     };
 }
 namespace bbe{

@@ -52,7 +52,7 @@ namespace bbe::targets::ssa::impl{
             std::uint32_t name = BasicBlock::NNAME;
             switch(nd.type()){
                 case 0: // u32
-                    current_block().imm32(name = new_name(),nd.getp());
+                    current_block().imm32(name = new_name(),static_cast<std::uint32_t>(nd.getp()));
                     break;
                 case 1: // u64
                     current_block().imm64(name = new_name(),nd.getp());
@@ -78,11 +78,11 @@ namespace bbe::targets::ssa::impl{
                     break;
                 case 10: // setvar
                     // TODO: support over 100k intermediate results
-                    current_block().bind_name(name = nd.getp()+100000,compile_value(nd.children()[0]));
+                    current_block().bind_name(name = static_cast<std::uint32_t>(nd.getp()+100000),compile_value(nd.children()[0]));
                     break;
                 case 11: // getvar
                     // TODO: support over 100k intermediate results
-                    current_block().bind_name(name = new_name(),current_block().value_of(nd.getp()+100000));
+                    current_block().bind_name(name = new_name(),current_block().value_of(static_cast<std::uint32_t>(nd.getp()+100000)));
                     break;
                 case 20: // bool
                     current_block().immb(name = new_name(),bool(nd.getp()));

@@ -107,5 +107,7 @@ std::unordered_map<std::uint32_t,cppp::sv> EXPLAIN{
     {21,u8"fork"sv},
     {300,u8"proxy"sv},
     {301,u8"lctrl"sv},
+    {350,u8"sequ"sv},
+    {351,u8"magv"sv},
     {std::numeric_limits<std::uint32_t>::max(),u8"env"sv}
 };
