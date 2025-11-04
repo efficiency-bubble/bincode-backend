@@ -3,7 +3,7 @@
 #include<format>
 #include<print>
 namespace bbe::inter::impl{
-    using namespace std::literals;
+    using namespace bbe::impl;
     Value cmag(std::uint32_t magic,const Value& arg){
         const auto& packv = arg.get<pack>().values;
         switch(magic){

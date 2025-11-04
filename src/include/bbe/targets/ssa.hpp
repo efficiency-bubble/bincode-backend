@@ -1,7 +1,6 @@
 #pragma once
-#include<cppp/preprocessor.hpp>
 #include<cppp/freelist.hpp>
-#include<cppp/string.hpp> // printing enum names
+#include<cppp/string.hpp> // enum debug
 #include"commons.hpp"
 #include"../function.hpp"
 #include<unordered_map>
@@ -9,7 +8,7 @@
 #include<vector>
 #include<deque>
 namespace bbe::targets::ssa::impl{
-    using namespace std::literals;
+    using namespace bbe::impl;
     BBE_DEBUG_NAMED_ENUM(Operation,IMMB,IMM32,IMM64,PUTV,PACK,CALL,CMAG,RET,LDAR,LDS,
         MOV,JMP,JCC // used for LJF
     );

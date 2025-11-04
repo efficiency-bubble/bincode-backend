@@ -4,7 +4,7 @@
 #include<cppp/string.hpp> // import / export function name
 #include<limits>
 #include<vector>
-namespace bbe::targets::x64::impl{
+namespace bbe::targets::x64d::impl{
     using namespace bbe::impl;
     using namespace bbe::targets::impl;
     struct Relocation{
@@ -54,7 +54,7 @@ namespace bbe::targets::x64::impl{
             void compile(const Function&);
     };
 }
-namespace bbe::targets::x64{
+namespace bbe::targets::x64d{
     BBE_EXPORT Relocation;
     BBE_EXPORT X64Program;
     BBE_EXPORT SymbolType;

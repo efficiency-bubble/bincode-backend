@@ -4,6 +4,7 @@
 #include<unordered_map>
 #include"value.hpp"
 namespace bbe::inter::dfg::impl{
+    using namespace bbe::impl;
     using namespace bbe::inter::impl;
     class CompiledFunctionPool{
         std::unordered_map<ProjectEntitiesPool::index_type,targets::dfg::DataFlowGraph> pool;

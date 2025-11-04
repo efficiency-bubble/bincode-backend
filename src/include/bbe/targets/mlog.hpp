@@ -4,6 +4,7 @@
 #include<variant>
 #include<array>
 namespace bbe::targets::mlog::impl{
+    using namespace bbe::impl;
     struct varref{
         std::uint32_t id;
     };

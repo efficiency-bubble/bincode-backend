@@ -4,8 +4,6 @@
 #include<string>
 #include<print>
 namespace bbe::inter::dfg::impl{
-    using namespace bbe::inter::impl;
-    using namespace std::literals;
     Value eval(const CompiledFunctionPool& pool,const targets::dfg::DataNode* nr,const std::vector<Value>& argv){
         switch(nr->operation()){
             case 0: // u32

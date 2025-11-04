@@ -24,6 +24,7 @@ Additional DFG node types:
 300 = proxy (id)
 301 = loopcontrol
 350 = sequence point
+351 = get side effect value
 
 Built-in functions:
 0 = call function

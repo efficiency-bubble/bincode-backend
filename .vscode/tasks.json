@@ -5,13 +5,13 @@
             "label": "Compile Test",
             "command": "make",
             "args": [
-                "bin/test-prog"
+                "bin/test-rtl"
             ],
             "problemMatcher": "$gcc"
         },
         {
             "label": "Run Test",
-            "command": "bin/test-prog",
+            "command": "bin/test-rtl",
             "args": [],
             "problemMatcher": [],
             "dependsOn": [

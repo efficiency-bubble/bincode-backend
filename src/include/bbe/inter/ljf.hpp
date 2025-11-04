@@ -3,7 +3,7 @@
 #include"value.hpp"
 #include<map>
 namespace bbe::inter::ljf::impl{
-    using namespace std::literals;
+    using namespace bbe::impl;
     using FunctionLocals = std::map<std::uint32_t,Value>;
     class GlobalEnvironment{};
     Value run(GlobalEnvironment&,const targets::ljf::ProcedureIC& fn,const std::vector<Value>& argv={});

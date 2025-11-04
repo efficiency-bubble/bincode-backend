@@ -1,4 +1,4 @@
-#include<bbe/targets/x64.hpp>
+#include<bbe/targets/x64-direct.hpp>
 #include<cppp/polyfill/pack-indexing.hpp>
 #include<assembly/instruction.hpp>
 #include<cppp/freelist.hpp>
@@ -10,7 +10,7 @@
 #include<variant>
 #include<limits>
 #include<map>
-namespace bbe::targets::x64::impl{
+namespace bbe::targets::x64d::impl{
     using asm_generic::operator ""_b;
     using Reg = std::byte; //TODO: Rich class with REX support (AH, R8, ...)
     class Value{

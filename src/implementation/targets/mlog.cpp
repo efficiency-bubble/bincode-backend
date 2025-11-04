@@ -6,7 +6,6 @@
 #include<format>
 #include<print>
 namespace bbe::targets::mlog::impl{
-    using namespace std::literals;
     namespace ins{
         constexpr inline std::array TRANSPILE_MAP{
             u8"set"sv,u8"op"sv,u8"print"sv,u8"printflush"sv,u8"jump"sv,u8"end"sv
