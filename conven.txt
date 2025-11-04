@@ -3,8 +3,7 @@ Node type conventions (subject to change):
 1 = uint64($0);
 2 = pack(node($)...);
 3 = (... , node($))[$0]
-5 = uint32(ARGV[$0]); # TODO: check function signature to automatically determine argument width # TODO: remove argument index
-6 = uint64(ARGV[$0]);
+5 = argv;
 8 = callf(node($0),node($1)); # TODO: kill this
 9 = callf(BUILTIN_FN[$0],node($1));
 10 = setvar(uint64($0),node($1));

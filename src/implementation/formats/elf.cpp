@@ -1,13 +1,13 @@
 #include<bbe/formats/elf.hpp>
 namespace bbe::formats::elf::impl{
-    void Elf::add_text(const targets::x64::X64Program& prog){
+    void Elf::add_text(const targets::x64d::X64Program& prog){
         using namespace std::literals::string_view_literals;
-        using enum targets::x64::SymbolType;
+        using enum targets::x64d::SymbolType;
         add_section(u8".text"sv,1/*binary data*/,prog.text().data(),prog.text().size(),0x1000,0x10,true,false,true);
         {
             cppp::bytes& symtab = section_data.emplace_back();
             symtab.resize(0x18);
-            for(const targets::x64::SymbolInfo& sym : prog.symbols()){
+            for(const targets::x64d::SymbolInfo& sym : prog.symbols()){
                 symtab.appendl<std::uint32_t>(symbol_names.add(sym.name));
                 symtab.append(
                     (1 << 4) | // HI 1: global binding / linkage
@@ -32,7 +32,7 @@ namespace bbe::formats::elf::impl{
         }
         if(!prog.relocations().empty()){
             cppp::bytes& reltab = section_data.emplace_back();
-            for(const targets::x64::Relocation& rel : prog.relocations()){
+            for(const targets::x64d::Relocation& rel : prog.relocations()){
                 reltab.appendl<std::uint64_t>(rel.offset);
                 reltab.appendl<std::uint64_t>((rel.symbol+1)<<32uz | 2 /* PC-relative */);
                 reltab.appendl<std::uint64_t>(-rel.isize);

@@ -2,7 +2,7 @@
 #include"commons.hpp"
 #include<cppp/bytearray.hpp>
 #include<cppp/string.hpp>
-#include"../targets/x64.hpp"
+#include"../targets/x64-direct.hpp"
 #include<vector>
 #include<span>
 namespace bbe::formats::elf::impl{
@@ -57,7 +57,7 @@ namespace bbe::formats::elf::impl{
                 add_string_table(u8".shstrtab"sv);
                 add_string_table(u8".strtab"sv);
             }
-            void add_text(const targets::x64::X64Program& text);
+            void add_text(const targets::x64d::X64Program& text);
             void add_section(cppp::sv name,std::uint32_t type,const std::byte* data,std::size_t size,std::uint64_t m_addr,std::uint64_t align,bool load=false,bool writable=false,bool executable=false,std::uint64_t entsize=0,std::uint32_t link=0,std::uint32_t info=0){
                 sections.emplace_back(section_names.add(name),type,data,size,m_addr,align,load,writable,executable,entsize,link,info);
             }
