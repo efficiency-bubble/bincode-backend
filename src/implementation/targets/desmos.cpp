@@ -17,7 +17,7 @@ namespace bbe::targets::desmos::impl{
                     cppp::str cond{compile_node(out,nd->parents().front())};
                     cppp::str lhs{compile_node(out,nd->parents()[1uz])};
                     cppp::str rhs{compile_node(out,nd->parents()[2uz])};
-                    return u8"\\left\\{"sv+cond+u8"=0:"sv+lhs+u8','+rhs+u8"\\right\\}\n"sv;
+                    return u8"\\left\\{"sv+cond+u8"=1:"sv+lhs+u8','+rhs+u8"\\right\\}\n"sv;
                 }
                 default:
                     throw std::logic_error("Desmos compile: unknown node type "s+std::to_string(nd->operation()));
