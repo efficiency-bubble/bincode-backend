@@ -12,8 +12,8 @@ namespace bbe::targets::dfg::impl{
             case 1: // u64
                 throw std::logic_error("dfg::compile(): Unsupported node type uint64"s);
             case 2: { // pack
-                //TODO: customizable ordering (currently only sequential)
-                Clobbers& sc = clob.then(true);
+                //TODO: customizable ordering (currently only parallel)
+                Clobbers& sc = clob.then(false);
                 DataNode* pack = &_nodes.emplace_back(2);
                 for(const ASTNode& c : nd.children()){
                     pack->emplace(compile(c,sc));
