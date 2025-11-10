@@ -18,9 +18,6 @@ namespace bbe::inter::dfg::impl{
             case 5: // arg32
                 return argv[nr->primitive()];
             case 9: // cmag
-                if(nr->parents().size()>1uz){
-                    eval(pool,nr->parents()[1uz],argv); // side effect dependency
-                }
                 if(!nr->primitive()){ // call function
                     std::vector<Value> vals(eval(pool,nr->parents().front(),argv).get<pack>().values);
                     auto func = vals.front().get<fptr>().id;
@@ -39,7 +36,6 @@ namespace bbe::inter::dfg::impl{
             case 200: // fn
                 return fptr{nr->primitive()};
             case 301: { // lctrl
-                eval(pool,nr->parents().front(),argv); // side effect dependency
                 while(true){
                     eval(pool,nr->parents()[1uz],argv);
                 }

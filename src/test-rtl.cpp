@@ -7,7 +7,7 @@
 int main(){
     ProjectEntitiesPool pep;
     std::uint32_t example_fn = pep.function_pool().emplace(nullptr,std::vector<const Type*>{});
-    pep.function_pool()[example_fn].set(fork(cbool(false),cmag(FN_PRU32,pack(u32(1))),cmag(FN_PRU32,pack(u32(2)))));
+    pep.function_pool()[example_fn].set(comma(2uz,cmag(FN_PRU32,pack(u32(1))),cmag(FN_PRU32,pack(u32(2))),cmag(FN_PRU32,pack(u32(3)))));
     bbe::targets::rtl::Function fn{pep.function_pool()[example_fn]};
     for(const auto& ins : fn.instructions()){
         std::println("{} {} {}"sv,cppp::cview(bbe::targets::rtl::impl::stringify_enum(ins.opcode)),ins.dst,ins.src);

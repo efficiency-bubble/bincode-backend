@@ -4,32 +4,29 @@
 #include<ranges>
 #include<string>
 namespace bbe::targets::dfg::impl{
-    const DataNode* DataFlowGraph::compile_node(const ASTNode& nd,obs_t& observables){
+    // Contract: only add one entry to clobbers
+    const DataNode* DataFlowGraph::compile(const ASTNode& nd,Clobbers& clob){
         switch(nd.type()){
             case 0: // u32
                 return &_nodes.emplace_back(0,nd.getp());
             case 1: // u64
-                throw std::logic_error("dfg::compile_node(): Unsupported node type uint64"s);
+                throw std::logic_error("dfg::compile(): Unsupported node type uint64"s);
             case 2: { // pack
+                //TODO: customizable ordering (currently only sequential)
+                Clobbers& sc = clob.then(true);
                 DataNode* pack = &_nodes.emplace_back(2);
-                std::vector<obs_t> cobs;
                 for(const ASTNode& c : nd.children()){
-                    pack->emplace(compile_node(c,cobs.emplace_back(observables)));
-                }
-                for(std::size_t i=0;i<observables.size();++i){
-                    DataNode& seq_pt = _nodes.emplace_back(350);
-                    for(const auto& obs : cobs){
-                        seq_pt.emplace(obs[i]);
-                    }
-                    observables[i] = &seq_pt;
+                    pack->emplace(compile(c,sc));
                 }
                 return pack;
             }
             case 3: { // comma
+                //TODO: customizable ordering (currently only sequential)
+                Clobbers& sc = clob.then(true);
                 const DataNode* result;
                 std::size_t i = nd.getp();
                 for(const ASTNode& c : nd.children()){
-                    const DataNode* n = compile_node(c,observables);
+                    const DataNode* n = compile(c,sc);
                     if(!(i--)){
                         result = n;
                     }
@@ -40,13 +37,17 @@ namespace bbe::targets::dfg::impl{
                 return &_nodes.emplace_back(5,nd.getp());
             case 9: { // cmag
                 DataNode* cmag = &_nodes.emplace_back(9,nd.getp());
-                cmag->emplace(compile_node(nd.children().front(),observables));
-                cmag->emplace(observables.front());
-                observables.front() = cmag;
+                cmag->emplace(compile(nd.children().front(),clob));
+                switch(nd.getp()){
+                    case 25:
+                        clob.push(cmag);
+                        break;
+                    default:;
+                }
                 return cmag;
             }
             case 10: { // setvar
-                const DataNode* res = compile_node(nd.children().front(),observables);
+                const DataNode* res = compile(nd.children().front(),clob);
                 vars.insert_or_assign(static_cast<std::uint32_t>(nd.getp()),res);
                 return res;
             }
@@ -55,18 +56,10 @@ namespace bbe::targets::dfg::impl{
             case 20: // bool
                 return &_nodes.emplace_back(20,nd.getp());
             case 21: { // fork
-                const DataNode* condition = compile_node(nd.children().front(),observables);
-                obs_t lho{observables};
-                const DataNode* lhs = compile_node(nd.children()[1uz],lho);
-                obs_t rho{observables};
-                const DataNode* rhs = compile_node(nd.children()[2uz],rho);
-                for(std::size_t i=0;i<observables.size();++i){
-                    DataNode& jobs = _nodes.emplace_back(21);
-                    jobs.emplace(condition);
-                    jobs.emplace(lho[i]);
-                    jobs.emplace(rho[i]);
-                    observables[i] = &jobs;
-                }
+                const DataNode* condition = compile(nd.children().front(),clob);
+                Fork& fk = clob.then_fork(condition);
+                const DataNode* lhs = compile(nd.children()[1uz],fk.left());
+                const DataNode* rhs = compile(nd.children()[2uz],fk.right());
                 DataNode* join = &_nodes.emplace_back(21);
                 join->emplace(condition);
                 join->emplace(lhs);
@@ -78,12 +71,8 @@ namespace bbe::targets::dfg::impl{
             case 200: // fn
                 return &_nodes.emplace_back(200,nd.getp());
             default:
-                throw std::logic_error("DfgCompiler::compile_node(): Unknown node type "s+std::to_string(nd.type()));
+                throw std::logic_error("DfgCompiler::compile(): Unknown node type "s+std::to_string(nd.type()));
         }
     }
-    const DataNode* DataFlowGraph::compile(const ASTNode& nd){
-        observables.emplace_back(&_nodes.emplace_back(std::numeric_limits<std::uint32_t>::max()));
-        return compile_node(nd,observables);
-    }
-    DataFlowGraph::DataFlowGraph(const Function& f) : _root(compile(f.ast())){}
+    DataFlowGraph::DataFlowGraph(const Function& f) : _root(compile(f.ast(),clob)){}
 }

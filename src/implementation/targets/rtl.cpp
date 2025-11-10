@@ -86,9 +86,6 @@ namespace bbe::targets::rtl::impl{
     };
     Function::Function(const dfg::DataFlowGraph& fg){
         FunctionCompiler compiler{*this};
-        for(const dfg::DataNode* v : fg.envp()){
-            compiler.compile_node(v);
-        }
         if(std::uint32_t rv = compiler.compile_node(fg.root());rv != nval){
             ins.emplace_back(Operation::RET,rv,0);
         }
