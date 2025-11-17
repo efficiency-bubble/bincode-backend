@@ -54,7 +54,7 @@ int main(){
                 entities.function_pool().pop(static_cast<ProjectEntitiesPool::index_type>(ri<std::uint64_t>()));
                 break;
             case 2_b: // Get function root
-                buf.appendl<std::uint64_t>(reinterpret_cast<std::uint64_t>(&entities.function_pool()[static_cast<ProjectEntitiesPool::index_type>(ri<std::uint64_t>())].ast()));
+                buf.appendl(reinterpret_cast<std::uint64_t>(&entities.function_pool()[static_cast<ProjectEntitiesPool::index_type>(ri<std::uint64_t>())].ast()));
                 break;
             case 9_b: { // Count children
                 ASTNode* naddr = reinterpret_cast<ASTNode*>(ri<std::uint64_t>());
@@ -101,8 +101,18 @@ int main(){
                 holding_area.pop();
                 break;
             }
+            case 17_b: { // Append child
+                ASTNode* naddr = reinterpret_cast<ASTNode*>(ri<std::uint64_t>());
+                buf.appendl(reinterpret_cast<std::uint64_t>(&naddr->children().emplace_back(aread())));
+                break;
+            }
+            case 18_b: { // Pop child
+                ASTNode* naddr = reinterpret_cast<ASTNode*>(ri<std::uint64_t>());
+                naddr->children().pop_back();
+                break;
+            }
             case 250_b: { // List entities
-                for(const auto& k : entities.function_pool() | std::views::keys){
+                for(auto k : entities.function_pool() | std::views::keys){
                     buf.appendl<std::uint64_t>(k);
                 }
                 break;

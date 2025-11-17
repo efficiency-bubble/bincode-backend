@@ -36,11 +36,12 @@ namespace bbe::targets::dfg::impl{
             case 5: // arg32
                 return &_nodes.emplace_back(5,nd.getp());
             case 9: { // cmag
+                Clobbers& sc = clob.then(true);
                 DataNode* cmag = &_nodes.emplace_back(9,nd.getp());
-                cmag->emplace(compile(nd.children().front(),clob));
+                cmag->emplace(compile(nd.children().front(),sc));
                 switch(nd.getp()){
                     case 25:
-                        clob.push(cmag);
+                        sc.push(cmag);
                         break;
                     default:;
                 }

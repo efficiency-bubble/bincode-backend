@@ -47,6 +47,9 @@ namespace bbe::targets::dfg::impl{
             const std::vector<value_type>& sequence() const{
                 return subsequence;
             }
+            bool ordering() const{
+                return ordered;
+            }
             void push(const DataNode* n){
                 subsequence.emplace_back(cppp::emplace_tag<const DataNode*>,n);
             }

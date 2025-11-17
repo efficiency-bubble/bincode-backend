@@ -9,13 +9,18 @@
 void _encode_clist(DotFile& df,const targets::dfg::Clobbers& cb,
 std::uint64_t& aux,cppp::str parent){
     cppp::str label;
+    bool first = true;
     for(const auto& v : cb.sequence()){
         cppp::str thisnode{u8"seqc"s};
         thisnode.append(cppp::tou8(std::to_string(aux++)));
         switch(v.index()){
             case v.index_of<targets::dfg::Clobbers>:
                 _encode_clist(df,v.get<targets::dfg::Clobbers>(),aux,thisnode);
-                label = u8"subseq"s;
+                if(v.get<targets::dfg::Clobbers>().ordering()){
+                    label = u8"seq"s;
+                }else{
+                    label = u8"par"s;
+                }
                 break;
             case v.index_of<targets::dfg::Fork>: {
                 const auto& fk = v.get<targets::dfg::Fork>();
@@ -26,7 +31,7 @@ std::uint64_t& aux,cppp::str parent){
             }
             case v.index_of<const targets::dfg::DataNode*>: {
                 df.write(u8"} "sv);
-                df.edge(thisnode,cppp::tou8(std::to_string(reinterpret_cast<std::uintptr_t>(v.get<const targets::dfg::DataNode*>()))),u8":dashed\",arrowhead=\"none"sv);
+                df.edge(thisnode,cppp::tou8(std::to_string(reinterpret_cast<std::uintptr_t>(v.get<const targets::dfg::DataNode*>()))),u8":dashed\",color=\"blue\",arrowhead=\"none"sv);
                 label = u8"node"s;
                 df.write(u8"subgraph clobs{"sv);
                 break;
@@ -34,7 +39,8 @@ std::uint64_t& aux,cppp::str parent){
         }
         df.add_node(thisnode,label);
         if(!parent.empty())
-            df.edge(parent,thisnode,u8""sv);
+            df.edge(parent,thisnode,first?u8":dashed\",color=\"red"sv:u8""sv);
+        first = false;
         parent = std::move(thisnode);
     }
 }
@@ -45,7 +51,7 @@ void encode_clist(DotFile& df,const targets::dfg::Clobbers& cb){
 int main(){
     ProjectEntitiesPool pep;
     std::uint32_t example_fn = pep.function_pool().emplace(nullptr,std::vector<const Type*>{});
-    pep.function_pool()[example_fn].set(comma(2uz,cmag(FN_PRU32,pack(u32(1))),cmag(FN_PRU32,pack(u32(2))),cmag(FN_PRU32,pack(u32(3)))));
+    pep.function_pool()[example_fn].set(comma(2uz,cmag(FN_PRU32,pack(u32(1))),cmag(FN_PRU32,pack(u32(2))),cmag(FN_PRU32,pack(u32(3))),cmag(FN_PRU32,pack(u32(3))),cmag(FN_PRU32,pack(u32(3))),cmag(FN_PRU32,pack(u32(3)))));
     inter::dfg::CompiledFunctionPool cpool{pep};
     const auto& graph = cpool.graph(example_fn);
     DotFile df{u8"test/test.dot"s};
