@@ -2,6 +2,7 @@
 #include<cppp/bytearray.hpp>
 #include<cppp/string.hpp>
 #include<bbe/bbe.hpp>
+#include<bbe/inter/dfg.hpp>
 #include<type_traits>
 #include<cinttypes>
 #include<ranges>
@@ -108,7 +109,22 @@ int main(){
             }
             case 18_b: { // Pop child
                 ASTNode* naddr = reinterpret_cast<ASTNode*>(ri<std::uint64_t>());
-                naddr->children().pop_back();
+                naddr->children().erase(std::next(naddr->children().begin(),ri<std::uint64_t>()));
+                break;
+            }
+            case 30_b: { // Compile, Invoke function (with no args), then discard return value
+                auto fni = ri<std::uint64_t>();
+                try{
+                    inter::dfg::CompiledFunctionPool cfp{entities};
+                    cfp.call(static_cast<ProjectEntitiesPool::index_type>(fni),{});
+                }catch(const std::logic_error& le){
+                    buf.append(1);
+                    std::string_view err{le.what()};
+                    buf.append(std::as_bytes(std::span<const char>(err)));
+                }
+                if(buf.empty()){
+                    buf.append(0);
+                }
                 break;
             }
             case 250_b: { // List entities
