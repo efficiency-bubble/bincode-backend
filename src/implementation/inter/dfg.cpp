@@ -25,6 +25,8 @@ namespace bbe::inter::dfg::impl{
                 }else{
                     return cmag(nr->primitive(),eval(pool,nr->parents().front(),argv));
                 }
+            case 20: // bool
+                return boolv{nr->primitive()!=0};
             case 21: { // fork
                 Value cond{eval(pool,nr->parents().front(),argv)};
                 if(cond.get<boolv>().value){
