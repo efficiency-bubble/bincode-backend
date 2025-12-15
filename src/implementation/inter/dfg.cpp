@@ -43,7 +43,7 @@ namespace bbe::inter::dfg::impl{
                 }
             }
             case std::numeric_limits<std::uint32_t>::max(): return {}; // env
-            default: throw std::logic_error("bbe::inter::dfg::eval(pool,): Unknown node type "s+std::to_string(nr->operation()));
+            default: throw std::logic_error("bbe::inter::dfg::eval(): Unknown node type "s+std::to_string(nr->operation()));
         }
     }
     Value CompiledFunctionPool::call(ProjectEntitiesPool::index_type fn,const std::vector<Value>& argv) const{
