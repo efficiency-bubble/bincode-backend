@@ -1,8 +1,9 @@
 #pragma once
 #include"../commons.hpp"
 #include<cppp/variant.hpp>
-#include<vector>
+#include<cppp/string.hpp> // value stringification
 #include<cassert>
+#include<vector>
 namespace bbe::inter::impl{
     struct uint32v{
         std::uint32_t value;
@@ -74,10 +75,12 @@ namespace bbe::inter::impl{
     struct pack{
         std::vector<Value> values;
     };
+    void stringify(const Value&,cppp::str&);
 }
 namespace bbe::inter{
     BBE_EXPORT uint32v;
     BBE_EXPORT boolv;
     BBE_EXPORT pack;
     BBE_EXPORT Value;
+    BBE_EXPORT stringify;
 }
