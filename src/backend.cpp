@@ -114,9 +114,10 @@ int main(){
             }
             case 30_b: { // Compile, Invoke function (with no args), then discard return value
                 auto fni = ri<std::uint64_t>();
+                bbe::inter::impl::Value v;
                 try{
                     inter::dfg::CompiledFunctionPool cfp{entities};
-                    cfp.call(static_cast<ProjectEntitiesPool::index_type>(fni),{});
+                    v = cfp.call(static_cast<ProjectEntitiesPool::index_type>(fni),{});
                 }catch(const std::logic_error& le){
                     buf.append(1);
                     std::string_view err{le.what()};
@@ -124,6 +125,9 @@ int main(){
                 }
                 if(buf.empty()){
                     buf.append(0);
+                    cppp::str s;
+                    inter::stringify(v,s);
+                    buf.append(std::as_bytes(std::span<const char8_t>(s)));
                 }
                 break;
             }
