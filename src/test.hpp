@@ -8,7 +8,6 @@ constexpr static std::uint64_t NT_PACK = 2;
 constexpr static std::uint64_t NT_COMMA = 3;
 constexpr static std::uint64_t NT_ARG32 = 5;
 constexpr static std::uint64_t NT_ARG64 = 6;
-constexpr static std::uint64_t NT_RET = 7;
 constexpr static std::uint64_t NT_CMAG = 9;
 constexpr static std::uint64_t NT_SETVAR = 10;
 constexpr static std::uint64_t NT_GETVAR = 11;
@@ -71,11 +70,6 @@ ASTNode loop(ASTNode&& arg){
 }
 ASTNode break_(){
     return {NT_BREAK,0};
-}
-ASTNode ret(ASTNode&& val){
-    ASTNode x{NT_RET,1};
-    x.emplace(0,std::move(val));
-    return x;
 }
 ASTNode fork(ASTNode&& cond,ASTNode&& tru,ASTNode&& fals){
     ASTNode x{NT_FORK,3};
