@@ -79,7 +79,7 @@ static_cast<std::uint32_t>(sections.size()),static_cast<std::uint32_t>(sections.
             }
         }
         // SHT
-        data.writel(SHT_OFFSET_POS,static_cast<std::uint64_t>(data.size()));
+        cppp::write(data.data()+SHT_OFFSET_POS,static_cast<std::uint64_t>(data.size()));
         data.resize(data.size()+SHT_ENTRY_SIZE); // null entry
         std::size_t index = 0uz;
         for(const Section& sec : sections){
