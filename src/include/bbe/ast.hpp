@@ -44,6 +44,9 @@ namespace bbe::impl{
             }
             ASTNode(cppp::frozen_byte_view&);
             void serialize(cppp::bytes&) const;
+            bool operator==(const ASTNode& other) const{
+                return _type == other._type && prim == other.prim && chld == other.chld;
+            }
             ASTNode& operator=(const ASTNode&) = default;
             ASTNode& operator=(ASTNode&& other){
                 _type = std::exchange(other._type,NTYPE);
