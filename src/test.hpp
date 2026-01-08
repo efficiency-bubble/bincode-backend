@@ -2,24 +2,24 @@
 #include<bbe/bbe.hpp>
 #include<cppp/string.hpp>
 using namespace bbe;
-constexpr static std::uint64_t NT_U32 = 0;
-constexpr static std::uint64_t NT_U64 = 1;
-constexpr static std::uint64_t NT_PACK = 2;
-constexpr static std::uint64_t NT_COMMA = 3;
-constexpr static std::uint64_t NT_ARG32 = 5;
-constexpr static std::uint64_t NT_ARG64 = 6;
-constexpr static std::uint64_t NT_CMAG = 9;
-constexpr static std::uint64_t NT_SETVAR = 10;
-constexpr static std::uint64_t NT_GETVAR = 11;
-constexpr static std::uint64_t NT_BOOL = 20;
-constexpr static std::uint64_t NT_FORK = 21;
-constexpr static std::uint64_t NT_ARGB = 22;
-constexpr static std::uint64_t NT_FOREVER = 30;
-constexpr static std::uint64_t NT_BREAK = 31;
-constexpr static std::uint64_t NT_COMPOUND = 64;
-constexpr static std::uint64_t NT_SYM32 = 100;
-constexpr static std::uint64_t NT_SYM64 = 101;
-constexpr static std::uint64_t NT_FN = 200;
+constexpr static std::uint32_t NT_U32 = 0;
+constexpr static std::uint32_t NT_U64 = 1;
+constexpr static std::uint32_t NT_PACK = 2;
+constexpr static std::uint32_t NT_COMMA = 3;
+constexpr static std::uint32_t NT_ARG32 = 5;
+constexpr static std::uint32_t NT_ARG64 = 6;
+constexpr static std::uint32_t NT_CMAG = 9;
+constexpr static std::uint32_t NT_SETVAR = 10;
+constexpr static std::uint32_t NT_GETVAR = 11;
+constexpr static std::uint32_t NT_BOOL = 20;
+constexpr static std::uint32_t NT_FORK = 21;
+constexpr static std::uint32_t NT_ARGB = 22;
+constexpr static std::uint32_t NT_FOREVER = 30;
+constexpr static std::uint32_t NT_BREAK = 31;
+constexpr static std::uint32_t NT_COMPOUND = 64;
+constexpr static std::uint32_t NT_SYM32 = 100;
+constexpr static std::uint32_t NT_SYM64 = 101;
+constexpr static std::uint32_t NT_FN = 200;
 
 constexpr static std::uint32_t FN_CALL = 0;
 constexpr static std::uint32_t FN_ADD32 = 10;
@@ -88,8 +88,10 @@ ASTNode getvar(std::uint64_t var){
 }
 template<typename ...T>
 ASTNode compound(T&& ...n){
-    ASTNode x{NT_COMPOUND,0};
-    (...,x.children().emplace_back(std::move(n)));
+    ASTNode x{NT_COMPOUND,static_cast<std::uint32_t>(sizeof...(T))};
+    [&x,&n...]<std::uint32_t ...i>(std::integer_sequence<std::uint32_t,i...>){
+        (...,(x.children()[i] = std::move(n)));
+    }(std::make_integer_sequence<std::uint32_t,static_cast<std::uint32_t>(sizeof...(T))>{});
     return x;
 }
 using namespace std::literals;

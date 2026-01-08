@@ -391,8 +391,8 @@ namespace bbe::targets::x64d::impl{
             }
             case 8:{ // callf
                 subfns = true;
-                value_handle dst = compile_node(nd.children()[0],fcc,subfns);
-                for(std::size_t i=1uz;i<nd.children().size();++i){
+                value_handle dst = compile_node(nd.children().front(),fcc,subfns);
+                for(std::uint32_t i=1;i<nd.children().size();++i){
                     value_handle arg = compile_node(nd.children()[i],fcc,subfns);
                     fcc.write_to_reg(arg,X86_ABI_ARG_REGS[i-1uz]);
                     fcc.done(arg);

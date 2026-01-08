@@ -34,8 +34,30 @@ void test(const cppp::view<const TestCase> cases){
     }
     std::println("{}/{} passed\x1b[0m"sv,pass,cases.size());
 }
+template<typename T>
+cppp::str to_string(T v){
+    return cppp::tou8(std::to_string(v));
+}
+#define ASSERT_EQ_I(p,q,msg) if(auto r=(p);r!=q) return std::unexpected(u8 ## msg ## s + u8": "s + to_string(r) + u8" != "s + to_string(q));else static_cast<void>(0)
 int main(){
     std::initializer_list<TestCase> test_cases{
+        {u8"AST construct and move"sv,[] -> test_result_t {
+            bbe::ASTNode test{9,1};
+            test.children().front() = bbe::ASTNode{5,12,0};
+            ASSERT_EQ_I(test.type(),9,"Wrong type");
+            ASSERT_EQ_I(test.children().size(),1,"Wrong nchld");
+            ASSERT_EQ_I(test.children().front().type(),5,"Wrong type of child");
+            ASSERT_EQ_I(test.children().front().getp(),12,"Wrong prim of child");
+            if(!test.children().front().children().empty()) return std::unexpected(u8"Wrong nchld of child"s);
+
+            bbe::ASTNode test2{std::move(test)};
+            ASSERT_EQ_I(test2.type(),9,"Wrong type after move");
+            ASSERT_EQ_I(test2.children().size(),1,"Wrong nchld after move");
+            ASSERT_EQ_I(test2.children().front().type(),5,"Wrong type of child after move");
+            ASSERT_EQ_I(test2.children().front().getp(),12,"Wrong prim of child after move");
+            if(!test2.children().front().children().empty()) return std::unexpected(u8"Wrong nchld of child after move"s);
+            return {};
+        }},
         {u8"AST serialization/deserialization"sv,[] -> test_result_t {
             cppp::bytes buf;
             bbe::ASTNode test{133,2};
@@ -43,12 +65,8 @@ int main(){
             test.serialize(buf);
             cppp::frozen_byte_view reader{buf};
             bbe::ASTNode recover{reader};
-            if(!reader.empty()){
-                return std::unexpected(u8"Data not fully consumed"s);
-            }
-            if(recover != test){
-                return std::unexpected(u8"Wrong AST deserialized"s);
-            }
+            if(!reader.empty()) return std::unexpected(u8"Data not fully consumed"s);
+            if(recover != test) return std::unexpected(u8"Wrong AST deserialized"s);
             return {};
         }},
         {u8"Dfg inter: add values"sv,[] -> test_result_t {
@@ -56,9 +74,7 @@ int main(){
             std::uint32_t fn = proj.function_pool().emplace(nullptr,std::vector<const bbe::Type*>{});
             proj.function_pool()[fn].set(cmag(FN_ADD32,pack(u32(1),u32(41))));
             bbe::inter::dfg::CompiledFunctionPool cfp{proj};
-            if(cfp.call(fn,{}).get<bbe::inter::uint32v>().value != 42){
-                return std::unexpected(u8"Wrong return value"s);
-            }
+            ASSERT_EQ_I(cfp.call(fn,{}).get<bbe::inter::uint32v>().value,42,"Wrong return value");
             return {};
         }},
         {u8"Dfg inter: equality comparison"sv,[] -> test_result_t {
@@ -66,9 +82,7 @@ int main(){
             std::uint32_t fn = proj.function_pool().emplace(nullptr,std::vector<const bbe::Type*>{});
             proj.function_pool()[fn].set(cmag(FN_EQ32,pack(u32(42),u32(42))));
             bbe::inter::dfg::CompiledFunctionPool cfp{proj};
-            if(!cfp.call(fn,{}).get<bbe::inter::boolv>().value){
-                return std::unexpected(u8"Wrong return value"s);
-            }
+            if(!cfp.call(fn,{}).get<bbe::inter::boolv>().value) return std::unexpected(u8"Wrong return value"s);
             return {};
         }}
     };
