@@ -1,7 +1,6 @@
 #include<bbe/ast.hpp>
 #include<cppp/binary.hpp>
 namespace bbe::impl{
-    // FIXME: function arg evaluation order
     ASTNode::ASTNode(cppp::frozen_byte_view& b) : chld_and_type(_uninit_tag_t{}), prim(cppp::read<std::uint64_t>(b.read(8uz))){
         chld_and_type.type = NodeType{cppp::read<std::uint8_t>(b.read(1uz))};
         chld_and_type.m = uninitialized_alloc32<ASTNode>(chld_and_type.n = cppp::read<std::uint32_t>(b.read(4uz)));
