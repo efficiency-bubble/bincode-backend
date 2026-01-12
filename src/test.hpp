@@ -2,24 +2,6 @@
 #include<bbe/bbe.hpp>
 #include<cppp/string.hpp>
 using namespace bbe;
-constexpr static std::uint32_t NT_U32 = 0;
-constexpr static std::uint32_t NT_U64 = 1;
-constexpr static std::uint32_t NT_PACK = 2;
-constexpr static std::uint32_t NT_COMMA = 3;
-constexpr static std::uint32_t NT_ARG32 = 5;
-constexpr static std::uint32_t NT_ARG64 = 6;
-constexpr static std::uint32_t NT_CMAG = 9;
-constexpr static std::uint32_t NT_SETVAR = 10;
-constexpr static std::uint32_t NT_GETVAR = 11;
-constexpr static std::uint32_t NT_BOOL = 20;
-constexpr static std::uint32_t NT_FORK = 21;
-constexpr static std::uint32_t NT_ARGB = 22;
-constexpr static std::uint32_t NT_FOREVER = 30;
-constexpr static std::uint32_t NT_BREAK = 31;
-constexpr static std::uint32_t NT_COMPOUND = 64;
-constexpr static std::uint32_t NT_SYM32 = 100;
-constexpr static std::uint32_t NT_SYM64 = 101;
-constexpr static std::uint32_t NT_FN = 200;
 
 constexpr static std::uint32_t FN_CALL = 0;
 constexpr static std::uint32_t FN_ADD32 = 10;
@@ -28,20 +10,14 @@ constexpr static std::uint32_t FN_EQ32 = 50;
 constexpr static std::uint32_t FN_BNOT = 51;
 
 ASTNode u32(std::uint32_t val){
-    return {NT_U32,val,0};
+    return {NodeType::UINT32,val,0};
 }
 ASTNode cbool(bool val){
-    return {NT_BOOL,val,0};
-}
-ASTNode arg32(std::uint32_t id){
-    return {NT_ARG32,id,0};
-}
-ASTNode argb(std::uint32_t id){
-    return {NT_ARGB,id,0};
+    return {NodeType::BOOL,val,0};
 }
 template<typename ...T>
 ASTNode pack(T&& ...children){
-    ASTNode x{NT_PACK,sizeof...(T)};
+    ASTNode x{NodeType::PACK,sizeof...(T)};
     [&]<std::size_t ...i>(std::index_sequence<i...>){
         (... , x.emplace(i,std::forward<T>(children)));
     }(std::index_sequence_for<T...>());
@@ -49,50 +25,42 @@ ASTNode pack(T&& ...children){
 }
 template<typename ...T>
 ASTNode comma(std::size_t ind,T&& ...children){
-    ASTNode x{NT_COMMA,ind,sizeof...(T)};
+    ASTNode x{NodeType::COMMA,ind,sizeof...(T)};
     [&]<std::size_t ...i>(std::index_sequence<i...>){
         (... , x.emplace(i,std::forward<T>(children)));
     }(std::index_sequence_for<T...>());
     return x;
 }
 ASTNode fn(std::uint32_t id){
-    return {NT_FN,id,0};
+    return {NodeType::DEPRECATED_FNSYM,id,0};
 }
 ASTNode cmag(std::uint64_t magic,ASTNode&& arg){
-    ASTNode x{NT_CMAG,magic,1};
+    ASTNode x{NodeType::CALL_BUILTIN,magic,1};
     x.emplace(0,std::move(arg));
     return x;
 }
 ASTNode loop(ASTNode&& arg){
-    ASTNode x{NT_FOREVER,1};
+    ASTNode x{NodeType::FOREVER,1};
     x.emplace(0,std::move(arg));
     return x;
 }
 ASTNode break_(){
-    return {NT_BREAK,0};
+    return {NodeType::BREAK,0};
 }
 ASTNode fork(ASTNode&& cond,ASTNode&& tru,ASTNode&& fals){
-    ASTNode x{NT_FORK,3};
+    ASTNode x{NodeType::FORK,3};
     x.emplace(0,std::move(cond));
     x.emplace(1,std::move(tru));
     x.emplace(2,std::move(fals));
     return x;
 }
 ASTNode setvar(std::uint64_t var,ASTNode&& val){
-    ASTNode x{NT_SETVAR,var,1};
+    ASTNode x{NodeType::SETVAR,var,1};
     x.emplace(0,std::move(val));
     return x;
 }
 ASTNode getvar(std::uint64_t var){
-    return {NT_GETVAR,var,0};
-}
-template<typename ...T>
-ASTNode compound(T&& ...n){
-    ASTNode x{NT_COMPOUND,static_cast<std::uint32_t>(sizeof...(T))};
-    [&x,&n...]<std::uint32_t ...i>(std::integer_sequence<std::uint32_t,i...>){
-        (...,(x.children()[i] = std::move(n)));
-    }(std::make_integer_sequence<std::uint32_t,static_cast<std::uint32_t>(sizeof...(T))>{});
-    return x;
+    return {NodeType::GETVAR,var,0};
 }
 using namespace std::literals;
 std::unordered_map<std::uint32_t,cppp::sv> EXPLAIN{

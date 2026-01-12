@@ -16,18 +16,22 @@ namespace bbe::impl{
         if(!n) return nullptr;
         return static_cast<T*>(operator new(sizeof(T)*n));
     }
+    enum class NodeType : std::uint8_t{
+        UINT32,UINT64,PACK,COMMA,ARGV=5,DEPRECATED_CALL_FN=8,CALL_BUILTIN=9,SETVAR,GETVAR,BOOL=20,FORK,DEPRECATED_BOOLARG,FOREVER=30,BREAK,UINT32SYM=100,DEPRECATED_UINT64SYM=101,DEPRECATED_FNSYM=200,
+        NTYPE = 255
+    };
     // Public API: sequence for accessing children; implementation detail: also packs the ASTNode type to save memory (otherwise it would be wasted on padding)
     class ASTChildren{
         friend ASTNode;
         ASTNode* m;
         std::uint32_t n;
-        std::uint32_t type;
+        NodeType type;
         inline void _die();
 
         // friend_only section (intended to be used by ASTNode)
         ASTChildren(_uninit_tag_t){}
-        ASTChildren() : m(nullptr), n(0), type(std::numeric_limits<std::uint32_t>::max()){}
-        inline ASTChildren(std::uint32_t n,std::uint32_t t);
+        ASTChildren() : m(nullptr), n(0), type(NodeType::NTYPE){}
+        inline ASTChildren(std::uint32_t n,NodeType t);
         ASTChildren(ASTChildren&& other) : m(std::exchange(other.m,nullptr)), n(other.n), type(other.type){}
         ASTChildren(const ASTChildren& other) = delete
         #ifndef __INTELLISENSE__ // vscode intellisense/EDG doesn't support delete("reason") yet
@@ -76,11 +80,10 @@ namespace bbe::impl{
         ASTChildren chld_and_type;
         std::uint64_t prim{0};
         public:
-            constexpr static std::uint32_t NTYPE = std::numeric_limits<std::uint32_t>::max();
             explicit operator bool() const{
-                return chld_and_type.type != NTYPE;
+                return chld_and_type.type != NodeType::NTYPE;
             }
-            std::uint32_t type() const{
+            NodeType type() const{
                 return chld_and_type.type;
             }
             ASTChildren& children(){
@@ -99,8 +102,8 @@ namespace bbe::impl{
                 return chld_and_type[ind] = std::move(n);
             }
             ASTNode() = default;
-            ASTNode(std::uint32_t tp,std::uint32_t nchld) : chld_and_type(nchld,tp){}
-            ASTNode(std::uint32_t tp,std::uint64_t prim,std::uint32_t nchld) : chld_and_type(nchld,tp), prim(prim){}
+            ASTNode(NodeType tp,std::uint32_t nchld) : chld_and_type(nchld,tp){}
+            ASTNode(NodeType tp,std::uint64_t prim,std::uint32_t nchld) : chld_and_type(nchld,tp), prim(prim){}
             ASTNode(const ASTNode&) = default;
             ASTNode(ASTNode&& other) : chld_and_type(std::move(other.chld_and_type)), prim(other.prim){}
             ASTNode(cppp::frozen_byte_view&);
@@ -115,7 +118,7 @@ namespace bbe::impl{
                 return *this;
             }
     };
-    inline ASTChildren::ASTChildren(std::uint32_t n,std::uint32_t t) : m(uninitialized_alloc32<ASTNode>(n)), n(n), type(t){
+    inline ASTChildren::ASTChildren(std::uint32_t n,NodeType t) : m(uninitialized_alloc32<ASTNode>(n)), n(n), type(t){
         std::uninitialized_default_construct_n(m,n);
     }
     inline ASTChildren& ASTChildren::operator=(ASTChildren&& other){
@@ -160,5 +163,6 @@ namespace bbe::impl{
     }
 }
 namespace bbe{
+    BBE_EXPORT NodeType;
     BBE_EXPORT ASTNode;
 }

@@ -7,11 +7,12 @@ namespace bbe::targets::dfg::impl{
     // Contract: only add one entry to clobbers
     const DataNode* DataFlowGraph::compile(const ASTNode& nd,Clobbers& clob){
         switch(nd.type()){
-            case 0: // u32
+            using enum NodeType;
+            case UINT32:
                 return &_nodes.emplace_back(0,nd.getp());
-            case 1: // u64
+            case UINT64:
                 throw std::logic_error("dfg::compile(): Unsupported node type uint64"s);
-            case 2: { // pack
+            case PACK: {
                 //TODO: customizable ordering (currently only parallel)
                 Clobbers& sc = clob.then(false);
                 DataNode* pack = &_nodes.emplace_back(2);
@@ -20,7 +21,7 @@ namespace bbe::targets::dfg::impl{
                 }
                 return pack;
             }
-            case 3: { // comma
+            case COMMA: {
                 //TODO: customizable ordering (currently only sequential)
                 Clobbers& sc = clob.then(true);
                 const DataNode* result;
@@ -33,9 +34,9 @@ namespace bbe::targets::dfg::impl{
                 }
                 return result;
             }
-            case 5: // arg32
-                return &_nodes.emplace_back(5,nd.getp());
-            case 9: { // cmag
+            case ARGV:
+                return &_nodes.emplace_back(5);
+            case CALL_BUILTIN: {
                 Clobbers& sc = clob.then(true);
                 DataNode* cmag = &_nodes.emplace_back(9,nd.getp());
                 cmag->emplace(compile(nd.children().front(),sc));
@@ -47,16 +48,16 @@ namespace bbe::targets::dfg::impl{
                 }
                 return cmag;
             }
-            case 10: { // setvar
+            case SETVAR: {
                 const DataNode* res = compile(nd.children().front(),clob);
                 vars.insert_or_assign(static_cast<std::uint32_t>(nd.getp()),res);
                 return res;
             }
-            case 11: // getvar
+            case GETVAR:
                 return vars.at(static_cast<std::uint32_t>(nd.getp()));
-            case 20: // bool
+            case BOOL: // bool
                 return &_nodes.emplace_back(20,nd.getp());
-            case 21: { // fork
+            case FORK: {
                 const DataNode* condition = compile(nd.children().front(),clob);
                 Fork& fk = clob.then_fork(condition);
                 const DataNode* lhs = compile(nd.children()[1uz],fk.left());
@@ -67,12 +68,12 @@ namespace bbe::targets::dfg::impl{
                 join->emplace(rhs);
                 return join;
             }
-            case 30: // loopwhile
+            case FOREVER:
                 assert(false); // TODO
-            case 200: // fn
+            case DEPRECATED_FNSYM:
                 return &_nodes.emplace_back(200,nd.getp());
             default:
-                throw std::logic_error("DfgCompiler::compile(): Unknown node type "s+std::to_string(nd.type()));
+                throw std::logic_error("DfgCompiler::compile(): Unknown node type "s+std::to_string(std::to_underlying(nd.type())));
         }
     }
     DataFlowGraph::DataFlowGraph(const Function& f) : _root(compile(f.ast(),clob)){}

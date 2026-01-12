@@ -4,8 +4,8 @@
             "name": "Default",
             "cppStandard": "c++26",
             "includePath": [
-                "${default}",
-                "src/include"
+                "src/include",
+                "${default}"
             ],
             "intelliSenseMode": "${default}"
         }

@@ -36,32 +36,36 @@ void test(const cppp::view<const TestCase> cases){
 }
 template<typename T>
 cppp::str to_string(T v){
-    return cppp::tou8(std::to_string(v));
+    if constexpr(std::is_enum_v<T>){
+        return to_string(std::to_underlying(v));
+    }else{
+        return cppp::tou8(std::to_string(v));
+    }
 }
 #define ASSERT_EQ_I(p,q,msg) if(auto r=(p);r!=q) return std::unexpected(u8 ## msg ## s + u8": "s + to_string(r) + u8" != "s + to_string(q));else static_cast<void>(0)
 int main(){
     std::initializer_list<TestCase> test_cases{
         {u8"AST construct and move"sv,[] -> test_result_t {
-            bbe::ASTNode test{9,1};
-            test.children().front() = bbe::ASTNode{5,12,0};
-            ASSERT_EQ_I(test.type(),9,"Wrong type");
+            bbe::ASTNode test{NodeType::BOOL,1};
+            test.children().front() = bbe::ASTNode{NodeType::PACK,12,0};
+            ASSERT_EQ_I(test.type(),NodeType::BOOL,"Wrong type");
             ASSERT_EQ_I(test.children().size(),1,"Wrong nchld");
-            ASSERT_EQ_I(test.children().front().type(),5,"Wrong type of child");
+            ASSERT_EQ_I(test.children().front().type(),NodeType::PACK,"Wrong type of child");
             ASSERT_EQ_I(test.children().front().getp(),12,"Wrong prim of child");
             if(!test.children().front().children().empty()) return std::unexpected(u8"Wrong nchld of child"s);
 
             bbe::ASTNode test2{std::move(test)};
-            ASSERT_EQ_I(test2.type(),9,"Wrong type after move");
+            ASSERT_EQ_I(test2.type(),NodeType::BOOL,"Wrong type after move");
             ASSERT_EQ_I(test2.children().size(),1,"Wrong nchld after move");
-            ASSERT_EQ_I(test2.children().front().type(),5,"Wrong type of child after move");
+            ASSERT_EQ_I(test2.children().front().type(),NodeType::PACK,"Wrong type of child after move");
             ASSERT_EQ_I(test2.children().front().getp(),12,"Wrong prim of child after move");
             if(!test2.children().front().children().empty()) return std::unexpected(u8"Wrong nchld of child after move"s);
             return {};
         }},
         {u8"AST serialization/deserialization"sv,[] -> test_result_t {
             cppp::bytes buf;
-            bbe::ASTNode test{133,2};
-            test.children().front() = bbe::ASTNode{8,3,0};
+            bbe::ASTNode test{NodeType::FOREVER,2};
+            test.children().front() = bbe::ASTNode{NodeType::COMMA,3,0};
             test.serialize(buf);
             cppp::frozen_byte_view reader{buf};
             bbe::ASTNode recover{reader};

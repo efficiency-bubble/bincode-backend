@@ -51,43 +51,39 @@ namespace bbe::targets::ssa::impl{
         std::uint32_t compile_node(const ASTNode& nd){
             std::uint32_t name = BasicBlock::NNAME;
             switch(nd.type()){
-                case 0: // u32
+                using enum NodeType;
+                case UINT32:
                     current_block().imm32(name = new_name(),static_cast<std::uint32_t>(nd.getp()));
                     break;
-                case 1: // u64
+                case UINT64:
                     current_block().imm64(name = new_name(),nd.getp());
                     break;
-                case 2: // pack
+                case PACK:
                     name = opnode(Operation::PACK,nd);
                     break;
-                case 5: // arg32
-                case 6: // arg64
-                case 22: // argb
-                    operation(Operation::LDAR,name = new_name(),{static_cast<std::uint32_t>(nd.getp())});
+                case ARGV:
+                    operation(Operation::LDAR,name = new_name(),{});
                     break;
-                case 7: { // ret
-                    std::uint32_t retv = compile_value(nd.children()[0]);
-                    current_block().retf(retv);
-                    break;
-                }
-                case 8: // callf
-                    name = opnode(Operation::CALL,nd);
-                    break;
-                case 9: // call magic
+                // case RETURN: { // ret // TODO: fix return
+                //     std::uint32_t retv = compile_value(nd.children()[0]);
+                //     current_block().retf(retv);
+                //     break;
+                // }
+                case CALL_BUILTIN:
                     operation(Operation::CMAG,name = new_name(),{static_cast<std::uint32_t>(nd.getp()),compile_value(nd.children()[0])});
                     break;
-                case 10: // setvar
+                case SETVAR:
                     // TODO: support over 100k intermediate results
                     current_block().bind_name(name = static_cast<std::uint32_t>(nd.getp()+100000),compile_value(nd.children()[0]));
                     break;
-                case 11: // getvar
+                case GETVAR:
                     // TODO: support over 100k intermediate results
                     current_block().bind_name(name = new_name(),current_block().value_of(static_cast<std::uint32_t>(nd.getp()+100000)));
                     break;
-                case 20: // bool
+                case BOOL: // bool
                     current_block().immb(name = new_name(),bool(nd.getp()));
                     break;
-                case 21: { // fork
+                case FORK: { // fork
                     std::uint32_t cond = compile_value(nd.children()[0]);
                     std::uint32_t lhb = ic->new_block();
                     std::uint32_t rhb = ic->new_block();
@@ -106,17 +102,12 @@ namespace bbe::targets::ssa::impl{
                     current_block_id = continuation;
                     break;
                 }
-                case 64: // compound
-                    for(const ASTNode& ch : nd.children()){
-                        name = compile_node(ch);
-                    }
-                    break;
-                case 100: // sym32
-                case 101: // sym64
+                case UINT32SYM: // sym32
+                case DEPRECATED_UINT64SYM: // sym64
                     operation(Operation::LDS,name = new_name(),{static_cast<std::uint32_t>(nd.getp())});
                     break;
                 default:
-                    throw std::logic_error("SSA compile: unknown node type "s+std::to_string(nd.type()));
+                    throw std::logic_error("SSA compile: unknown node type "s+std::to_string(std::to_underlying(nd.type())));
             }
             return name;
         }
