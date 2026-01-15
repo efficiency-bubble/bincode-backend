@@ -4,12 +4,7 @@ LIBNAME := bbe
 HEADERS := $(wildcard src/include/$(LIBNAME)/*.hpp) $(wildcard src/include/$(LIBNAME)/*/*.hpp)
 SOURCES := $(wildcard src/implementation/*.cpp) $(wildcard src/implementation/*/*.cpp)
 OBJECTS := $(patsubst src/implementation/%.cpp,obj/%.o,$(SOURCES))
-ifeq ($(OS),"Windows_NT")
-TARGET_SUFFIX := .exe
-else
-TARGET_SUFFIX :=
-endif
-bin/%$(TARGET_SUFFIX): src/%.cpp lib/$(LIBNAME).a
+bin/%: src/%.cpp lib/$(LIBNAME).a
 	g++ $< lib/bbe.a -o $@ $(FINALOPT)
 lib/$(LIBNAME).a: $(OBJECTS)
 	ar rcs $@ $(OBJECTS)
