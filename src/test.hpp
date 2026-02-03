@@ -34,7 +34,7 @@ ASTNode comma(std::size_t ind,T&& ...children){
 ASTNode fn(std::uint32_t id){
     return {NodeType::DEPRECATED_FNSYM,id,0};
 }
-ASTNode cmag(std::uint64_t magic,ASTNode&& arg){
+ASTNode cmag(std::uint32_t magic,ASTNode&& arg){
     ASTNode x{NodeType::CALL_BUILTIN,magic,1};
     x.emplace(0,std::move(arg));
     return x;
@@ -54,12 +54,12 @@ ASTNode fork(ASTNode&& cond,ASTNode&& tru,ASTNode&& fals){
     x.emplace(2,std::move(fals));
     return x;
 }
-ASTNode setvar(std::uint64_t var,ASTNode&& val){
+ASTNode setvar(std::uint32_t var,ASTNode&& val){
     ASTNode x{NodeType::SETVAR,var,1};
     x.emplace(0,std::move(val));
     return x;
 }
-ASTNode getvar(std::uint64_t var){
+ASTNode getvar(std::uint32_t var){
     return {NodeType::GETVAR,var,0};
 }
 using namespace std::literals;

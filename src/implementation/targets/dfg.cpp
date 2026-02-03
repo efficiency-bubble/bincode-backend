@@ -9,7 +9,7 @@ namespace bbe::targets::dfg::impl{
         switch(nd.type()){
             using enum NodeType;
             case UINT32:
-                return &_nodes.emplace_back(0,nd.getp());
+                return &_nodes.emplace_back(0,nd.getp32());
             case UINT64:
                 throw std::logic_error("dfg::compile(): Unsupported node type uint64"s);
             case PACK: {
@@ -25,7 +25,7 @@ namespace bbe::targets::dfg::impl{
                 //TODO: customizable ordering (currently only sequential)
                 Clobbers& sc = clob.then(true);
                 const DataNode* result;
-                std::size_t i = nd.getp();
+                std::uint32_t i = nd.getp32();
                 for(const ASTNode& c : nd.children()){
                     const DataNode* n = compile(c,sc);
                     if(!(i--)){
@@ -38,9 +38,9 @@ namespace bbe::targets::dfg::impl{
                 return &_nodes.emplace_back(5);
             case CALL_BUILTIN: {
                 Clobbers& sc = clob.then(true);
-                DataNode* cmag = &_nodes.emplace_back(9,nd.getp());
+                DataNode* cmag = &_nodes.emplace_back(9,nd.getp32());
                 cmag->emplace(compile(nd.children().front(),sc));
-                switch(nd.getp()){
+                switch(nd.getp32()){
                     case 25:
                         sc.push(cmag);
                         break;
@@ -50,13 +50,13 @@ namespace bbe::targets::dfg::impl{
             }
             case SETVAR: {
                 const DataNode* res = compile(nd.children().front(),clob);
-                vars.insert_or_assign(static_cast<std::uint32_t>(nd.getp()),res);
+                vars.insert_or_assign(nd.getp32(),res);
                 return res;
             }
             case GETVAR:
-                return vars.at(static_cast<std::uint32_t>(nd.getp()));
+                return vars.at(nd.getp32());
             case BOOL: // bool
-                return &_nodes.emplace_back(20,nd.getp());
+                return &_nodes.emplace_back(20,nd.getp32());
             case FORK: {
                 const DataNode* condition = compile(nd.children().front(),clob);
                 Fork& fk = clob.then_fork(condition);
@@ -71,7 +71,7 @@ namespace bbe::targets::dfg::impl{
             case FOREVER:
                 assert(false); // TODO
             case DEPRECATED_FNSYM:
-                return &_nodes.emplace_back(200,nd.getp());
+                return &_nodes.emplace_back(200,nd.getp32());
             default:
                 throw std::logic_error("DfgCompiler::compile(): Unknown node type "s+std::to_string(std::to_underlying(nd.type())));
         }

@@ -51,14 +51,14 @@ int main(){
             ASSERT_EQ_I(test.type(),NodeType::BOOL,"Wrong type");
             ASSERT_EQ_I(test.children().size(),1,"Wrong nchld");
             ASSERT_EQ_I(test.children().front().type(),NodeType::PACK,"Wrong type of child");
-            ASSERT_EQ_I(test.children().front().getp(),12,"Wrong prim of child");
+            ASSERT_EQ_I(test.children().front().getp32(),12,"Wrong prim of child");
             if(!test.children().front().children().empty()) return std::unexpected(u8"Wrong nchld of child"s);
 
             bbe::ASTNode test2{std::move(test)};
             ASSERT_EQ_I(test2.type(),NodeType::BOOL,"Wrong type after move");
             ASSERT_EQ_I(test2.children().size(),1,"Wrong nchld after move");
             ASSERT_EQ_I(test2.children().front().type(),NodeType::PACK,"Wrong type of child after move");
-            ASSERT_EQ_I(test2.children().front().getp(),12,"Wrong prim of child after move");
+            ASSERT_EQ_I(test2.children().front().getp32(),12,"Wrong prim of child after move");
             if(!test2.children().front().children().empty()) return std::unexpected(u8"Wrong nchld of child after move"s);
             return {};
         }},

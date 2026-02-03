@@ -64,6 +64,9 @@ namespace bbe::targets::dfg::impl{
         Clobbers rhs;
         public:
             Fork(const DataNode* cond) : cond(cond){}
+            const DataNode* condition() const{
+                return cond;
+            }
             const Clobbers& left() const{
                 return lhs;
             }

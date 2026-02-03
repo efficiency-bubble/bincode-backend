@@ -3,6 +3,7 @@
 #include<cppp/bytearray.hpp>
 #include<cppp/object-view.hpp>
 #include<algorithm>
+#include<cassert>
 #include<cstdint>
 #include<utility>
 #include<limits>
@@ -20,19 +21,27 @@ namespace bbe::impl{
         UINT32,UINT64,PACK,COMMA,ARGV=5,DEPRECATED_CALL_FN=8,CALL_BUILTIN=9,SETVAR,GETVAR,BOOL=20,FORK,DEPRECATED_BOOLARG,FOREVER=30,BREAK,UINT32SYM=100,DEPRECATED_UINT64SYM=101,DEPRECATED_FNSYM=200,
         NTYPE = 255
     };
-    // Public API: sequence for accessing children; implementation detail: also packs the ASTNode type to save memory (otherwise it would be wasted on padding)
+    // Public API: sequence for accessing children; implementation detail: also packs the 64-bit data field to save memory (otherwise it would be wasted on padding)
+    static_assert(sizeof(std::uintptr_t)==sizeof(std::uint64_t),"Non-64-bit systems unsupported");
+    /*
+    */
     class ASTChildren{
         friend ASTNode;
-        ASTNode* m;
+        std::uint64_t _data;
         std::uint32_t n;
-        NodeType type;
+        std::uint32_t prim;
         inline void _die();
-
-        // friend_only section (intended to be used by ASTNode)
+        const ASTNode* m() const{
+            return reinterpret_cast<const ASTNode*>(_data);
+        }
+        ASTNode* m(){
+            return reinterpret_cast<ASTNode*>(_data);
+        }
+        // friend-only section (intended to be used by ASTNode)
         ASTChildren(_uninit_tag_t){}
-        ASTChildren() : m(nullptr), n(0), type(NodeType::NTYPE){}
-        inline ASTChildren(std::uint32_t n,NodeType t);
-        ASTChildren(ASTChildren&& other) : m(std::exchange(other.m,nullptr)), n(other.n), type(other.type){}
+        ASTChildren() : n(0){}
+        inline ASTChildren(std::uint32_t n,std::uint32_t prim=0);
+        ASTChildren(ASTChildren&& other) : _data(other._data), n(std::exchange(other.n,0)), prim(other.prim){}
         ASTChildren(const ASTChildren& other) = delete
         #ifndef __INTELLISENSE__ // vscode intellisense/EDG doesn't support delete("reason") yet
         ("Too expensive")
@@ -51,10 +60,10 @@ namespace bbe::impl{
             inline ASTNode& operator[](std::uint32_t);
             inline const ASTNode& operator[](std::uint32_t) const;
             ASTNode* begin(){
-                return m;
+                return m();
             }
             const ASTNode* begin() const{
-                return m;
+                return m();
             }
             ASTNode& front(){
                 return *begin();
@@ -77,54 +86,65 @@ namespace bbe::impl{
             }
     };
     class ASTNode{
-        ASTChildren chld_and_type;
-        std::uint64_t prim{0};
+        ASTChildren chld_and_data;
+        NodeType _type;
         public:
             explicit operator bool() const{
-                return chld_and_type.type != NodeType::NTYPE;
+                return _type != NodeType::NTYPE;
             }
             NodeType type() const{
-                return chld_and_type.type;
+                return _type;
             }
             ASTChildren& children(){
-                return chld_and_type;
+                return chld_and_data;
             }
             const ASTChildren& children() const{
-                return chld_and_type;
+                return chld_and_data;
             }
-            std::uint64_t getp() const{
-                return prim;
+            std::uint32_t getp32() const{
+                return chld_and_data.prim;
             }
-            void setp(std::uint64_t p){
-                prim = p;
+            std::uint64_t getp64() const{
+                return chld_and_data._data;
+            }
+            void setp32(std::uint32_t p){
+                chld_and_data.prim = p;
+            }
+            void setp64(std::uint64_t p){
+                assert(!chld_and_data.n);
+                chld_and_data._data = p;
             }
             ASTNode& emplace(std::uint32_t ind,ASTNode&& n){
-                return chld_and_type[ind] = std::move(n);
+                return chld_and_data[ind] = std::move(n);
             }
             ASTNode() = default;
-            ASTNode(NodeType tp,std::uint32_t nchld) : chld_and_type(nchld,tp){}
-            ASTNode(NodeType tp,std::uint64_t prim,std::uint32_t nchld) : chld_and_type(nchld,tp), prim(prim){}
-            ASTNode(const ASTNode&) = default;
-            ASTNode(ASTNode&& other) : chld_and_type(std::move(other.chld_and_type)), prim(other.prim){}
+            ASTNode(NodeType tp,std::uint32_t nchld) : chld_and_data(nchld), _type(tp){}
+            ASTNode(NodeType tp,std::uint32_t prim,std::uint32_t nchld) : chld_and_data(nchld,prim), _type(tp){}
+            ASTNode(const ASTNode&) = delete;
+            ASTNode(ASTNode&& other) : chld_and_data(std::move(other.chld_and_data)), _type(other._type){}
             ASTNode(cppp::frozen_byte_view&);
             void serialize(cppp::bytes&) const;
             bool operator==(const ASTNode& other) const{
-                return prim == other.prim && chld_and_type == other.chld_and_type;
+                return _type == other._type && chld_and_data == other.chld_and_data;
             }
-            ASTNode& operator=(const ASTNode&) = default;
+            ASTNode& operator=(const ASTNode&) = delete;
             ASTNode& operator=(ASTNode&& other){
-                prim = other.prim;
-                chld_and_type = std::move(other.chld_and_type);
+                _type = other._type;
+                chld_and_data = std::move(other.chld_and_data);
                 return *this;
             }
     };
-    inline ASTChildren::ASTChildren(std::uint32_t n,NodeType t) : m(uninitialized_alloc32<ASTNode>(n)), n(n), type(t){
-        std::uninitialized_default_construct_n(m,n);
+    static_assert(sizeof(ASTNode)<=24,"Regression");
+    inline ASTChildren::ASTChildren(std::uint32_t n,std::uint32_t prim) : _data(reinterpret_cast<std::uint64_t>(uninitialized_alloc32<ASTNode>(n))), n(n), prim(prim){
+        std::uninitialized_default_construct_n(m(),n);
     }
     inline ASTChildren& ASTChildren::operator=(ASTChildren&& other){
-        delete std::exchange(m,std::exchange(other.m,nullptr));
-        n = std::exchange(other.n,0);
-        type = other.type;
+        if(this!=&other){
+            _die();
+            _data = other._data;
+            prim = other.prim;
+            n = std::exchange(other.n,0);
+        }
         return *this;
     }
     // inline ASTChildren& ASTChildren::operator=(const ASTChildren& other){
@@ -135,30 +155,32 @@ namespace bbe::impl{
     //     return *this;
     // }
     inline ASTNode& ASTChildren::operator[](std::uint32_t ind){
-        return m[ind];
+        return m()[ind];
     }
     inline const ASTNode& ASTChildren::operator[](std::uint32_t ind) const{
-        return m[ind];
+        return m()[ind];
     }
     inline ASTNode* ASTChildren::end(){
-        return m+n;
+        return m()+n;
     }
     inline const ASTNode* ASTChildren::end() const{
-        return m+n;
+        return m()+n;
     }
     inline ASTNode& ASTChildren::back(){
-        return m[n-1];
+        return m()[n-1];
     }
     inline const ASTNode& ASTChildren::back() const{
-        return m[n-1];
+        return m()[n-1];
     }
     inline bool ASTChildren::operator==(const ASTChildren& other) const{
-        return type == other.type && std::ranges::equal(*this,other);
+        if(n != other.n) return false;
+        if(prim != other.prim) return false;
+        return (!n) || std::ranges::equal(*this,other);
     }
     inline void ASTChildren::_die(){
-        if(m){
-            std::destroy_n(m,n);
-            operator delete(m);
+        if(n){
+            std::destroy_n(m(),n);
+            operator delete(m());
         }
     }
 }
