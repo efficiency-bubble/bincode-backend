@@ -10,3 +10,12 @@ lib/$(LIBNAME).a: $(OBJECTS)
 	ar rcs $@ $(OBJECTS)
 obj/%.o: src/implementation/%.cpp $(HEADERS)
 	g++ -c $< -o $@ $(COMPOPT)
+setup:
+	mkdir lib
+	mkdir bin
+	mkdir obj
+	mkdir obj/formats
+	mkdir obj/inter
+	mkdir obj/targets
+.PHONY: setup
+	
