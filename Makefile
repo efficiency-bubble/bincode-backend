@@ -1,5 +1,5 @@
 COMPOPT := -std=c++26 -flto -fuse-linker-plugin -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -m64 -O0 -g -I"src/include" -I$(cppinclude)
-FINALOPT := $(COMPOPT) -L$(cpplib)
+FINALOPT := $(COMPOPT) -L$(cpplibs)
 LIBNAME := bbe
 HEADERS := $(wildcard src/include/$(LIBNAME)/*.hpp) $(wildcard src/include/$(LIBNAME)/*/*.hpp)
 SOURCES := $(wildcard src/implementation/*.cpp) $(wildcard src/implementation/*/*.cpp)
