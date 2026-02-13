@@ -32,7 +32,7 @@ ASTNode comma(std::size_t ind,T&& ...children){
     return x;
 }
 ASTNode fn(std::uint32_t id){
-    return {NodeType::DEPRECATED_FNSYM,id,0};
+    return {NodeType::FNSYM,id,0};
 }
 ASTNode cmag(std::uint32_t magic,ASTNode&& arg){
     ASTNode x{NodeType::CALL_BUILTIN,magic,1};

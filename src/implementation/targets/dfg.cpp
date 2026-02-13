@@ -70,7 +70,7 @@ namespace bbe::targets::dfg::impl{
             }
             case FOREVER:
                 assert(false); // TODO
-            case DEPRECATED_FNSYM:
+            case FNSYM:
                 return &_nodes.emplace_back(200,nd.getp32());
             default:
                 throw std::logic_error("DfgCompiler::compile(): Unknown node type "s+std::to_string(std::to_underlying(nd.type())));
