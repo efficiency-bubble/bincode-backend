@@ -23,8 +23,7 @@ namespace bbe::impl{
     };
     // Public API: sequence for accessing children; implementation detail: also packs the 64-bit data field to save memory (otherwise it would be wasted on padding)
     static_assert(sizeof(std::uintptr_t)==sizeof(std::uint64_t),"Non-64-bit systems unsupported");
-    /*
-    */
+
     class ASTChildren{
         friend ASTNode;
         std::uint64_t _data;
