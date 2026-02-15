@@ -18,7 +18,7 @@ namespace bbe::impl{
         return static_cast<T*>(operator new(sizeof(T)*n));
     }
     enum class NodeType : std::uint8_t{
-        UINT32,UINT64,PACK,COMMA,ARGV=5,DEPRECATED_CALL_FN=8,CALL_BUILTIN=9,SETVAR,GETVAR,BOOL=20,FORK,DEPRECATED_BOOLARG,FOREVER=30,BREAK,UINT32SYM=100,DEPRECATED_UINT64SYM=101,FNSYM=200,
+        UINT32,UINT64,PACK,COMMA,ARGV=5,CALL_BUILTIN=9,SETVAR,GETVAR,BOOL=20,FORK,FOREVER=30,BREAK,UINT32SYM=100,FNSYM=200,
         NTYPE = 255
     };
     // Public API: sequence for accessing children; implementation detail: also packs the 64-bit data field to save memory (otherwise it would be wasted on padding)

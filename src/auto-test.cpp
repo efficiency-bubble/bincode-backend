@@ -64,9 +64,15 @@ int main(){
         }},
         {u8"AST serialization/deserialization"sv,[] -> test_result_t {
             cppp::bytes buf;
-            bbe::ASTNode test{NodeType::FOREVER,2};
-            test.children().front() = bbe::ASTNode{NodeType::COMMA,3,0};
+            bbe::ASTNode test{NodeType::PACK,2};
+            test.children()[0uz] = bbe::ASTNode{NodeType::COMMA,0,1};
+            test.children()[0uz].children()[0uz] = bbe::ASTNode{NodeType::NTYPE,0};
+            test.children()[1uz] = bbe::ASTNode{NodeType::NTYPE,0};
             test.serialize(buf);
+            for(std::size_t i=0;i<buf.size();++i){
+                printf("%02x ",(int)buf[i]);
+            }
+            putchar('\n');
             cppp::frozen_byte_view reader{buf};
             bbe::ASTNode recover{reader};
             if(!reader.empty()) return std::unexpected(u8"Data not fully consumed"s);
