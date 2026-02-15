@@ -15,8 +15,8 @@ namespace bbe::inter::dfg::impl{
                 }
                 return Value(std::move(p));
             }
-            case 5: // arg32
-                return argv[nr->primitive()];
+            case 5: // argv
+                return pack{argv};
             case 9: // cmag
                 if(nr->primitive() == 0){ // call function
                     std::vector<Value> vals(eval(pool,nr->parents().front(),argv).get<pack>().values);
