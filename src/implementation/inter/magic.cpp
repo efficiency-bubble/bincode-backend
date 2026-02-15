@@ -9,11 +9,17 @@ namespace bbe::inter::impl{
         switch(magic){
             case 10: // add32
                 return uint32v(packv.front().get<uint32v>().value+packv[1uz].get<uint32v>().value);
+            case 11: // sub32
+                return uint32v(packv.front().get<uint32v>().value-packv[1uz].get<uint32v>().value);
             case 25: // pru32
                 std::print("{}",packv.front().get<uint32v>().value);
                 return {};
             case 50: // eq32
                 return boolv(packv.front().get<uint32v>().value == packv[1uz].get<uint32v>().value);
+            case 51: // le32
+            return boolv(packv.front().get<uint32v>().value <= packv[1uz].get<uint32v>().value);
+            case 60: // negbool
+                return boolv(!packv.front().get<boolv>().value);
             case 80: // packind
                 return packv.front().get<pack>().values[packv[1uz].get<uint32v>().value];
             default:

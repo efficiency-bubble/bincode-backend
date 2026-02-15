@@ -26,7 +26,9 @@ Additional DFG node types:
 Built-in functions:
 0 = call function
 10 = add uint32
+11 = sub uint32
 25 = print uint32
 50 = uint32 == uint32
-51 = !bool
+51 = uint32 <= uint32
+60 = !bool
 80 = index pack
