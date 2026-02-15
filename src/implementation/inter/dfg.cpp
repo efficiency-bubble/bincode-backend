@@ -21,7 +21,8 @@ namespace bbe::inter::dfg::impl{
                 if(nr->primitive() == 0){ // call function
                     std::vector<Value> vals(eval(pool,nr->parents().front(),argv).get<pack>().values);
                     auto func = vals.front().get<fptr>().id;
-                    return pool.call(func,{}); // TODO: argv passing
+                    vals.erase(vals.begin());
+                    return pool.call(func,vals);
                 }else{
                     return cmag(nr->primitive(),eval(pool,nr->parents().front(),argv));
                 }
