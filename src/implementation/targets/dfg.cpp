@@ -32,6 +32,7 @@ namespace bbe::targets::dfg::impl{
                         result = n;
                     }
                 }
+                // GCC please fix https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80922 so I don't have to -Wno-maybe-uninitialized
                 return result;
             }
             case ARGV:
