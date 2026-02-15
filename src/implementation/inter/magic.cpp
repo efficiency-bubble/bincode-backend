@@ -14,6 +14,8 @@ namespace bbe::inter::impl{
                 return {};
             case 50: // eq32
                 return boolv(packv.front().get<uint32v>().value == packv[1uz].get<uint32v>().value);
+            case 80: // packind
+                return packv.front().get<pack>().values[packv[1uz].get<uint32v>().value];
             default:
                 throw std::logic_error(std::format("inter::cmag(): Unknown magic function {}"sv,magic));
         }

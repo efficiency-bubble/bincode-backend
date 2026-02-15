@@ -29,3 +29,4 @@ Built-in functions:
 25 = print uint32
 50 = uint32 == uint32
 51 = !bool
+80 = index pack
