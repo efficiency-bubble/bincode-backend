@@ -2,7 +2,7 @@
 #include<stdexcept>
 namespace bbe::targets::rtl::impl{
     template<typename T>
-    std::uint32_t next(std::vector<T>& vec){
+    static std::uint32_t next(std::vector<T>& vec){
         std::uint32_t r = static_cast<std::uint32_t>(vec.size());
         vec.emplace_back();
         return r;
