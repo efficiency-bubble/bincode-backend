@@ -1,7 +1,7 @@
 #include<bbe/inter/magic.hpp>
 #include<stdexcept>
+#include<iostream>
 #include<format>
-#include<print>
 namespace bbe::inter::impl{
     using namespace bbe::impl;
     Value cmag(std::uint32_t magic,const Value& arg){
@@ -12,7 +12,7 @@ namespace bbe::inter::impl{
             case 11: // sub32
                 return uint32v(packv.front().get<uint32v>().value-packv[1uz].get<uint32v>().value);
             case 25: // pru32
-                std::print("{}",packv.front().get<uint32v>().value);
+                std::cout << packv.front().get<uint32v>().value << std::flush;
                 return {};
             case 50: // eq32
                 return boolv(packv.front().get<uint32v>().value == packv[1uz].get<uint32v>().value);
