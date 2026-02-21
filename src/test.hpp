@@ -25,7 +25,7 @@ ASTNode pack(T&& ...children){
     return x;
 }
 template<typename ...T>
-ASTNode comma(std::size_t ind,T&& ...children){
+ASTNode comma(std::uint32_t ind,T&& ...children){
     ASTNode x{NodeType::COMMA,ind,sizeof...(T)};
     [&]<std::size_t ...i>(std::index_sequence<i...>){
         (... , x.emplace(i,std::forward<T>(children)));
