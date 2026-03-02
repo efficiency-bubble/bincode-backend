@@ -17,6 +17,21 @@ namespace bbe::targets::rtl::impl{
         std::uint32_t next_reg(){
             return reg++;
         }
+        std::uint32_t compile_fork(const dfg::DataNode* cond,const dfg::DataNode* tru,const dfg::DataNode* fals){
+            std::uint32_t result = nval;
+            fork(cond,[this,tru,&result]{
+                if(std::uint32_t tr = compile_node(tru);tr != nval){
+                    result = next_reg();
+                    fn.ins.emplace_back(Operation::MOV,result,tr);
+                }
+            },[this,fals,&result]{
+                if(std::uint32_t fr = compile_node(fals);fr != nval){
+                    if(result == nval) result = next_reg();
+                    fn.ins.emplace_back(Operation::MOV,result,fr);
+                }
+            });
+            return result;
+        }
         std::uint32_t _compile_node(const dfg::DataNode* node){
             switch(node->operation()){
                 case 0: case 20: { // u32 / bool
@@ -35,7 +50,7 @@ namespace bbe::targets::rtl::impl{
                     const auto& par = node->parents();
                     switch(node->primitive()){
                         case 25:
-                            static_cast<void>(compile_node(par.back())); // place side effect before
+                            static_cast<void>(compile_node(par[1uz])); // place side effect before
                             fn.ins.emplace_back(Operation::PRI,compile_node(par.front()));
                             return nval;
                         default:
@@ -44,30 +59,9 @@ namespace bbe::targets::rtl::impl{
                 }
                 case 21: { // fork
                     const auto& par = node->parents();
-                    std::uint32_t result = nval;
-                    std::uint32_t cond = compile_node(par.front());
-                    std::uint32_t elselid = next(fn.labels);
-                    std::uint32_t donelid = next(fn.labels);
-                    fn.ins.emplace_back(Operation::JZ,elselid,cond);
-                    if(std::uint32_t tr = compile_node(par[1uz]);tr != nval){
-                        result = next_reg();
-                        fn.ins.emplace_back(Operation::MOV,result,tr);
-                    }
-                    fn.labels[elselid] = fn.ins.size();
-                    fn.ins.emplace_back(Operation::JMP,donelid,0);
-                    if(std::uint32_t fr = compile_node(par[2uz]);fr != nval){
-                        if(result == nval) result = next_reg();
-                        fn.ins.emplace_back(Operation::MOV,result,fr);
-                    }
-                    fn.labels[donelid] = fn.ins.size();
-                    return result;
+                    return compile_fork(par[0uz],par[1uz],par[2uz]);
                 }
-                case 350: { // sequence point
-                    for(const dfg::DataNode* par : node->parents()){
-                        static_cast<void>(compile_node(par));
-                    }
-                    return nval;
-                }
+                case 400: // _stdout
                 case std::numeric_limits<std::uint32_t>::max():
                     return nval;
                 default:
@@ -83,10 +77,24 @@ namespace bbe::targets::rtl::impl{
                     return cache.try_emplace(node,_compile_node(node)).first->second;
                 }
             }
+            template<typename Ft,typename Ff>
+            void fork(const dfg::DataNode* cond,Ft&& tru,Ff&& fals){
+                std::uint32_t condv = compile_node(cond);
+                std::uint32_t elselid = next(fn.labels);
+                std::uint32_t donelid = next(fn.labels);
+                fn.ins.emplace_back(Operation::JZ,elselid,condv);
+                tru();
+                fn.labels[elselid] = fn.ins.size();
+                fn.ins.emplace_back(Operation::JMP,donelid,0);
+                fals();
+                fn.labels[donelid] = fn.ins.size();
+            }
     };
     Function::Function(const dfg::DataFlowGraph& fg){
         FunctionCompiler compiler{*this};
-        if(std::uint32_t rv = compiler.compile_node(fg.root());rv != nval){
+        std::uint32_t rv = compiler.compile_node(fg.root());
+        compiler.compile_node(fg.stdout_result());
+        if(rv != nval){
             ins.emplace_back(Operation::RET,rv,0);
         }
     }

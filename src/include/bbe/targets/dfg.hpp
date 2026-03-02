@@ -35,67 +35,39 @@ namespace bbe::targets::dfg::impl{
                 src.emplace_back(nd);
             }
     };
-    class Fork;
-    class Clobbers{
-        public:
-            using value_type = cppp::heap_variant<Clobbers,Fork,const DataNode*>;
-        private:
-            std::vector<value_type> subsequence;
-            bool ordered;
-        public:
-            Clobbers(bool ordered=true) : ordered(ordered){}
-            const std::vector<value_type>& sequence() const{
-                return subsequence;
-            }
-            bool ordering() const{
-                return ordered;
-            }
-            void push(const DataNode* n){
-                subsequence.emplace_back(cppp::emplace_tag<const DataNode*>,n);
-            }
-            inline Fork& then_fork(const DataNode*);
-            Clobbers& then(bool ordered){
-                return subsequence.emplace_back(cppp::emplace_tag<Clobbers>,ordered).get<Clobbers>();
-            }
-    };
-    class Fork{
-        const DataNode* cond;
-        Clobbers lhs;
-        Clobbers rhs;
-        public:
-            Fork(const DataNode* cond) : cond(cond){}
-            const DataNode* condition() const{
-                return cond;
-            }
-            const Clobbers& left() const{
-                return lhs;
-            }
-            Clobbers& left(){
-                return lhs;
-            }
-            const Clobbers& right() const{
-                return rhs;
-            }
-            Clobbers& right(){
-                return rhs;
-            }
-    };
-    inline Fork& Clobbers::then_fork(const DataNode* on){
-        return subsequence.emplace_back(cppp::emplace_tag<Fork>,on).get<Fork>();
-    }
-    class DataFlowGraph{
-        std::deque<DataNode> _nodes;
+    class CodeBranch{
+        const CodeBranch* upstream;
         std::unordered_map<std::uint32_t,const DataNode*> vars;
-        Clobbers clob;
+        public:
+            CodeBranch() : upstream(nullptr){}
+            CodeBranch(const CodeBranch& up) : upstream(&up){}
+            const std::unordered_map<std::uint32_t,const DataNode*>& local_vars() const{
+                return vars;
+            }
+            void setvar(std::uint32_t x,const DataNode* n){
+                vars.insert_or_assign(x,n);
+            }
+            const DataNode* getvar(std::uint32_t x) const{
+                if(auto it=vars.find(x);it!=vars.end()){
+                    return it->second;
+                }
+                if(upstream) return upstream->getvar(x);
+                return nullptr;
+            }
+    };
+    class DataFlowGraph{
+        constexpr static std::uint32_t IO_VAR = std::numeric_limits<std::uint32_t>::max();
+        std::deque<DataNode> _nodes;
+        CodeBranch main;
         const DataNode* _root;
-        const DataNode* compile(const ASTNode&,Clobbers&);
+        const DataNode* compile(CodeBranch&,const ASTNode&);
         public:
             DataFlowGraph(const Function&);
-            const Clobbers& clobbers() const{
-                return clob;
-            }
             const std::deque<DataNode>& nodes() const{
                 return _nodes;
+            }
+            const DataNode* stdout_result() const{
+                return main.getvar(IO_VAR);
             }
             const DataNode* root() const{
                 return _root;
@@ -105,7 +77,5 @@ namespace bbe::targets::dfg::impl{
 namespace bbe::targets::dfg{
     BBE_EXPORT DataNode;
     BBE_EXPORT DataFlowGraph;
-    BBE_EXPORT Clobbers;
-    BBE_EXPORT Fork;
 }
 
