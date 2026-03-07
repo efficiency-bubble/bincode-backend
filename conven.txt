@@ -1,21 +1,20 @@
 Node type conventions (subject to change):
-0 = uint32($0);
-1 = uint64($0);
-2 = pack(node($)...);
+0 = uint32($0)
+1 = uint64($0)
+2 = pack(node($)...)
 3 = (... , node($))[$0]
+4 = node($)[$0], pack indexing
 5 = argv;
-8 = callf(node($0),node($1)); # TODO: kill this
-9 = callf(BUILTIN_FN[$0],node($1));
-10 = setvar(uint64($0),node($1));
-11 = getvar(uint64($0));
-20 = bool($0);
-21 = (bool($0) ? node($1) : node($2));
-22 = bool(ARGV[$0]); # TODO: kill this
+9 = callf(BUILTIN_FN[$0],node($1))
+10 = setvar(uint64($0),node($1))
+11 = getvar(uint64($0))
+20 = bool($0)
+21 = (bool($0) ? node($1) : node($2))
 30 = while(true) node($0);
 31 = break;
-100 = uint32(SYMTAB[$0]); # TODO: check symbol table to automatically determine value width
-101 = uint64(SYMTAB[$0]);
-200 = FN[$0];
+100 = uint32(SYMTAB[$0]) # TODO: check symbol table to automatically determine value width
+101 = uint64(SYMTAB[$0])
+200 = FN[$0]
 
 Additional DFG node types:
 300 = proxy (id)
@@ -30,4 +29,3 @@ Built-in functions:
 50 = uint32 == uint32
 51 = uint32 <= uint32
 60 = !bool
-80 = index pack

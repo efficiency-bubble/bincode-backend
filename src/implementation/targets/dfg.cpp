@@ -33,6 +33,8 @@ namespace bbe::targets::dfg::impl{
                 // GCC please fix https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80922 so I don't have to -Wno-maybe-uninitialized
                 return result;
             }
+            case PACKIND:
+                return &_nodes.emplace_back(4,nd.getp32(),std::vector{compile(br,nd.children().front())});
             case ARGV:
                 return &_nodes.emplace_back(5);
             case CALL_BUILTIN: {

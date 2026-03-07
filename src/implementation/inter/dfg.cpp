@@ -15,14 +15,13 @@ namespace bbe::inter::dfg::impl{
                 }
                 return Value(std::move(p));
             }
+            case 4: // packind
+                return eval(pool,nr->parents().front(),argv).get<pack>().values[nr->primitive()];
             case 5: // argv
                 return pack{argv};
             case 9: // cmag
                 if(nr->primitive() == 0){ // call function
-                    std::vector<Value> vals(eval(pool,nr->parents().front(),argv).get<pack>().values);
-                    auto func = vals.front().get<fptr>().id;
-                    vals.erase(vals.begin());
-                    return pool.call(func,vals);
+                    return pool.call(eval(pool,nr->parents()[0uz],argv).get<fptr>().id,eval(pool,nr->parents()[1uz],argv).get<pack>().values);
                 }else{
                     return cmag(nr->primitive(),eval(pool,nr->parents().front(),argv));
                 }
@@ -48,6 +47,6 @@ namespace bbe::inter::dfg::impl{
         }
     }
     Value CompiledFunctionPool::call(ProjectEntitiesPool::index_type fn,const std::vector<Value>& argv) const{
-        return eval(*this,pool.at(fn).root(),argv);
+        return eval(*this,function(fn).root(),argv);
     }
 }

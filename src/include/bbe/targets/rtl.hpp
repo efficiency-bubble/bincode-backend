@@ -9,7 +9,7 @@
 namespace bbe::targets::rtl::impl{
     using namespace bbe::impl;
     using namespace bbe::targets::impl;
-    BBE_DEBUG_NAMED_ENUM(Operation,LDI,ADD,SUB,RET,JMP,JZ,MOV,PRI); // TODO: Remove PRI
+    BBE_DEBUG_NAMED_ENUM(Operation,CALL,LDFN,LDI,ARGV,IPACK,MKPACK,PACKATT,ADD,SUB,RET,JMP,JF,MOV,CLE,PRI); // TODO: Remove PRI
     struct Instruction{
         Operation opcode;
         std::uint32_t dst;
@@ -18,13 +18,24 @@ namespace bbe::targets::rtl::impl{
     class Function{
         friend class FunctionCompiler;
         using insv_t = std::list<Instruction>;
-        using ip_t = insv_t::const_iterator;
-        insv_t ins;
-        std::vector<std::size_t> labels;
+        public:
+            using ip_t = insv_t::const_iterator;
+        private:
+            insv_t ins;
+            // stores one before the target statement
+            std::vector<ip_t> labels;
+            std::uint32_t nvals;
         public:
             Function(const dfg::DataFlowGraph&);
             const std::list<Instruction>& instructions() const{
                 return ins;
+            }
+            // returns one before the target statement
+            ip_t get_label(std::size_t i) const{
+                return labels[i];
+            }
+            std::uint32_t num_vals() const{
+                return nvals;
             }
     };
 }

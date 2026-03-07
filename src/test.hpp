@@ -35,9 +35,20 @@ ASTNode comma(std::uint32_t ind,T&& ...children){
 ASTNode fn(std::uint32_t id){
     return {NodeType::FNSYM,id,0};
 }
-ASTNode cmag(std::uint32_t magic,ASTNode&& arg){
-    ASTNode x{NodeType::CALL_BUILTIN,magic,1};
+ASTNode argv(){
+    return {NodeType::ARGV};
+}
+ASTNode pind(ASTNode&& arg,std::uint32_t ind){
+    ASTNode x{NodeType::PACKIND,ind,1};
     x.emplace(0,std::move(arg));
+    return x;
+}
+template<typename ...T>
+ASTNode cmag(std::uint32_t magic,T&& ...children){
+    ASTNode x{NodeType::CALL_BUILTIN,magic,sizeof...(T)};
+    [&]<std::size_t ...i>(std::index_sequence<i...>){
+        (... , x.emplace(i,std::forward<T>(children)));
+    }(std::index_sequence_for<T...>());
     return x;
 }
 ASTNode loop(ASTNode&& arg){
@@ -46,7 +57,7 @@ ASTNode loop(ASTNode&& arg){
     return x;
 }
 ASTNode break_(){
-    return {NodeType::BREAK,0};
+    return {NodeType::BREAK};
 }
 ASTNode fork(ASTNode&& cond,ASTNode&& tru,ASTNode&& fals){
     ASTNode x{NodeType::FORK,3};

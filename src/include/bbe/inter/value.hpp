@@ -81,6 +81,7 @@ namespace bbe::inter{
     BBE_EXPORT uint32v;
     BBE_EXPORT boolv;
     BBE_EXPORT pack;
+    BBE_EXPORT fptr;
     BBE_EXPORT Value;
     BBE_EXPORT stringify;
 }

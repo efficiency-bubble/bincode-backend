@@ -17,6 +17,7 @@ namespace bbe::targets::dfg::impl{
             DataNode(std::uint32_t op) : op(op){}
             DataNode(std::uint32_t op,std::uint32_t prim) : op(op), prim(prim){}
             DataNode(std::uint32_t op,std::vector<const DataNode*>&& src) : op(op), src(std::move(src)){}
+            DataNode(std::uint32_t op,std::uint32_t prim,std::vector<const DataNode*>&& src) : op(op), prim(prim), src(std::move(src)){}
             DataNode(const DataNode&) = delete;
             DataNode(DataNode&&) = default; // only use when nothing points to this
             DataNode& operator=(const DataNode&) = delete;

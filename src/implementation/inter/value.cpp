@@ -25,6 +25,10 @@ namespace bbe::inter::impl{
                 s.push_back(u8']');
                 break;
             }
+            case v.index_of<fptr>:
+                s.append(u8"fn"s);
+                s.append(cppp::tou8(std::to_string(v.get<fptr>().id)));
+                break;
             case cppp::heap_variant<>::none:
                 s.append(u8"{void}"s);
                 break;

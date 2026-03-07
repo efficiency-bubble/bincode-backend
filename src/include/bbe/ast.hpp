@@ -18,7 +18,7 @@ namespace bbe::impl{
         return static_cast<T*>(operator new(sizeof(T)*n));
     }
     enum class NodeType : std::uint8_t{
-        UINT32,UINT64,PACK,COMMA,ARGV=5,CALL_BUILTIN=9,SETVAR,GETVAR,BOOL=20,FORK,FOREVER=30,BREAK,UINT32SYM=100,FNSYM=200,
+        UINT32,UINT64,PACK,COMMA,PACKIND,ARGV,CALL_BUILTIN=9,SETVAR,GETVAR,BOOL=20,FORK,FOREVER=30,BREAK,UINT32SYM=100,FNSYM=200,
         NTYPE = 255
     };
     // Public API: sequence for accessing children; implementation detail: also packs the 64-bit data field to save memory (otherwise it would be wasted on padding)
@@ -73,6 +73,7 @@ namespace bbe::impl{
             bool empty() const{
                 return !n;
             }
+            inline void emplace(ASTNode&&);
             inline ASTNode* end();
             inline const ASTNode* end() const;
             inline ASTNode& back();
@@ -117,7 +118,7 @@ namespace bbe::impl{
                 return chld_and_data[ind] = std::move(n);
             }
             ASTNode() = default;
-            ASTNode(NodeType tp,std::uint32_t nchld) : chld_and_data(nchld), _type(tp){}
+            ASTNode(NodeType tp,std::uint32_t nchld=0) : chld_and_data(nchld), _type(tp){}
             ASTNode(NodeType tp,std::uint32_t prim,std::uint32_t nchld) : chld_and_data(nchld,prim), _type(tp){}
             ASTNode(const ASTNode&) = delete;
             ASTNode(ASTNode&& other) : chld_and_data(std::move(other.chld_and_data)), _type(other._type){}
@@ -181,6 +182,19 @@ namespace bbe::impl{
             std::destroy_n(m(),n);
             operator delete(m());
         }
+    }
+    inline void ASTChildren::emplace(ASTNode&& nnode){
+        ASTNode* nmem = uninitialized_alloc32<ASTNode>(n+1);
+        try{
+            std::uninitialized_move_n(m(),n,nmem);
+            new(nmem+n) ASTNode(std::move(nnode));
+        }catch(...){
+            operator delete(nmem);
+            throw;
+        }
+        _die();
+        _data = reinterpret_cast<std::uintptr_t>(nmem);
+        ++n;
     }
 }
 namespace bbe{
