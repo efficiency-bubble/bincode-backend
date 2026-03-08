@@ -39,7 +39,9 @@ namespace bbe::targets::dfg::impl{
                 return &_nodes.emplace_back(5);
             case CALL_BUILTIN: {
                 DataNode& cmag = _nodes.emplace_back(9,nd.getp32());
-                cmag.emplace(compile(br,nd.children().front()));
+                for(const ASTNode& c : nd.children()){
+                    cmag.emplace(compile(br,c));
+                }
                 switch(nd.getp32()){
                     case 25:
                         cmag.emplace(br.getvar(IO_VAR));

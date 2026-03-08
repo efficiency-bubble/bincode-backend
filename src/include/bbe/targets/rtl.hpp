@@ -7,8 +7,7 @@
 #include<vector>
 #include<list>
 namespace bbe::targets::rtl::impl{
-    using namespace bbe::impl;
-    using namespace bbe::targets::impl;
+    using namespace std::literals;
     BBE_DEBUG_NAMED_ENUM(Operation,CALL,LDFN,LDI,ARGV,IPACK,MKPACK,PACKATT,ADD,SUB,RET,JMP,JF,MOV,CLE,PRI); // TODO: Remove PRI
     struct Instruction{
         Operation opcode;
