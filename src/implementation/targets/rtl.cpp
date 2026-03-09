@@ -132,7 +132,7 @@ namespace bbe::targets::rtl::impl{
         FunctionCompiler compiler{*this};
         std::uint32_t rv = compiler.compile_node(fg.root());
         compiler.compile_node(fg.stdout_result());
-        if(rv != nvals){
+        if(rv != NVAL){
             ins.emplace_back(Operation::RET,rv,0);
         }
     }
