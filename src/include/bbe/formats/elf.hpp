@@ -2,20 +2,19 @@
 #include"commons.hpp"
 #include<cppp/bytearray.hpp>
 #include<cppp/string.hpp>
-#include"../targets/x64-direct.hpp"
+#include"../targets/x86.hpp"
 #include<vector>
 #include<span>
 namespace bbe::formats::elf::impl{
-    using namespace bbe::impl;
-    using namespace bbe::formats::impl;
+    using namespace cppp::literals;
     class Nametable{
         cppp::bytes buf;
         public:
-            Nametable() : buf{std::byte{0}}{}
+            Nametable() : buf{0_b}{}
             std::uint32_t add(cppp::sv name){
                 std::uint32_t location = static_cast<std::uint32_t>(buf.size());
                 buf.append(as_bytes(std::span<const char8_t>(name)));
-                buf.append(0);
+                buf.append(0_b);
                 return location;
             }
             const std::byte* data() const{
@@ -57,7 +56,7 @@ namespace bbe::formats::elf::impl{
                 add_string_table(u8".shstrtab"sv);
                 add_string_table(u8".strtab"sv);
             }
-            void add_text(const targets::x64d::X64Program& text);
+            void add_text(const targets::x86::Program& prog);
             void add_section(cppp::sv name,std::uint32_t type,const std::byte* data,std::size_t size,std::uint64_t m_addr,std::uint64_t align,bool load=false,bool writable=false,bool executable=false,std::uint64_t entsize=0,std::uint32_t link=0,std::uint32_t info=0){
                 sections.emplace_back(section_names.add(name),type,data,size,m_addr,align,load,writable,executable,entsize,link,info);
             }

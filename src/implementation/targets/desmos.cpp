@@ -8,20 +8,21 @@ namespace bbe::targets::desmos::impl{
             std::unordered_map<const dfg::DataNode*,cppp::str> cache;
             cppp::str _compile_node(cppp::str& out,const dfg::DataNode* nd){
                 switch(nd->operation()){
-                    case 5: // argv
+                    using enum dfg::NodeType;
+                    case ARGV:
                         return u8"a_{rgv}"s;
-                    case 0: // uint32
-                    case 20: { // bool
+                    case UINT32:
+                    case BOOL: {
                         return cppp::tou8(std::to_string(nd->primitive()));
                     }
-                    case 21: { // fork
+                    case FORK: {
                         cppp::str cond{compile_node(out,nd->parents().front())};
                         cppp::str lhs{compile_node(out,nd->parents()[1uz])};
                         cppp::str rhs{compile_node(out,nd->parents()[2uz])};
                         return u8"\\left\\{"sv+cond+u8"=1:"sv+lhs+u8','+rhs+u8"\\right\\}\n"sv;
                     }
                     default:
-                        throw std::logic_error("Desmos compile: unknown node type "s+std::to_string(nd->operation()));
+                        throw std::logic_error("Desmos compile: unknown node type "s+std::to_string(std::to_underlying(nd->operation())));
                 }
             }
             cppp::str compile_node(cppp::str& out,const dfg::DataNode* nd){

@@ -7,14 +7,14 @@
 namespace bbe::targets::dfg::impl{
     const DataNode* DataFlowGraph::compile(CodeBranch& br,const ASTNode& nd){
         switch(nd.type()){
-            using enum NodeType;
+            using enum bbe::NodeType;
             case UINT32:
-                return &_nodes.emplace_back(0,nd.getp32());
+                return &_nodes.emplace_back(NodeType::UINT32,nd.getp32());
             case UINT64:
                 throw std::logic_error("dfg::compile(): Unsupported node type uint64"s);
             case PACK: {
                 //TODO: customizable ordering (currently only sequential)
-                DataNode* pack = &_nodes.emplace_back(2);
+                DataNode* pack = &_nodes.emplace_back(NodeType::PACK);
                 for(const ASTNode& c : nd.children()){
                     pack->emplace(compile(br,c));
                 }
@@ -34,11 +34,11 @@ namespace bbe::targets::dfg::impl{
                 return result;
             }
             case PACKIND:
-                return &_nodes.emplace_back(4,nd.getp32(),std::vector{compile(br,nd.children().front())});
+                return &_nodes.emplace_back(NodeType::PACKIND,nd.getp32(),std::vector{compile(br,nd.children().front())});
             case ARGV:
-                return &_nodes.emplace_back(5);
+                return &_nodes.emplace_back(NodeType::ARGV);
             case CALL_BUILTIN: {
-                DataNode& cmag = _nodes.emplace_back(9,nd.getp32());
+                DataNode& cmag = _nodes.emplace_back(NodeType::CALL_BUILTIN,nd.getp32());
                 for(const ASTNode& c : nd.children()){
                     cmag.emplace(compile(br,c));
                 }
@@ -59,7 +59,7 @@ namespace bbe::targets::dfg::impl{
             case GETVAR:
                 return br.getvar(nd.getp32());
             case BOOL: // bool
-                return &_nodes.emplace_back(20,nd.getp32());
+                return &_nodes.emplace_back(NodeType::BOOL,nd.getp32());
             case FORK: {
                 const DataNode* condition = compile(br,nd.children().front());
                 CodeBranch lcb{br};
@@ -75,13 +75,13 @@ namespace bbe::targets::dfg::impl{
                     overrides.emplace(rv.first);
                 }
                 for(std::uint32_t v : overrides){
-                    DataNode* fork = &_nodes.emplace_back(21);
+                    DataNode* fork = &_nodes.emplace_back(NodeType::FORK);
                     fork->emplace(condition);
                     fork->emplace(lcb.getvar(v));
                     fork->emplace(rcb.getvar(v));
                     br.setvar(v,fork);
                 }
-                DataNode* join = &_nodes.emplace_back(21);
+                DataNode* join = &_nodes.emplace_back(NodeType::FORK);
                 join->emplace(condition);
                 join->emplace(lhs);
                 join->emplace(rhs);
@@ -90,10 +90,10 @@ namespace bbe::targets::dfg::impl{
             case FOREVER:
                 assert(false); // TODO
             case FNSYM:
-                return &_nodes.emplace_back(200,nd.getp32());
+                return &_nodes.emplace_back(NodeType::FNSYM,nd.getp32());
             default:
                 throw std::logic_error("DfgCompiler::compile(): Unknown node type "s+std::to_string(std::to_underlying(nd.type())));
         }
     }
-    DataFlowGraph::DataFlowGraph(const Function& f) : _root((main.setvar(IO_VAR,&_nodes.emplace_back(400)),compile(main,f.ast()))){}
+    DataFlowGraph::DataFlowGraph(const Function& f) : _root((main.setvar(IO_VAR,&_nodes.emplace_back(NodeType::STDOUT)),compile(main,f.ast()))){}
 }

@@ -5,4 +5,6 @@ test/test.o
 test/test-main
 test/test-main.o
 test/test.dot
+test/example.o
+test/example.so
 .vscode/settings.json

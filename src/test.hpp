@@ -5,6 +5,7 @@ using namespace bbe;
 
 constexpr static std::uint32_t FN_CALL = 0;
 constexpr static std::uint32_t FN_ADD32 = 10;
+constexpr static std::uint32_t FN_SUB32 = 11;
 constexpr static std::uint32_t FN_PRU32 = 25;
 constexpr static std::uint32_t FN_EQ32 = 50;
 constexpr static std::uint32_t FN_BNOT = 51;
@@ -78,12 +79,20 @@ using namespace std::literals;
 std::unordered_map<std::uint32_t,cppp::sv> EXPLAIN{
     {0,u8"uint32"sv},
     {2,u8"pack"sv},
-    {5,u8"arg32"sv},
+    {5,u8"argv"sv},
     {9,u8"cmag"sv},
     {21,u8"fork"sv},
     {300,u8"proxy"sv},
-    {301,u8"lctrl"sv},
-    {350,u8"sequ"sv},
-    {351,u8"magv"sv},
-    {std::numeric_limits<std::uint32_t>::max(),u8"env"sv}
+    {301,u8"lctrl"sv}
 };
+
+ASTNode fibonacci(){
+    return fork(
+        cmag(51,pind(argv(),0),u32(2)),
+        u32(1),
+        cmag(10,
+            cmag(0,fn(0),pack(cmag(11,pind(argv(),0),u32(1)))),
+            cmag(0,fn(0),pack(cmag(11,pind(argv(),0),u32(2))))
+        )
+    );
+}

@@ -6,28 +6,29 @@
 namespace bbe::inter::dfg::impl{
     Value eval(const CompiledFunctionPool& pool,const targets::dfg::DataNode* nr,const std::vector<Value>& argv){
         switch(nr->operation()){
-            case 0: // u32
+            using enum targets::dfg::NodeType;
+            case UINT32:
                 return uint32v{nr->primitive()};
-            case 2: { // pack
+            case PACK: {
                 pack p;
-                for(const auto& ref : nr->parents()){
+                for(const targets::dfg::DataNode* ref : nr->parents()){
                     p.values.emplace_back(eval(pool,ref,argv));
                 }
                 return Value(std::move(p));
             }
-            case 4: // packind
+            case PACKIND:
                 return eval(pool,nr->parents().front(),argv).get<pack>().values[nr->primitive()];
-            case 5: // argv
+            case ARGV:
                 return pack{argv};
-            case 9: // cmag
+            case CALL_BUILTIN:
                 if(nr->primitive() == 0){ // call function
                     return pool.call(eval(pool,nr->parents()[0uz],argv).get<fptr>().id,eval(pool,nr->parents()[1uz],argv).get<pack>().values);
                 }else{
                     return cmag(nr->primitive(),eval(pool,nr->parents().front(),argv));
                 }
-            case 20: // bool
+            case BOOL:
                 return boolv{nr->primitive()!=0};
-            case 21: { // fork
+            case FORK: {
                 Value cond{eval(pool,nr->parents().front(),argv)};
                 if(cond.get<boolv>().value){
                     return eval(pool,nr->parents()[1uz],argv);
@@ -35,15 +36,9 @@ namespace bbe::inter::dfg::impl{
                     return eval(pool,nr->parents()[2uz],argv);
                 }
             }
-            case 200: // fn
+            case FNSYM:
                 return fptr{nr->primitive()};
-            case 301: { // lctrl
-                while(true){
-                    eval(pool,nr->parents()[1uz],argv);
-                }
-            }
-            case std::numeric_limits<std::uint32_t>::max(): return {}; // env
-            default: throw std::logic_error("bbe::inter::dfg::eval(): Unknown node type "s+std::to_string(nr->operation()));
+            default: throw std::logic_error("bbe::inter::dfg::eval(): Unknown node type "s+std::to_string(std::to_underlying(nr->operation())));
         }
     }
     Value CompiledFunctionPool::call(ProjectEntitiesPool::index_type fn,const std::vector<Value>& argv) const{

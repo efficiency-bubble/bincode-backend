@@ -9,21 +9,26 @@
 #include<deque>
 namespace bbe::targets::dfg::impl{
     using namespace bbe::impl;
+    enum class NodeType : std::uint16_t{
+        UINT32,UINT64,PACK,COMMA,PACKIND,ARGV,CALL_BUILTIN=9,BOOL=20,FORK,
+        FNSYM=200,
+        STDOUT=400
+    };
     class DataNode{
-        std::uint32_t op;
+        NodeType op;
         std::uint32_t prim;
         std::vector<const DataNode*> src;
         public:
-            DataNode(std::uint32_t op) : op(op){}
-            DataNode(std::uint32_t op,std::uint32_t prim) : op(op), prim(prim){}
-            DataNode(std::uint32_t op,std::vector<const DataNode*>&& src) : op(op), src(std::move(src)){}
-            DataNode(std::uint32_t op,std::uint32_t prim,std::vector<const DataNode*>&& src) : op(op), prim(prim), src(std::move(src)){}
+            DataNode(NodeType op) : op(op){}
+            DataNode(NodeType op,std::uint32_t prim) : op(op), prim(prim){}
+            DataNode(NodeType op,std::vector<const DataNode*>&& src) : op(op), src(std::move(src)){}
+            DataNode(NodeType op,std::uint32_t prim,std::vector<const DataNode*>&& src) : op(op), prim(prim), src(std::move(src)){}
             DataNode(const DataNode&) = delete;
             DataNode(DataNode&&) = default; // only use when nothing points to this
             DataNode& operator=(const DataNode&) = delete;
             DataNode& operator=(DataNode&&) = default;
             ~DataNode(){}
-            std::uint32_t operation() const{
+            NodeType operation() const{
                 return op;
             }
             std::uint32_t primitive() const{
@@ -76,6 +81,7 @@ namespace bbe::targets::dfg::impl{
     };
 }
 namespace bbe::targets::dfg{
+    BBE_EXPORT NodeType;
     BBE_EXPORT DataNode;
     BBE_EXPORT DataFlowGraph;
 }

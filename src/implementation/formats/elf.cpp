@@ -1,47 +1,55 @@
 #include<bbe/formats/elf.hpp>
+#include<cppp/int.hpp>
 namespace bbe::formats::elf::impl{
-    void Elf::add_text(const targets::x64d::X64Program& prog){
-        using namespace std::literals::string_view_literals;
-        using enum targets::x64d::SymbolType;
-        add_section(u8".text"sv,1/*binary data*/,prog.text().data(),prog.text().size(),0x1000,0x10,true,false,true);
+    void Elf::add_text(const targets::x86::Program& prog){
+        using namespace std::literals;
+        // using enum targets::x64d::SymbolType;
+        std::vector<std::uint64_t> entoffs;
+        cppp::bytes& progbuf = section_data.emplace_back();
+        for(const auto& func : prog.functions()){
+            entoffs.emplace_back(progbuf.size());
+            progbuf.append(func.instructions());
+        }
+        add_section(u8".text"sv,1/*binary data*/,progbuf.data(),progbuf.size(),0x1000,0x10,true,false,true);
         {
             cppp::bytes& symtab = section_data.emplace_back();
             symtab.resize(0x18);
-            for(const targets::x64d::SymbolInfo& sym : prog.symbols()){
-                symtab.appendl<std::uint32_t>(symbol_names.add(sym.name));
+            for(const targets::x86::SymbolInfo& sym : prog.symbols()){
+                symtab.appendl<std::uint32_t>(symbol_names.add(sym.name()));
                 symtab.append(
-                    (1 << 4) | // HI 1: global binding / linkage
+                    (1_b << 4) | // HI 1: global binding / linkage
                     (
-                        sym.type==FUNCTION?2 // code
-                        :sym.type==VARIABLE?1 // object
+                        sym.type()==targets::x86::SymbolType::FUNCTION?2_b // code
+                        :sym.type()==targets::x86::SymbolType::VARIABLE?1_b // object
                         :throw std::logic_error("Elf::add_text(): Error creating symbol table: unknown symbol type")
                     )
                 );
-                symtab.append(0); // default visibility (allow interposing)
-                if(sym.defined_begin==sym.b_import_only){
+                symtab.append(0_b); // default visibility (allow interposing)
+                if(sym.imported()){
                     symtab.appendl<std::uint16_t>(0);
                     symtab.appendl<std::uint64_t>(0);
                 }else{
                     symtab.appendl(static_cast<std::uint16_t>(sections.size())); // linked section ID (to .text; adding after registering .text therefore +1, because of null section)
-                    symtab.appendl<std::uint64_t>(sym.defined_begin);
+                    symtab.appendl<std::uint64_t>(entoffs[sym.index()]);
                 }
                 symtab.appendl<std::uint64_t>(0);
             }
             add_section(u8".symtab"sv,2/*symbol table*/,symtab.data(),symtab.size(),0,0,false,false,false,0x18,
             static_cast<std::uint32_t>(SYMBOL_NAME_TABLE_INDEX+1),1);
         }
-        if(!prog.relocations().empty()){
-            cppp::bytes& reltab = section_data.emplace_back();
-            for(const targets::x64d::Relocation& rel : prog.relocations()){
-                reltab.appendl<std::uint64_t>(rel.offset);
-                reltab.appendl<std::uint64_t>((rel.symbol+1)<<32uz | 2 /* PC-relative */);
-                reltab.appendl<std::uint64_t>(-rel.isize);
-            }
-            add_section(u8".rela.text"sv,4/*relocations table*/,reltab.data(),reltab.size(),0,0,false,false,false,0x18,
-static_cast<std::uint32_t>(sections.size()),static_cast<std::uint32_t>(sections.size()-1));
-        }
+//         if(!prog.relocations().empty()){
+//             cppp::bytes& reltab = section_data.emplace_back();
+//             for(const targets::x64d::Relocation& rel : prog.relocations()){
+//                 reltab.appendl<std::uint64_t>(rel.offset);
+//                 reltab.appendl<std::uint64_t>((rel.symbol+1)<<32uz | 2 /* PC-relative */);
+//                 reltab.appendl<std::uint64_t>(-rel.isize);
+//             }
+//             add_section(u8".rela.text"sv,4/*relocations table*/,reltab.data(),reltab.size(),0,0,false,false,false,0x18,
+// static_cast<std::uint32_t>(sections.size()),static_cast<std::uint32_t>(sections.size()-1));
+//         }
     }
     cppp::bytes Elf::encode() const{
+        section_names.data();
         sections[SECTION_NAME_TABLE_INDEX].data = section_names.data();
         sections[SECTION_NAME_TABLE_INDEX].size = section_names.size();
         sections[SYMBOL_NAME_TABLE_INDEX].data = symbol_names.data();
@@ -61,7 +69,7 @@ static_cast<std::uint32_t>(sections.size()),static_cast<std::uint32_t>(sections.
         data.appendl(entry_point);
         data.appendl(std::uint64_t(0)); // PHT offset (none) // TODO
         constexpr std::size_t SHT_OFFSET_POS = 0x28;
-        data.skip(8uz); // 8: SHT offset
+        data.resb(8uz); // 8: SHT offset
         data.appendl<std::uint32_t>(0); // processor-specific flags (none supported yet)
         data.appendl<std::uint16_t>(0x40); // size of header
         data.appendl<std::uint16_t>(0x38); // PHT item size
@@ -80,7 +88,7 @@ static_cast<std::uint32_t>(sections.size()),static_cast<std::uint32_t>(sections.
         }
         // SHT
         cppp::write(data.data()+SHT_OFFSET_POS,static_cast<std::uint64_t>(data.size()));
-        data.resize(data.size()+SHT_ENTRY_SIZE); // null entry
+        data.resize(data.size()+SHT_ENTRY_SIZE,0_b); // null entry
         std::size_t index = 0uz;
         for(const Section& sec : sections){
             data.appendl<std::uint32_t>(sec.name); // name index

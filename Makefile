@@ -1,6 +1,6 @@
 COMPOPT := -std=c++26 -flto=7 -fuse-linker-plugin -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wno-maybe-uninitialized -m64 -I"src/include" -I$(cppinclude)
 RELEASEOPT := -O3 -s
-DEBUGOPT := -O0 -fsanitize=address -g
+DEBUGOPT := -O0 -g
 FINALOPT := $(COMPOPT) -L$(cpplibs)
 LIBNAME := bbe
 HEADERS := $(wildcard src/include/$(LIBNAME)/*.hpp) $(wildcard src/include/$(LIBNAME)/*/*.hpp)

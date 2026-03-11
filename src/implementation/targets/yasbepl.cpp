@@ -53,11 +53,12 @@ namespace bbe::targets::yasbepl::impl{
                 // TODO: After CSE is implemented, pop values after last use, not first
                 void compile(const dfg::DataNode* node){
                     switch(node->operation()){
-                        case 0: // u32
+                        using enum dfg::NodeType;
+                        case UINT32:
                             stack.push_back(node);
                             std::format_to(std::back_inserter(code),">{}"sv,node->primitive());
                             break;
-                        case 9: { // cmag
+                        case CALL_BUILTIN: {
                             const auto& argv = node->parents().front()->parents();
                             switch(node->primitive()){
                                 case 10: // add32
@@ -80,7 +81,7 @@ namespace bbe::targets::yasbepl::impl{
                             }
                             break;
                         }
-                        default: throw std::logic_error("bbe::targets::yasbepl::Stack::compile(): Unknown node type "s+std::to_string(node->operation()));
+                        default: throw std::logic_error("bbe::targets::yasbepl::Stack::compile(): Unknown node type "s+std::to_string(std::to_underlying(node->operation())));
                     }
                 }
         };

@@ -64,7 +64,7 @@ namespace bbe::impl{
         }
     }
     void ASTNode::serialize(cppp::bytes& b) const{
-        cppp::write(b.append(1uz),std::to_underlying(_type));
+        cppp::write(b.resb(1uz),std::to_underlying(_type));
         uleb128_w(b,chld_and_data.prim);
         std::uint32_t nc = nchld(_type);
         if(nc == VARIABLE){
@@ -74,7 +74,7 @@ namespace bbe::impl{
         }
         if(has_extended_data(_type)){
             CPPP_ASSERT(chld_and_data.n == 0);
-            cppp::write(b.append(8uz),chld_and_data._data);
+            cppp::write(b.resb(8uz),chld_and_data._data);
         }
         for(const auto& c : chld_and_data){
             c.serialize(b);
