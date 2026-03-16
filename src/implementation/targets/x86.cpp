@@ -22,39 +22,6 @@ namespace bbe::targets::x86::impl{
             }
     };
     namespace{
-        template<typename Ins,x::width ...Disp> requires(sizeof...(Disp) < 2uz)
-        void encode_rm_r(x::width w,cppp::bytes& b,std::byte mod,std::byte rm,std::byte r,x::wvs<Disp>... disp){
-            x::Instruction i{Ins::rm_r};
-            i.set_width(w);
-            i.mod_rm(mod,rm);
-            if constexpr(sizeof...(disp)){
-                i.displacement(disp...);
-            }
-            i.rm_reg(r);
-            i.encode(b);
-        }
-        template<typename Ins,x::width w,x::width ...Disp> requires(sizeof...(Disp) < 2uz)
-        void encode_rm_i(cppp::bytes& b,std::byte mod,std::byte rm,x::wv<w> imm,x::wvs<Disp>... disp){
-            x::Instruction i{Ins::rm_imm};
-            i.set_width(w);
-            i.mod_rm(mod,rm);
-            i.immediate(imm);
-            if constexpr(sizeof...(disp)){
-                i.displacement(disp...);
-            }
-            i.encode(b);
-        }
-        template<typename Ins,x::width ...Disp> requires(sizeof...(Disp) < 2uz)
-        void encode_r_rm(x::width w,cppp::bytes& b,std::byte r,std::byte mod,std::byte rm,x::wvs<Disp>... disp){
-            x::Instruction i{Ins::r_rm};
-            i.set_width(w);
-            i.mod_rm(mod,rm);
-            if constexpr(sizeof...(disp)){
-                i.displacement(disp...);
-            }
-            i.rm_reg(r);
-            i.encode(b);
-        }
         class FunctionCompiler{
             public:
                 using value_t = std::uint32_t;
@@ -72,17 +39,21 @@ namespace bbe::targets::x86::impl{
                     value_frame_off.try_emplace(vid,sp);
                     return sp;
                 }
+                static x::displacement<x::width::W8> soff_to_disp8(std::uint32_t off){
+                    if(off > 0xFF) throw std::logic_error("x86 compile: soff_to_disp8: stack offset too large");
+                    return {static_cast<std::int8_t>(-static_cast<std::int32_t>(off))};
+                }
                 static value_t require_value(DataValue dv,const cppp::str& orelse){
                     if(dv.is_pack()){
                         throw std::logic_error(reinterpret_cast<const char*>(orelse.c_str()));
                     }
                     return dv.id();
                 }
-                static void rtos(cppp::bytes& b,std::byte r,std::int8_t soff){
-                    encode_rm_r<x::encode::mov,x::width::W8>(x::width::W32,b,0b01_b,0b101_b /* BP + disp8 */,r,-soff);
+                static void rtos(cppp::bytes& b,std::byte r,x::displacement<x::width::W8> soff){
+                    x::instructions::mov::rm_r::for_width<x::width::W32>::encode(b,0b01_b,0b101_b,soff,r);
                 }
                 static void stor(cppp::bytes& b,std::int8_t soff,std::byte r){
-                    encode_r_rm<x::encode::mov,x::width::W8>(x::width::W32,b,r,0b01_b,0b101_b /* BP + disp8 */,-soff);
+                    x::instructions::mov::r_rm::for_width<x::width::W32>::encode(b,r,0b01_b,0b101_b /* BP + disp8 */,x::displacement<x::width::W8>(-soff));
                 }
                 template<typename T>
                 DataValue encode_arith(const dfg::DataNode& lhsn,const dfg::DataNode& rhsn){
@@ -91,8 +62,21 @@ namespace bbe::targets::x86::impl{
                     value_t rhs = require_value(compile_node(rhsn),u8"x86 compile: rhs to arithmetic op is erroneously a pack"s);
                     into(lhs,x::reg::A);
                     into(rhs,x::reg::C);
-                    encode_rm_r<T>(x::width::W32,f.instructions(),0b11_b,x::reg::A,x::reg::C);
-                    rtos(f.instructions(),x::reg::A,static_cast<std::int8_t>(allocate_dw(vid)));
+                    T::rm_r::template for_width<x::width::W32>::encode(f.instructions(),0b11_b,x::reg::A,x::reg::C);
+                    rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(vid)));
+                    return {vid,false};
+                }
+                template<typename T>
+                DataValue encode_comparison(const dfg::DataNode& lhsn,const dfg::DataNode& rhsn){
+                    value_t vid = new_value_id();
+                    value_t lhs = require_value(compile_node(lhsn),u8"x86 compile: lhs to compare is erroneously a pack"s);
+                    value_t rhs = require_value(compile_node(rhsn),u8"x86 compile: rhs to compare is erroneously a pack"s);
+                    into(lhs,x::reg::A);
+                    into(rhs,x::reg::C);
+                    x::instructions::cmp::rm_r::for_width<x::width::W32>::encode(f.instructions(),0b11_b,x::reg::A,x::reg::C);
+                    T::encode(f.instructions(),0b11_b,x::reg::A);
+                    x::instructions::movzx::from_b::for_width<x::width::W32>::encode(f.instructions(),x::reg::A,0b11_b,x::reg::A);
+                    rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(vid)));
                     return {vid,false};
                 }
             public:
@@ -105,7 +89,7 @@ namespace bbe::targets::x86::impl{
                         using enum dfg::NodeType;
                         case UINT32: {
                             value_t vid = new_value_id();
-                            encode_rm_i<x::encode::mov,x::width::W32,x::width::W8>(f.instructions(),0b01_b,0b101_b /* BP + disp8 */,dn.primitive(),-static_cast<std::int8_t>(allocate_dw(vid)));
+                            x::instructions::mov::rm_imm::for_width<x::width::W32>::encode(f.instructions(),0b01_b,0b101_b /* BP + disp8 */,soff_to_disp8(allocate_dw(vid)),dn.primitive());
                             return {vid,false};
                         }
                         case PACK: {
@@ -119,9 +103,13 @@ namespace bbe::targets::x86::impl{
                         case CALL_BUILTIN: {
                             switch(dn.primitive()){
                                 case 10:
-                                    return encode_arith<x::encode::add>(*dn.parents()[0uz],*dn.parents()[1uz]);
+                                    return encode_arith<x::instructions::add>(*dn.parents()[0uz],*dn.parents()[1uz]);
                                 case 11:
-                                    return encode_arith<x::encode::sub>(*dn.parents()[0uz],*dn.parents()[1uz]);
+                                    return encode_arith<x::instructions::sub>(*dn.parents()[0uz],*dn.parents()[1uz]);
+                                case 50:
+                                    return encode_comparison<x::instructions::set::e>(*dn.parents()[0uz],*dn.parents()[1uz]);
+                                case 51:
+                                    return encode_comparison<x::instructions::set::le>(*dn.parents()[0uz],*dn.parents()[1uz]);
                                 default:
                                     throw std::logic_error("x86 compile: unknown magic "s+std::to_string(dn.primitive()));
                             }
@@ -136,15 +124,15 @@ namespace bbe::targets::x86::impl{
     }
     Function::Function(const dfg::DataFlowGraph& dfg){
         FunctionCompiler compiler{*this};
-        x::encode::push::r64(b,x::reg::BP);
-        encode_rm_r<x::encode::mov>(x::width::W64,b,0b11_b,x::reg::BP,x::reg::SP);
+        x::instructions::push::r64(b,x::reg::BP);
+        x::instructions::mov::rm_r::for_width<x::width::W64>::encode(b,0b11_b,x::reg::BP,x::reg::SP);
         compiler.compile_node(*dfg.stdout_result());
         auto retv{compiler.compile_node(*dfg.root())};
         if(retv.is_pack()){
             throw std::logic_error("x86 compile: ABI: must not return a pack");
         }
         compiler.into(retv.id(),x::reg::A);
-        x::encode::leave(b);
-        x::encode::ret::near(b);
+        x::instructions::leave(b);
+        x::instructions::ret::near(b);
     }
 }

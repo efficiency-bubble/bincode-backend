@@ -16,7 +16,7 @@ int main(){
     ProjectEntitiesPool pep;
     std::uint32_t example_fn = pep.function_pool().emplace(nullptr,std::vector<const Type*>{});
     pep.function_pool()[example_fn].set(
-        cmag(FN_SUB32,u32(1422),u32(1023))
+        cmag(FN_EQ32,u32(1024),cmag(FN_SUB32,u32(1025),u32(1)))
     );
     bbe::targets::x86::Function fn{pep.function_pool()[example_fn]};
     for(const std::byte b : fn.instructions()){
@@ -34,6 +34,6 @@ int main(){
     std::system("gcc -shared test/example.o -o test/example.so");
     
     std::unique_ptr<void,cppp::static_functor<dlclose>> dl{dlopen("test/example.so",RTLD_LAZY)};
-    cppp::println<u8"Function returns: {}"_ts>(std::bit_cast<std::uint32_t(*)()>(dlsym(dl.get(),"example"))());
+    cppp::println<u8"Function returns: {}"_ts>(std::bit_cast<bool(*)()>(dlsym(dl.get(),"example"))());
     return 0;
 }
