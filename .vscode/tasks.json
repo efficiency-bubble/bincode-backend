@@ -23,6 +23,8 @@
             "label": "Compile Backend",
             "command": "make",
             "args": [
+                "-j",
+                "7",
                 "bin/backend"
             ],
             "problemMatcher": "$gcc",
