@@ -1,5 +1,6 @@
 #pragma once
 #include"../targets/dfg.hpp"
+#include<cppp/object-view.hpp>
 #include"entity_pool.hpp"
 #include<unordered_map>
 #include"value.hpp"
@@ -8,7 +9,7 @@ namespace bbe::inter::dfg::impl{
     class CompiledFunctionPool : public inter::impl::CompiledFunctionPool<targets::dfg::DataFlowGraph>{
         public:
             using inter::impl::CompiledFunctionPool<targets::dfg::DataFlowGraph>::CompiledFunctionPool;
-            Value call(ProjectEntitiesPool::index_type,const std::vector<Value>&) const;
+            Value call(ProjectEntitiesPool::index_type,cppp::view<const Value>) const;
     };
 }
 namespace bbe::inter::dfg{
