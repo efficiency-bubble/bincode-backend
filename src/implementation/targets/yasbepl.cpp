@@ -59,7 +59,7 @@ namespace bbe::targets::yasbepl::impl{
                             std::format_to(std::back_inserter(code),">{}"sv,node->primitive());
                             break;
                         case CALL_BUILTIN: {
-                            const auto& argv = node->parents().front()->parents();
+                            const auto& argv = node->parents();
                             switch(node->primitive()){
                                 case 10: // add32
                                     compile(argv[0uz]);
