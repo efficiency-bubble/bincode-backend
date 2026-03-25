@@ -56,6 +56,9 @@ namespace bbe::inter::rtl::impl{
                 case MOV:
                     values[ins.dst] = values[ins.src];
                     break;
+                case CEQ:
+                    values[ins.dst] = boolv{values[ins.dst].get<uint32v>().value == values[ins.src].get<uint32v>().value};
+                    break;
                 case CLE:
                     values[ins.dst] = boolv{values[ins.dst].get<uint32v>().value <= values[ins.src].get<uint32v>().value};
                     break;

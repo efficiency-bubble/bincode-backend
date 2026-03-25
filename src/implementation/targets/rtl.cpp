@@ -81,6 +81,12 @@ namespace bbe::targets::rtl::impl{
                             static_cast<void>(compile_node(par[1uz])); // place side effect before
                             fn.ins.emplace_back(Operation::PRI,compile_node(par[0uz]));
                             return NVAL;
+                        case 50: {
+                            std::uint32_t r = next_reg();
+                            fn.ins.emplace_back(Operation::MOV,r,compile_node(par[0uz]));
+                            fn.ins.emplace_back(Operation::CEQ,r,compile_node(par[1uz]));
+                            return r;
+                        }
                         case 51: {
                             std::uint32_t r = next_reg();
                             fn.ins.emplace_back(Operation::MOV,r,compile_node(par[0uz]));
