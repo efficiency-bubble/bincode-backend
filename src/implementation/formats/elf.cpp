@@ -13,7 +13,7 @@ namespace bbe::formats::elf::impl{
         add_section(u8".text"sv,1/*binary data*/,progbuf.data(),progbuf.size(),0x1000,0x10,true,false,true);
         {
             cppp::bytes& symtab = section_data.emplace_back();
-            symtab.resize(0x18);
+            symtab.resize(0x18,0_b);
             for(const targets::x86::SymbolInfo& sym : prog.symbols()){
                 symtab.appendl<std::uint32_t>(symbol_names.add(sym.name()));
                 symtab.append(
