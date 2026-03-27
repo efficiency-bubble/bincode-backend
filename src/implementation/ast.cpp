@@ -31,7 +31,7 @@ namespace bbe::impl{
             using enum NodeType;
             case UINT32: case UINT64: case BOOL: case ARGV: case GETVAR: case BREAK: case UINT32SYM: case FNSYM: case NTYPE:
                 return 0;
-            case SETVAR: case FOREVER:
+            case SETVAR: case FOREVER: case PACKIND:
                 return 1;
             case FORK:
                 return 3;
