@@ -1,5 +1,5 @@
 COMPOPT := -std=c++26 -flto=7 -fuse-linker-plugin -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wno-maybe-uninitialized -m64 -I"src/include" -I$(cppinclude)
-RELEASEOPT := -O3 -s
+RELEASEOPT := -O3 -s -DNDEBUG
 DEBUGOPT := -O0 -g
 FINALOPT := $(COMPOPT) -L$(cpplibs)
 LIBNAME := bbe
