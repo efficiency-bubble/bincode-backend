@@ -91,8 +91,8 @@ ASTNode fibonacci(){
         cmag(51,pind(argv(),0),u32(2)),
         u32(1),
         cmag(10,
-            cmag(0,fn(0),pack(cmag(11,pind(argv(),0),u32(1)))),
-            cmag(0,fn(0),pack(cmag(11,pind(argv(),0),u32(2))))
+            cmag(0,fn(0),cmag(11,pind(argv(),0),u32(1))),
+            cmag(0,fn(0),cmag(11,pind(argv(),0),u32(2)))
         )
     );
 }

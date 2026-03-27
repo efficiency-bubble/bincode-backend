@@ -7,12 +7,20 @@ namespace bbe::targets::x86::impl{
     struct FunctionRelocation{
         std::uint32_t offset;
         ProjectEntitiesPool::index_type fni;
+        // size of the instruction being relocated; since IP-relative 
+        std::uint32_t isize;
     };
     class Function{
         cppp::bytes b;
         std::vector<FunctionRelocation> rels;
         public:
             Function(const dfg::DataFlowGraph& d);
+            void add_relocation(FunctionRelocation fr){
+                rels.emplace_back(fr);
+            }
+            const std::vector<FunctionRelocation>& relocations() const{
+                return rels;
+            }
             cppp::bytes& instructions(){
                 return b;
             }
@@ -63,6 +71,7 @@ namespace bbe::targets::x86::impl{
     };
 }
 namespace bbe::targets::x86{
+    BBE_EXPORT FunctionRelocation;
     BBE_EXPORT Function;
     BBE_EXPORT SymbolType;
     BBE_EXPORT SymbolInfo;

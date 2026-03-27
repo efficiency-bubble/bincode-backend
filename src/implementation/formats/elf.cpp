@@ -1,9 +1,9 @@
 #include<bbe/formats/elf.hpp>
 #include<cppp/int.hpp>
+#include<elf.h>
 namespace bbe::formats::elf::impl{
     void Elf::add_text(const targets::x86::Program& prog){
         using namespace std::literals;
-        // using enum targets::x64d::SymbolType;
         std::vector<std::uint64_t> entoffs;
         cppp::bytes& progbuf = section_data.emplace_back();
         for(const auto& func : prog.functions()){
@@ -37,16 +37,16 @@ namespace bbe::formats::elf::impl{
             add_section(u8".symtab"sv,2/*symbol table*/,symtab.data(),symtab.size(),0,0,false,false,false,0x18,
             static_cast<std::uint32_t>(SYMBOL_NAME_TABLE_INDEX+1),1);
         }
-//         if(!prog.relocations().empty()){
-//             cppp::bytes& reltab = section_data.emplace_back();
-//             for(const targets::x64d::Relocation& rel : prog.relocations()){
-//                 reltab.appendl<std::uint64_t>(rel.offset);
-//                 reltab.appendl<std::uint64_t>((rel.symbol+1)<<32uz | 2 /* PC-relative */);
-//                 reltab.appendl<std::uint64_t>(-rel.isize);
-//             }
-//             add_section(u8".rela.text"sv,4/*relocations table*/,reltab.data(),reltab.size(),0,0,false,false,false,0x18,
-// static_cast<std::uint32_t>(sections.size()),static_cast<std::uint32_t>(sections.size()-1));
-//         }
+        cppp::bytes& reltab = section_data.emplace_back();
+        for(const auto& fn : prog.functions()){
+            for(const targets::x86::FunctionRelocation rel : fn.relocations()){
+                reltab.appendl<std::uint64_t>(rel.offset);
+                reltab.appendl<std::uint64_t>(static_cast<std::uint64_t>(rel.fni+1)<<32uz | 2 /* PC-relative */);
+                reltab.appendl<std::int64_t>(-static_cast<std::int64_t>(rel.isize));
+            }
+        }
+        add_section(u8".rela.text"sv,4/*relocations table*/,reltab.data(),reltab.size(),0,0,false,false,false,0x18,
+static_cast<std::uint32_t>(sections.size()),static_cast<std::uint32_t>(sections.size()-1));
     }
     cppp::bytes Elf::encode() const{
         section_names.data();

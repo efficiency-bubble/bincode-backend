@@ -34,8 +34,13 @@ namespace bbe::targets::x86::impl{
                 value_t new_value_id(){
                     return value_counter++;
                 }
-                std::uint32_t allocate_dw(std::uint32_t vid){
+                std::uint32_t allocate_dw(value_t vid){
                     sp += 4;
+                    value_frame_off.try_emplace(vid,sp);
+                    return sp;
+                }
+                std::uint32_t allocate_qw(value_t vid){
+                    sp += 8;
                     value_frame_off.try_emplace(vid,sp);
                     return sp;
                 }
@@ -49,11 +54,19 @@ namespace bbe::targets::x86::impl{
                     }
                     return dv.id();
                 }
-                static void rtos(cppp::bytes& b,std::byte r,x::displacement<x::width::W8> soff){
-                    x::instructions::mov::rm_r::for_width<x::width::W32>::encode(b,0b01_b,0b101_b,soff,r);
+                static std::uint32_t require_pack(DataValue dv,const cppp::str& orelse){
+                    if(dv.is_pack()){
+                        return dv.id();
+                    }else{
+                        throw std::logic_error(reinterpret_cast<const char*>(orelse.c_str()));
+                    }
                 }
-                static void stor(cppp::bytes& b,std::int8_t soff,std::byte r){
-                    x::instructions::mov::r_rm::for_width<x::width::W32>::encode(b,r,0b01_b,0b101_b /* BP + disp8 */,x::displacement<x::width::W8>(-soff));
+                template<x::width w=x::width::W32>
+                static void rtos(cppp::bytes& b,std::byte r,x::displacement<x::width::W8> soff){
+                    x::instructions::mov::rm_r::for_width<w>::encode(b,0b01_b,x::reg::BP,soff,r);
+                }
+                static void stor(cppp::bytes& b,x::displacement<x::width::W8> soff,std::byte r){
+                    x::instructions::mov::r_rm::for_width<x::width::W32>::encode(b,r,0b01_b /* disp8 */,x::reg::BP,soff);
                 }
                 template<typename T>
                 DataValue encode_arith(const dfg::DataNode& lhsn,const dfg::DataNode& rhsn){
@@ -79,17 +92,36 @@ namespace bbe::targets::x86::impl{
                     rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(vid)));
                     return {vid,false};
                 }
+                static std::byte arg_reg(std::uint32_t ind){
+                    switch(ind){
+                        case 0: return x::reg::DI;
+                        case 1: return x::reg::SI;
+                        case 2: return x::reg::D;
+                        case 3: return x::reg::C;
+                        default: throw std::logic_error("x86 compile: Don't know where is argument #"s+std::to_string(ind));
+                    }
+                }
             public:
                 FunctionCompiler(Function& f) : f(f){}
                 void into(value_t v,std::byte reg) const{
-                    stor(f.instructions(),static_cast<std::int8_t>(value_frame_off.at(v)),reg);
+                    stor(f.instructions(),soff_to_disp8(value_frame_off.at(v)),reg);
+                }
+                void load_args(std::uint32_t argc){
+                    value_t pid = new_value_id();
+                    if(pid) throw std::logic_error("x86 compile: arguments, if present, must be loaded first"s);
+                    auto& contents = pack_contents.try_emplace(pid).first->second;
+                    for(std::uint32_t i=0;i<argc;++i){
+                        value_t avid = new_value_id();
+                        rtos(f.instructions(),arg_reg(i),soff_to_disp8(allocate_dw(avid)));
+                        contents.emplace_back(avid);
+                    }
                 }
                 DataValue compile_node(const dfg::DataNode& dn){
                     switch(dn.operation()){
                         using enum dfg::NodeType;
                         case UINT32: {
                             value_t vid = new_value_id();
-                            x::instructions::mov::rm_imm::for_width<x::width::W32>::encode(f.instructions(),0b01_b,0b101_b /* BP + disp8 */,soff_to_disp8(allocate_dw(vid)),dn.primitive());
+                            x::instructions::mov::rm_imm::for_width<x::width::W32>::encode(f.instructions(),0b01_b /* disp8 */,x::reg::BP,soff_to_disp8(allocate_dw(vid)),dn.primitive());
                             return {vid,false};
                         }
                         case PACK: {
@@ -100,8 +132,25 @@ namespace bbe::targets::x86::impl{
                             }
                             return {pid,true};
                         }
+                        case PACKIND: {
+                            std::uint32_t pkid = require_pack(compile_node(*dn.parents().front()),u8"x86 compile: can't index a non-pack"s);
+                            return {pack_contents[pkid][dn.primitive()],false};
+                        }
+                        case ARGV:
+                            return {0,true};
                         case CALL_BUILTIN: {
                             switch(dn.primitive()){
+                                case 0: {
+                                    value_t ret = new_value_id();
+                                    value_t fn = require_value(compile_node(*dn.parents().front()),u8"x86 compile: a pack is not a function pointer"s);
+                                    for(std::uint32_t i=1;i<static_cast<std::uint32_t>(dn.parents().size());++i){
+                                        value_t argv = require_value(compile_node(*dn.parents()[i]),u8"x86 compile: can't pass a pack as an argument"s);
+                                        stor(f.instructions(),soff_to_disp8(value_frame_off.at(argv)),arg_reg(i-1));
+                                    }
+                                    x::instructions::call::near_abs::for_width<x::width::W64>::encode(f.instructions(),0x01_b /* disp8 */,x::reg::BP,soff_to_disp8(value_frame_off.at(fn)));
+                                    rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(ret)));
+                                    return {ret,false};
+                                }
                                 case 10:
                                     return encode_arith<x::instructions::add>(*dn.parents()[0uz],*dn.parents()[1uz]);
                                 case 11:
@@ -114,11 +163,54 @@ namespace bbe::targets::x86::impl{
                                     throw std::logic_error("x86 compile: unknown magic "s+std::to_string(dn.primitive()));
                             }
                         }
+                        case BOOL: {
+                            value_t vid = new_value_id();
+                            x::instructions::mov::rm_imm::for_width<x::width::W32>::encode(f.instructions(),0b01_b /* disp8 */,x::reg::BP,soff_to_disp8(allocate_dw(vid)),dn.primitive());
+                            return {vid,false};
+                        }
+                        case FORK: {
+                            value_t rid = new_value_id();
+                            x::displacement<x::width::W8> spoff = soff_to_disp8(allocate_dw(rid));
+                            value_t cond = require_value(compile_node(*dn.parents()[0uz]),u8"x86 compile: condition in fork is erroneously a pack"s);
+                            into(cond,x::reg::A);
+                            x::instructions::test::rm_r::for_width<x::width::W32>::encode(f.instructions(),0b11_b,x::reg::A,x::reg::A);
+                            std::size_t jzloc = f.instructions().size();
+                            auto jz = x::instructions::j::z::for_width<x::width::W8>::encode(f.instructions(),x::skip_immediate);
+                            {
+                                value_t lv = require_value(compile_node(*dn.parents()[1uz]),u8"x86 compile: unsupported: lhs of fork being a pack"s);
+                                into(lv,x::reg::A);
+                                rtos(f.instructions(),x::reg::A,spoff);
+                            }
+                            std::size_t jeloc = f.instructions().size();
+                            auto je = x::instructions::jmp::rel::for_width<x::width::W8>::encode(f.instructions(),x::skip_immediate);
+                            
+                            cppp::write<std::int8_t>(f.instructions().data()+jzloc+jz.offset_of_first<x::pred_is_immediate>,static_cast<std::int8_t>(f.instructions().size()-jzloc-jz.total_size));
+                            {
+                                value_t rv = require_value(compile_node(*dn.parents()[2uz]),u8"x86 compile: unsupported: rhs of fork being a pack"s);
+                                into(rv,x::reg::A);
+                                rtos(f.instructions(),x::reg::A,spoff);
+                            }
+                            cppp::write<std::int8_t>(f.instructions().data()+jeloc+je.offset_of_first<x::pred_is_immediate>,static_cast<std::int8_t>(f.instructions().size()-jeloc-je.total_size));
+                            return {rid,false};
+                        }
+                        case FNSYM: {
+                            value_t rid = new_value_id();
+                            std::size_t offs = f.instructions().size();
+                            auto lea = x::instructions::lea::for_width<x::width::W64>::encode(f.instructions(),x::reg::A,0b00_b,0b101_b /* rip+disp32 on 64-bit mode*/,x::skip_displacement<x::width::W32>);
+                            constexpr std::size_t disp_local_offs = lea.offset_of_first<x::pred_is_modrm>+1;
+                            offs += disp_local_offs;
+                            f.add_relocation({.offset=static_cast<std::uint32_t>(offs),.fni=dn.primitive(),.isize=static_cast<std::uint32_t>(lea.total_size-disp_local_offs)});
+                            rtos<x::width::W64>(f.instructions(),x::reg::A,soff_to_disp8(allocate_qw(rid)));
+                            return {rid,false};
+                        }
                         case STDOUT:
                             return {};
                         default:
                             throw std::logic_error("x86 compile: unknown op "s+std::to_string(std::to_underlying(dn.operation())));
                     }
+                }
+                std::uint32_t stack_size() const{
+                    return sp;
                 }
         };
     }
@@ -126,6 +218,9 @@ namespace bbe::targets::x86::impl{
         FunctionCompiler compiler{*this};
         x::instructions::push::r64(b,x::reg::BP);
         x::instructions::mov::rm_r::for_width<x::width::W64>::encode(b,0b11_b,x::reg::BP,x::reg::SP);
+        std::size_t enter = b.size();
+        enter += x::instructions::sub::rm_imm::for_width<x::width::W64>::encode(b,0b11_b,x::reg::SP,x::skip_immediate).offset_of_first<x::pred_is_immediate>;
+        compiler.load_args(1); // TODO: use the actual argc of the function
         compiler.compile_node(*dfg.stdout_result());
         auto retv{compiler.compile_node(*dfg.root())};
         if(retv.is_pack()){
@@ -134,5 +229,6 @@ namespace bbe::targets::x86::impl{
         compiler.into(retv.id(),x::reg::A);
         x::instructions::leave(b);
         x::instructions::ret::near(b);
+        cppp::write<std::uint32_t>(b.data()+enter,compiler.stack_size());
     }
 }
