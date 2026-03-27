@@ -31,11 +31,11 @@ namespace bbe::impl{
             using enum NodeType;
             case UINT32: case UINT64: case BOOL: case ARGV: case GETVAR: case BREAK: case UINT32SYM: case FNSYM: case NTYPE:
                 return 0;
-            case SETVAR: case CALL_BUILTIN: case FOREVER:
+            case SETVAR: case FOREVER:
                 return 1;
             case FORK:
                 return 3;
-            case PACK: case COMMA:
+            case PACK: case COMMA: case CALL_BUILTIN:
                 return VARIABLE;
             default:
                 std::unreachable();
