@@ -184,20 +184,20 @@ namespace bbe::targets::x86::impl{
                             std::size_t jeloc = f.instructions().size();
                             auto je = x::instructions::jmp::rel::for_width<x::width::W8>::encode(f.instructions(),x::skip_immediate);
                             
-                            cppp::write<std::int8_t>(f.instructions().data()+jzloc+jz.offset_of_first<x::pred_is_immediate>,static_cast<std::int8_t>(f.instructions().size()-jzloc-jz.total_size));
+                            cppp::write<std::int8_t>(f.instructions().data()+jzloc+jz.offset_of_first<x::ComponentType::IMMEDIATE>,static_cast<std::int8_t>(f.instructions().size()-jzloc-jz.total_size));
                             {
                                 value_t rv = require_value(compile_node(*dn.parents()[2uz]),u8"x86 compile: unsupported: rhs of fork being a pack"s);
                                 into(rv,x::reg::A);
                                 rtos(f.instructions(),x::reg::A,spoff);
                             }
-                            cppp::write<std::int8_t>(f.instructions().data()+jeloc+je.offset_of_first<x::pred_is_immediate>,static_cast<std::int8_t>(f.instructions().size()-jeloc-je.total_size));
+                            cppp::write<std::int8_t>(f.instructions().data()+jeloc+je.offset_of_first<x::ComponentType::IMMEDIATE>,static_cast<std::int8_t>(f.instructions().size()-jeloc-je.total_size));
                             return {rid,false};
                         }
                         case FNSYM: {
                             value_t rid = new_value_id();
                             std::size_t offs = f.instructions().size();
                             auto lea = x::instructions::lea::for_width<x::width::W64>::encode(f.instructions(),x::reg::A,0b00_b,0b101_b /* rip+disp32 on 64-bit mode*/,x::skip_displacement<x::width::W32>);
-                            constexpr std::size_t disp_local_offs = lea.offset_of_first<x::pred_is_modrm>+1;
+                            constexpr std::size_t disp_local_offs = lea.offset_of_first<x::ComponentType::DISPLACEMENT>;
                             offs += disp_local_offs;
                             f.add_relocation({.offset=static_cast<std::uint32_t>(offs),.fni=dn.primitive(),.isize=static_cast<std::uint32_t>(lea.total_size-disp_local_offs)});
                             rtos<x::width::W64>(f.instructions(),x::reg::A,soff_to_disp8(allocate_qw(rid)));
@@ -214,15 +214,15 @@ namespace bbe::targets::x86::impl{
                 }
         };
     }
-    Function::Function(const dfg::DataFlowGraph& dfg){
+    Function::Function(const dfg::Function& f){
         FunctionCompiler compiler{*this};
         x::instructions::push::r64(b,x::reg::BP);
         x::instructions::mov::rm_r::for_width<x::width::W64>::encode(b,0b11_b,x::reg::BP,x::reg::SP);
         std::size_t enter = b.size();
-        enter += x::instructions::sub::rm_imm::for_width<x::width::W64>::encode(b,0b11_b,x::reg::SP,x::skip_immediate).offset_of_first<x::pred_is_immediate>;
-        compiler.load_args(1); // TODO: use the actual argc of the function
-        compiler.compile_node(*dfg.stdout_result());
-        auto retv{compiler.compile_node(*dfg.root())};
+        enter += x::instructions::sub::rm_imm::for_width<x::width::W64>::encode(b,0b11_b,x::reg::SP,x::skip_immediate).offset_of_first<x::ComponentType::IMMEDIATE>;
+        compiler.load_args(static_cast<std::uint32_t>(f.signature().parameters().size()));
+        compiler.compile_node(*f.dfg().stdout_result());
+        auto retv{compiler.compile_node(*f.dfg().root())};
         if(retv.is_pack()){
             throw std::logic_error("x86 compile: ABI: must not return a pack");
         }

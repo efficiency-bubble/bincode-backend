@@ -50,7 +50,7 @@ void encode_clist(DotFile& df,const targets::dfg::Clobbers& cb){
 }
 int main(){
     ProjectEntitiesPool pep;
-    std::uint32_t example_fn = pep.function_pool().emplace(nullptr,std::vector<const Type*>{});
+    std::uint32_t example_fn = pep.function_pool().emplace(nullptr,std::vector<const TypeLayout*>{});
     pep.function_pool()[example_fn].set(comma(2uz,cmag(FN_PRU32,pack(u32(1))),cmag(FN_PRU32,pack(u32(2))),cmag(FN_PRU32,pack(u32(3))),cmag(FN_PRU32,pack(u32(3))),cmag(FN_PRU32,pack(u32(3))),cmag(FN_PRU32,pack(u32(3)))));
     inter::dfg::CompiledFunctionPool cpool{pep};
     const auto& graph = cpool.graph(example_fn);

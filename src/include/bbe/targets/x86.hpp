@@ -14,7 +14,7 @@ namespace bbe::targets::x86::impl{
         cppp::bytes b;
         std::vector<FunctionRelocation> rels;
         public:
-            Function(const dfg::DataFlowGraph& d);
+            Function(const dfg::Function& f);
             void add_relocation(FunctionRelocation fr){
                 rels.emplace_back(fr);
             }

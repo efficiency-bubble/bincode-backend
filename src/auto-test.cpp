@@ -84,7 +84,7 @@ int main(){
         }},
         {u8"Dfg inter: add values"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
-            std::uint32_t fn = proj.function_pool().emplace(nullptr,std::vector<const bbe::Type*>{});
+            std::uint32_t fn = proj.function_pool().emplace(nullptr,std::vector<const bbe::TypeLayout*>{});
             proj.function_pool()[fn].set(cmag(FN_ADD32,pack(u32(1),u32(41))));
             bbe::inter::dfg::CompiledFunctionPool cfp{proj};
             ASSERT_EQ(cfp.call(fn,{}).get<bbe::inter::uint32v>().value,42,"Wrong return value");
@@ -92,7 +92,7 @@ int main(){
         }},
         {u8"Dfg inter: equality comparison"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
-            std::uint32_t fn = proj.function_pool().emplace(nullptr,std::vector<const bbe::Type*>{});
+            std::uint32_t fn = proj.function_pool().emplace(nullptr,std::vector<const bbe::TypeLayout*>{});
             proj.function_pool()[fn].set(cmag(FN_EQ32,pack(u32(42),u32(42))));
             bbe::inter::dfg::CompiledFunctionPool cfp{proj};
             if(!cfp.call(fn,{}).get<bbe::inter::boolv>().value) return std::unexpected(u8"Wrong return value"s);
@@ -100,7 +100,7 @@ int main(){
         }},
         {u8"Dfg inter: pack indexing"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
-            std::uint32_t fn = proj.function_pool().emplace(nullptr,std::vector<const bbe::Type*>{});
+            std::uint32_t fn = proj.function_pool().emplace(nullptr,std::vector<const bbe::TypeLayout*>{});
             proj.function_pool()[fn].set(cmag(FN_IPACK,pack(pack(u32(42),u32(41)),u32(1))));
             bbe::inter::dfg::CompiledFunctionPool cfp{proj};
             ASSERT_EQ(cfp.call(fn,{}).get<bbe::inter::uint32v>().value,41,"Wrong return value");

@@ -24,14 +24,9 @@
             "command": "make",
             "args": [
                 "-j",
-                "7",
-                "bin/backend"
+                "7"
             ],
             "problemMatcher": "$gcc",
-            "presentation": {
-                "clear": true,
-                "showReuseMessage": false
-            },
             "group": "build"
         }
     ]

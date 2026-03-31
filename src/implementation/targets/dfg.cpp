@@ -5,6 +5,7 @@
 #include<ranges>
 #include<string>
 namespace bbe::targets::dfg::impl{
+    using namespace std::literals;
     const DataNode* DataFlowGraph::compile(CodeBranch& br,const ASTNode& nd){
         switch(nd.type()){
             using enum bbe::NodeType;
@@ -95,5 +96,5 @@ namespace bbe::targets::dfg::impl{
                 throw std::logic_error("DfgCompiler::compile(): Unknown node type "s+std::to_string(std::to_underlying(nd.type())));
         }
     }
-    DataFlowGraph::DataFlowGraph(const Function& f) : _root((main.setvar(IO_VAR,&_nodes.emplace_back(NodeType::STDOUT)),compile(main,f.ast()))){}
+    DataFlowGraph::DataFlowGraph(const bbe::Function& f) : _root((main.setvar(IO_VAR,&_nodes.emplace_back(NodeType::STDOUT)),compile(main,f.ast()))){}
 }

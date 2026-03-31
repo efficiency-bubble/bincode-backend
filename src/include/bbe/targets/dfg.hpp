@@ -8,7 +8,6 @@
 #include<tuple>
 #include<deque>
 namespace bbe::targets::dfg::impl{
-    using namespace bbe::impl;
     enum class NodeType : std::uint16_t{
         UINT32,UINT64,PACK,COMMA,PACKIND,ARGV,CALL_BUILTIN=9,BOOL=20,FORK,
         FNSYM=200,
@@ -68,7 +67,7 @@ namespace bbe::targets::dfg::impl{
         const DataNode* _root;
         const DataNode* compile(CodeBranch&,const ASTNode&);
         public:
-            DataFlowGraph(const Function&);
+            DataFlowGraph(const bbe::Function&);
             const std::deque<DataNode>& nodes() const{
                 return _nodes;
             }
@@ -79,10 +78,23 @@ namespace bbe::targets::dfg::impl{
                 return _root;
             }
     };
+    class Function{
+        const FunctionSignature* sig;
+        DataFlowGraph _dfg;
+        public:
+            Function(const bbe::Function& fn) : sig(&fn.signature()), _dfg(fn){}
+            const DataFlowGraph& dfg() const{
+                return _dfg;
+            }
+            const FunctionSignature& signature() const{
+                return *sig;
+            }
+    };
 }
 namespace bbe::targets::dfg{
     BBE_EXPORT NodeType;
     BBE_EXPORT DataNode;
     BBE_EXPORT DataFlowGraph;
+    BBE_EXPORT Function;
 }
 

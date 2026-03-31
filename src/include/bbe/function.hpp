@@ -3,21 +3,29 @@
 #include"ast.hpp"
 #include<vector>
 namespace bbe::impl{
+    class FunctionSignature{
+        Type ret;
+        std::vector<Type> part;
+        public:
+            FunctionSignature(Type r,std::vector<Type>&& p) : ret(std::move(r)), part(std::move(p)){}
+            FunctionSignature(Type r) : ret(std::move(r)){}
+            const Type& return_type() const{
+                return ret;
+            }
+            const std::vector<Type>& parameters() const{
+                return part;
+            }
+    };
     class Function{
-        const Type* ret;
-        std::vector<const Type*> argt;
+        FunctionSignature sig;
         ASTNode root;
         public:
-            Function(const Type* r) :  ret(r){}
-            Function(const Type* r,std::vector<const Type*>&& a) :  ret(r), argt(std::move(a)){}
+            Function(FunctionSignature s) :  sig(std::move(s)){}
             void set(ASTNode&& r){
                 root = std::move(r);
             }
-            const Type* return_type() const{
-                return ret;
-            }
-            const std::vector<const Type*> argtypes() const{
-                return argt;
+            const FunctionSignature& signature() const{
+                return sig;
             }
             ASTNode& ast(){
                 return root;
@@ -28,5 +36,6 @@ namespace bbe::impl{
     };
 }
 namespace bbe{
+    BBE_EXPORT FunctionSignature;
     BBE_EXPORT Function;
 }

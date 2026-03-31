@@ -12,7 +12,8 @@
 using namespace cppp::literals;
 int main(){
     ProjectEntitiesPool pep;
-    std::uint32_t example_fn = pep.function_pool().emplace(nullptr,std::vector<const Type*>{});
+    Type b_uint32{Type::T_UINT32};
+    std::uint32_t example_fn = pep.function_pool().emplace(FunctionSignature{b_uint32,{b_uint32}});
     pep.function_pool()[example_fn].set(fibonacci());
     bbe::targets::x86::Function fn{pep.function_pool()[example_fn]};
     for(const std::byte b : fn.instructions()){

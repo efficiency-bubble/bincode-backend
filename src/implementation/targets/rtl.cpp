@@ -61,7 +61,10 @@ namespace bbe::targets::rtl::impl{
                     switch(node->primitive()){
                         case 0: {
                             std::uint32_t r = next_reg();
-                            fn.ins.emplace_back(Operation::MOV,r,compile_node(par[1uz]));
+                            fn.ins.emplace_back(Operation::MKPACK,r);
+                            for(std::size_t i=1uz;i<par.size();++i){
+                                fn.ins.emplace_back(Operation::PACKATT,r,compile_node(par[i]));
+                            }
                             fn.ins.emplace_back(Operation::CALL,r,compile_node(par[0uz]));
                             return r;
                         }
