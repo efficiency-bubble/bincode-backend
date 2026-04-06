@@ -9,7 +9,7 @@
 using namespace cppp::literals;
 int main(){
     ProjectEntitiesPool pep;
-    std::uint32_t example_fn = pep.function_pool().emplace(nullptr,std::vector<const TypeLayout*>{});
+    std::uint32_t example_fn = pep.function_pool().emplace(nullptr,std::vector<const TypeInfo*>{});
     pep.function_pool()[example_fn].set(fibonacci());
     bbe::inter::rtl::CompiledFunctionPool fn{pep};
     

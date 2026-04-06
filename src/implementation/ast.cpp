@@ -26,7 +26,7 @@ namespace bbe::impl{
         }while(v);
         dst[dst.size()-1] |= 0x80_b;
     }
-    static std::uint32_t nchld(NodeType t){
+    static std::uint32_t nchld_of(NodeType t){
         switch(t){
             using enum NodeType;
             case UINT32: case UINT64: case BOOL: case ARGV: case GETVAR: case BREAK: case UINT32SYM: case FNSYM: case NTYPE:
@@ -44,40 +44,87 @@ namespace bbe::impl{
     static bool has_extended_data(NodeType t){
         return t == NodeType::UINT64;
     }
-    ASTNode::ASTNode(cppp::frozen_byte_view& b) : chld_and_data(_uninit_tag_t{}), _type{cppp::read<std::uint8_t>(b.read(1uz))}{
-        chld_and_data.prim = uleb128_r<std::uint32_t>(b);
-        chld_and_data.n = nchld(_type);
-        if(chld_and_data.n == VARIABLE){
-            chld_and_data.n = uleb128_r<std::uint32_t>(b);
+    ASTNode::ASTNode(cppp::frozen_byte_view& b) : _type{cppp::read<std::uint8_t>(b.read(1uz))}{
+        prim = uleb128_r<std::uint32_t>(b);
+        nchld = nchld_of(_type);
+        if(nchld == VARIABLE){
+            nchld = uleb128_r<std::uint32_t>(b);
         }
-        if(chld_and_data.n){
-            chld_and_data._data = reinterpret_cast<std::uint64_t>(uninitialized_alloc32<ASTNode>(chld_and_data.n));
-            for(std::uint32_t i=0;i<chld_and_data.n;++i){
-                new(chld_and_data.m()+i) ASTNode(b);
+        if(nchld){
+            _data = reinterpret_cast<std::uint64_t>(uninitialized_alloc32<ASTNode>(nchld));
+            for(std::uint32_t i=0;i<nchld;++i){
+                new(m()+i) ASTNode(b);
             }
         }else{
             if(has_extended_data(_type)){
-                chld_and_data._data = cppp::read<std::uint64_t>(b.read(8uz));
+                _data = cppp::read<std::uint64_t>(b.read(8uz));
             }else{
-                chld_and_data._data = 0; // don't leave it uninitialized, to be compare friendly
+                _data = 0; // don't leave it uninitialized, to be compare friendly
             }
         }
     }
     void ASTNode::serialize(cppp::bytes& b) const{
         cppp::write(b.resb(1uz),std::to_underlying(_type));
-        uleb128_w(b,chld_and_data.prim);
-        std::uint32_t nc = nchld(_type);
+        uleb128_w(b,prim);
+        std::uint32_t nc = nchld_of(_type);
         if(nc == VARIABLE){
-            uleb128_w(b,chld_and_data.n);
+            uleb128_w(b,nchld);
         }else{
-            CPPP_ASSERT(nc == chld_and_data.n);
+            CPPP_ASSERT(nc == nchld);
         }
         if(has_extended_data(_type)){
-            CPPP_ASSERT(chld_and_data.n == 0);
-            cppp::write(b.resb(8uz),chld_and_data._data);
+            CPPP_ASSERT(nchld == 0);
+            cppp::write(b.resb(8uz),_data);
         }
-        for(const auto& c : chld_and_data){
+        for(const auto& c : *this){
             c.serialize(b);
+        }
+    }
+    void ASTNode::recalculate_result_type(TypeDatabase& tdb){
+        switch(_type){
+            using enum NodeType;
+            case UINT32: case UINT32SYM:
+                ret = TypeDatabase::T_UINT32;
+                break;
+            case UINT64:
+                ret = TypeDatabase::T_UINT64;
+                break;
+            case PACK: {
+                cppp::fixed_array<type_id> a(nchld);
+                for(std::uint32_t i=0;i<nchld;++i){
+                    a[i] = children()[i].result_type();
+                }
+                ret = tdb.pack_of(std::move(a));
+                break;
+            }
+            case COMMA:
+            case PACKIND: 
+                ret = tdb[children().front().result_type()].pack_contents().array()[getp32()];
+                break;
+            case ARGV:
+                throw std::logic_error("Unimplemented: getting type of argv"s);
+            case CALL_BUILTIN:
+                throw std::logic_error("Unimplemented: getting type of builtin-fn"s);
+            case SETVAR:
+                ret = TypeDatabase::T_VOID;
+                break;
+            case GETVAR:
+                throw std::logic_error("Unimplemented: getting type of var read"s);
+            case BOOL:
+                ret = TypeDatabase::T_BOOL;
+                break;
+            case FORK:
+                throw std::logic_error("Unimplemented: getting type of fork"s);
+            case FOREVER:
+                throw std::logic_error("Unimplemented: getting type of loop"s);
+            case FNSYM:
+                throw std::logic_error("Unimplemented: function types"s);
+            case NTYPE:
+                ret = TypeDatabase::T_ERROR;
+                break;
+            case BREAK:
+                ret = TypeDatabase::T_VOID;
+                break;
         }
     }
 }

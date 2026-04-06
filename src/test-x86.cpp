@@ -12,8 +12,7 @@
 using namespace cppp::literals;
 int main(){
     ProjectEntitiesPool pep;
-    Type b_uint32{Type::T_UINT32};
-    std::uint32_t example_fn = pep.function_pool().emplace(FunctionSignature{b_uint32,{b_uint32}});
+    std::uint32_t example_fn = pep.function_pool().emplace(FunctionSignature{TypeDatabase::T_UINT32,{TypeDatabase::T_UINT32}});
     pep.function_pool()[example_fn].set(fibonacci());
     bbe::targets::x86::Function fn{pep.function_pool()[example_fn]};
     for(const std::byte b : fn.instructions()){
@@ -28,6 +27,6 @@ int main(){
         cppp::BinaryFile outf{u8"test/example.o"s,std::ios_base::out|std::ios_base::binary|std::ios_base::trunc};
         outf.write(elf.encode());
     }
-    std::system("gcc test/test-main.cpp test/example.o -o test/example && test/example");
+    std::system("objdump -d test/example.o && gcc test/test-main.cpp test/example.o -o test/example && test/example");
     return 0;
 }

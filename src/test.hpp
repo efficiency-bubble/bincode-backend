@@ -9,7 +9,6 @@ constexpr static std::uint32_t FN_SUB32 = 11;
 constexpr static std::uint32_t FN_PRU32 = 25;
 constexpr static std::uint32_t FN_EQ32 = 50;
 constexpr static std::uint32_t FN_BNOT = 51;
-constexpr static std::uint32_t FN_IPACK = 80;
 
 ASTNode u32(std::uint32_t val){
     return {NodeType::UINT32,val,0};

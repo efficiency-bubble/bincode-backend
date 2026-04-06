@@ -1,9 +1,10 @@
 #pragma once
 #include"commons.hpp"
-#include<cppp/bytearray.hpp>
+#include"type.hpp"
 #include<cppp/object-view.hpp>
+#include<cppp/bytearray.hpp>
+#include<cppp/assert.hpp>
 #include<algorithm>
-#include<cassert>
 #include<cstdint>
 #include<utility>
 #include<limits>
@@ -25,34 +26,32 @@ namespace bbe::impl{
     static_assert(sizeof(std::uintptr_t)==sizeof(std::uint64_t),"Non-64-bit systems unsupported");
 
     class ASTChildren{
-        friend ASTNode;
-        std::uint64_t _data;
-        std::uint32_t n;
-        std::uint32_t prim;
-        inline void _die();
-        const ASTNode* m() const{
-            return reinterpret_cast<const ASTNode*>(_data);
-        }
-        ASTNode* m(){
-            return reinterpret_cast<ASTNode*>(_data);
-        }
-        // friend-only section (intended to be used by ASTNode)
-        ASTChildren(_uninit_tag_t){}
-        ASTChildren() : n(0){}
-        inline ASTChildren(std::uint32_t n,std::uint32_t prim=0);
-        ASTChildren(ASTChildren&& other) : _data(other._data), n(std::exchange(other.n,0)), prim(other.prim){}
-        ASTChildren(const ASTChildren& other) = delete
-        #ifndef __INTELLISENSE__ // vscode intellisense/EDG doesn't support delete("reason") yet
-        ("Too expensive")
-        #endif
-        ;
-        inline ASTChildren& operator=(ASTChildren&&);
-        ASTChildren& operator=(const ASTChildren&) = delete
-        #ifndef __INTELLISENSE__
-        ("Too expensive")
-        #endif
-        ;
-        inline bool operator==(const ASTChildren&) const;
+        protected:
+            std::uint64_t _data;
+            std::uint32_t nchld;
+            inline void _die();
+            const ASTNode* m() const{
+                return reinterpret_cast<const ASTNode*>(_data);
+            }
+            ASTNode* m(){
+                return reinterpret_cast<ASTNode*>(_data);
+            }
+            
+            ASTChildren(){}
+            inline ASTChildren(std::uint32_t n);
+            ASTChildren(ASTChildren&& other) : _data(other._data), nchld(std::exchange(other.nchld,0)){}
+            ASTChildren(const ASTChildren& other) = delete
+            #ifndef __INTELLISENSE__ // vscode intellisense/EDG doesn't support delete("reason") yet
+            ("Too expensive")
+            #endif
+            ;
+            inline ASTChildren& operator=(ASTChildren&&);
+            ASTChildren& operator=(const ASTChildren&) = delete
+            #ifndef __INTELLISENSE__
+            ("Too expensive")
+            #endif
+            ;
+            inline bool operator==(const ASTChildren&) const;
         public:
             using iterator = ASTNode*;
             using const_iterator = const ASTNode*;
@@ -71,7 +70,7 @@ namespace bbe::impl{
                 return *begin();
             }
             bool empty() const{
-                return !n;
+                return !nchld;
             }
             inline void emplace(ASTNode&&);
             inline ASTNode* end();
@@ -79,14 +78,15 @@ namespace bbe::impl{
             inline ASTNode& back();
             inline const ASTNode& back() const;
             std::uint32_t size() const{
-                return n;
+                return nchld;
             }
             ~ASTChildren(){
                 _die();
             }
     };
-    class ASTNode{
-        ASTChildren chld_and_data;
+    class ASTNode : ASTChildren{
+        std::uint32_t prim;
+        type_id ret;
         NodeType _type;
         public:
             explicit operator bool() const{
@@ -96,54 +96,61 @@ namespace bbe::impl{
                 return _type;
             }
             ASTChildren& children(){
-                return chld_and_data;
+                return *this;
             }
             const ASTChildren& children() const{
-                return chld_and_data;
+                return *this;
             }
             std::uint32_t getp32() const{
-                return chld_and_data.prim;
+                return prim;
             }
             std::uint64_t getp64() const{
-                return chld_and_data._data;
+                return _data;
+            }
+            type_id result_type() const{
+                return ret;
+            }
+            void recalculate_result_type(TypeDatabase&);
+            void recursively_recalculate_result_type(TypeDatabase& t){
+                for(auto& c : children()){
+                    c.recursively_recalculate_result_type(t);
+                }
+                recalculate_result_type(t);
             }
             void setp32(std::uint32_t p){
-                chld_and_data.prim = p;
+                prim = p;
             }
             void setp64(std::uint64_t p){
-                assert(!chld_and_data.n);
-                chld_and_data._data = p;
+                CPPP_ASSERT(nchld);
+                _data = p;
             }
             ASTNode& emplace(std::uint32_t ind,ASTNode&& n){
-                return chld_and_data[ind] = std::move(n);
+                return children()[ind] = std::move(n);
             }
-            ASTNode() = default;
-            ASTNode(NodeType tp,std::uint32_t nchld=0) : chld_and_data(nchld), _type(tp){}
-            ASTNode(NodeType tp,std::uint32_t prim,std::uint32_t nchld) : chld_and_data(nchld,prim), _type(tp){}
+            ASTNode() : ASTChildren(0){}
+            ASTNode(NodeType tp,std::uint32_t nchld=0) : ASTChildren(nchld), prim(0), _type(tp){}
+            ASTNode(NodeType tp,std::uint32_t prim,std::uint32_t nchld) : ASTChildren(nchld), prim(prim), _type(tp){}
             ASTNode(const ASTNode&) = delete;
-            ASTNode(ASTNode&& other) : chld_and_data(std::move(other.chld_and_data)), _type(other._type){}
+            ASTNode(ASTNode&&) = default;
             ASTNode(cppp::frozen_byte_view&);
             void serialize(cppp::bytes&) const;
             bool operator==(const ASTNode& other) const{
-                return _type == other._type && chld_and_data == other.chld_and_data;
+                return (_type == other._type) && (prim == other.prim) && ASTChildren::operator==(other);
             }
             ASTNode& operator=(const ASTNode&) = delete;
-            ASTNode& operator=(ASTNode&& other){
-                _type = other._type;
-                chld_and_data = std::move(other.chld_and_data);
-                return *this;
-            }
+            ASTNode& operator=(ASTNode&&) = default;
     };
+    #ifndef __INTELLISENSE__ // intellisense doesn't reuse the base class padding, so it always thinks we have a regression
     static_assert(sizeof(ASTNode)<=24,"Regression");
-    inline ASTChildren::ASTChildren(std::uint32_t n,std::uint32_t prim) : _data(reinterpret_cast<std::uint64_t>(uninitialized_alloc32<ASTNode>(n))), n(n), prim(prim){
+    #endif
+    inline ASTChildren::ASTChildren(std::uint32_t n) : _data(reinterpret_cast<std::uint64_t>(uninitialized_alloc32<ASTNode>(n))), nchld(n){
         std::uninitialized_default_construct_n(m(),n);
     }
     inline ASTChildren& ASTChildren::operator=(ASTChildren&& other){
         if(this!=&other){
             _die();
             _data = other._data;
-            prim = other.prim;
-            n = std::exchange(other.n,0);
+            nchld = std::exchange(other.nchld,0);
         }
         return *this;
     }
@@ -161,40 +168,39 @@ namespace bbe::impl{
         return m()[ind];
     }
     inline ASTNode* ASTChildren::end(){
-        return m()+n;
+        return m()+nchld;
     }
     inline const ASTNode* ASTChildren::end() const{
-        return m()+n;
+        return m()+nchld;
     }
     inline ASTNode& ASTChildren::back(){
-        return m()[n-1];
+        return m()[nchld-1];
     }
     inline const ASTNode& ASTChildren::back() const{
-        return m()[n-1];
+        return m()[nchld-1];
     }
     inline bool ASTChildren::operator==(const ASTChildren& other) const{
-        if(n != other.n) return false;
-        if(prim != other.prim) return false;
-        return (!n) || std::ranges::equal(*this,other);
+        if(nchld != other.nchld) return false;
+        return (!nchld) || std::ranges::equal(*this,other);
     }
     inline void ASTChildren::_die(){
-        if(n){
-            std::destroy_n(m(),n);
+        if(nchld){
+            std::destroy_n(m(),nchld);
             operator delete(m());
         }
     }
     inline void ASTChildren::emplace(ASTNode&& nnode){
-        ASTNode* nmem = uninitialized_alloc32<ASTNode>(n+1);
+        ASTNode* nmem = uninitialized_alloc32<ASTNode>(nchld+1);
         try{
-            std::uninitialized_move_n(m(),n,nmem);
-            new(nmem+n) ASTNode(std::move(nnode));
+            std::uninitialized_move_n(m(),nchld,nmem);
+            new(nmem+nchld) ASTNode(std::move(nnode));
         }catch(...){
             operator delete(nmem);
             throw;
         }
         _die();
         _data = reinterpret_cast<std::uintptr_t>(nmem);
-        ++n;
+        ++nchld;
     }
 }
 namespace bbe{

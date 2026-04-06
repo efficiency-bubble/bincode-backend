@@ -4,15 +4,15 @@
 #include<vector>
 namespace bbe::impl{
     class FunctionSignature{
-        Type ret;
-        std::vector<Type> part;
+        type_id ret;
+        std::vector<type_id> part;
         public:
-            FunctionSignature(Type r,std::vector<Type>&& p) : ret(std::move(r)), part(std::move(p)){}
-            FunctionSignature(Type r) : ret(std::move(r)){}
-            const Type& return_type() const{
+            FunctionSignature(type_id r,std::vector<type_id>&& p) : ret(std::move(r)), part(std::move(p)){}
+            FunctionSignature(type_id r) : ret(std::move(r)){}
+            type_id return_type() const{
                 return ret;
             }
-            const std::vector<Type>& parameters() const{
+            const std::vector<type_id>& parameters() const{
                 return part;
             }
     };

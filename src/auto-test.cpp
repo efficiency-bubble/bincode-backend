@@ -82,33 +82,40 @@ int main(){
             if(recover != test) return std::unexpected(u8"Wrong AST deserialized"s);
             return {};
         }},
+        {u8"AST type inference"sv,[] -> test_result_t {
+            TypeDatabase tdb;
+            auto an = u32(1024);
+            an.recursively_recalculate_result_type(tdb);
+            ASSERT_EQ(an.result_type(),tdb.T_UINT32,"Wrong type for uint32 literal");
+            return {};
+        }},
         {u8"Dfg inter: add values"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
-            std::uint32_t fn = proj.function_pool().emplace(nullptr,std::vector<const bbe::TypeLayout*>{});
-            proj.function_pool()[fn].set(cmag(FN_ADD32,pack(u32(1),u32(41))));
+            std::uint32_t fn = proj.function_pool().emplace(FunctionSignature{TypeDatabase::T_UINT32,{}});
+            proj.function_pool()[fn].set(cmag(FN_ADD32,u32(1),u32(41)));
             bbe::inter::dfg::CompiledFunctionPool cfp{proj};
             ASSERT_EQ(cfp.call(fn,{}).get<bbe::inter::uint32v>().value,42,"Wrong return value");
             return {};
         }},
         {u8"Dfg inter: equality comparison"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
-            std::uint32_t fn = proj.function_pool().emplace(nullptr,std::vector<const bbe::TypeLayout*>{});
-            proj.function_pool()[fn].set(cmag(FN_EQ32,pack(u32(42),u32(42))));
+            std::uint32_t fn = proj.function_pool().emplace(FunctionSignature{TypeDatabase::T_BOOL,{}});
+            proj.function_pool()[fn].set(cmag(FN_EQ32,u32(42),u32(42)));
             bbe::inter::dfg::CompiledFunctionPool cfp{proj};
             if(!cfp.call(fn,{}).get<bbe::inter::boolv>().value) return std::unexpected(u8"Wrong return value"s);
             return {};
         }},
         {u8"Dfg inter: pack indexing"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
-            std::uint32_t fn = proj.function_pool().emplace(nullptr,std::vector<const bbe::TypeLayout*>{});
-            proj.function_pool()[fn].set(cmag(FN_IPACK,pack(pack(u32(42),u32(41)),u32(1))));
+            std::uint32_t fn = proj.function_pool().emplace(FunctionSignature{TypeDatabase::T_UINT32,{}});
+            proj.function_pool()[fn].set(pind(pack(u32(42),u32(41)),1));
             bbe::inter::dfg::CompiledFunctionPool cfp{proj};
             ASSERT_EQ(cfp.call(fn,{}).get<bbe::inter::uint32v>().value,41,"Wrong return value");
             return {};
         }},
         {u8"YASBEPL target: basic"sv,[] -> test_result_t {
-            bbe::Function fn{nullptr};
-            fn.ast() = cmag(FN_ADD32,pack(u32(42),u32(13)));
+            bbe::Function fn{{TypeDatabase::T_UINT32,{}}};
+            fn.ast() = cmag(FN_ADD32,u32(42),u32(13));
             bbe::targets::dfg::DataFlowGraph dfg{fn};
             cppp::str buf;
             bbe::targets::yasbepl::compile(dfg,buf);

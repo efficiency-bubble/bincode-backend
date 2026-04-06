@@ -1,5 +1,4 @@
 #pragma once
-#include"function.hpp"
 #include<unordered_map>
 #include<cppp/freelist.hpp>
 namespace bbe::impl{
@@ -40,21 +39,7 @@ namespace bbe::impl{
                 return obj.cend();
             }
     };
-    class ProjectEntitiesPool{
-        public:
-            using index_type = std::uint32_t;
-        private:
-            EntityPool<Function,index_type> fn_p;
-        public:
-            EntityPool<Function,index_type>& function_pool(){
-                return fn_p;
-            }
-            const EntityPool<Function,index_type>& function_pool() const{
-                return fn_p;
-            }
-    };
 }
 namespace bbe{
     BBE_EXPORT EntityPool;
-    BBE_EXPORT ProjectEntitiesPool;
 }

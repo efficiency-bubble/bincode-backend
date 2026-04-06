@@ -4,7 +4,7 @@
 #include<cstdio>
 int main(){
     ProjectEntitiesPool pep;
-    std::uint32_t example_fn = pep.function_pool().emplace(nullptr,std::vector<const TypeLayout*>{});
+    std::uint32_t example_fn = pep.function_pool().emplace(nullptr,std::vector<const TypeInfo*>{});
     pep.function_pool()[example_fn].set(fork(cbool(false),u32(1),u32(2)));
     cppp::str formulae;
     bbe::targets::desmos::compile(formulae,pep.function_pool()[example_fn],u8"foo"sv);

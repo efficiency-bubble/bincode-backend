@@ -2,7 +2,7 @@
 #include<cppp/bytearray.hpp>
 #include<cppp/string.hpp> // symbol names
 #include"dfg.hpp"
-#include"../entity_pool.hpp"
+#include"../project_entity_pool.hpp"
 namespace bbe::targets::x86::impl{
     struct FunctionRelocation{
         std::uint32_t offset;

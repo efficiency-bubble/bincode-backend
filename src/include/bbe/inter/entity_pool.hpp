@@ -1,5 +1,5 @@
 #pragma once
-#include"../entity_pool.hpp"
+#include"../project_entity_pool.hpp"
 namespace bbe::inter::impl{
     template<typename T>
     class CompiledFunctionPool{
