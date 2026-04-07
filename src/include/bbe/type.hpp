@@ -91,6 +91,7 @@ namespace bbe::impl{
     };
 }
 namespace bbe{
+    BBE_EXPORT type_id;
     BBE_EXPORT TypeInfo;
     BBE_EXPORT TypeDatabase;
 }
