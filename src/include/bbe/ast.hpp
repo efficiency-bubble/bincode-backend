@@ -84,9 +84,10 @@ namespace bbe::impl{
                 _die();
             }
     };
+    class FunctionDatabase;
     class ASTNode : ASTChildren{
         std::uint32_t prim;
-        type_id ret;
+        type_id ret = TypeDatabase::T_ERROR;
         NodeType _type;
         public:
             explicit operator bool() const{
@@ -110,12 +111,12 @@ namespace bbe::impl{
             type_id result_type() const{
                 return ret;
             }
-            void recalculate_result_type(TypeDatabase&);
-            void recursively_recalculate_result_type(TypeDatabase& t){
+            void recalculate_result_type(const TypeDatabase&,const FunctionDatabase&);
+            void recursively_recalculate_result_type(const TypeDatabase& t,const FunctionDatabase& f){
                 for(auto& c : children()){
-                    c.recursively_recalculate_result_type(t);
+                    c.recursively_recalculate_result_type(t,f);
                 }
-                recalculate_result_type(t);
+                recalculate_result_type(t,f);
             }
             void setp32(std::uint32_t p){
                 prim = p;

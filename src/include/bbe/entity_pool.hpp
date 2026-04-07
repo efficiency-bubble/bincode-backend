@@ -1,4 +1,5 @@
 #pragma once
+#include"commons.hpp"
 #include<unordered_map>
 #include<cppp/freelist.hpp>
 namespace bbe::impl{
@@ -17,6 +18,9 @@ namespace bbe::impl{
             void pop(K key){
                 fl.deallocate(key);
                 obj.erase(key);
+            }
+            bool occupied(K key) const{
+                return fl.occupied(key);
             }
             const T& operator[](K key) const{
                 return obj.at(key);

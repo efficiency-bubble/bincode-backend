@@ -6,7 +6,7 @@ namespace bbe::inter::rtl::impl{
     using namespace cppp::literals;
     Value CompiledFunctionPool::call(ProjectEntitiesPool::index_type i,const std::vector<Value>& argv) const{
         const auto& fn = function(i);
-        cppp::fixed_array<Value> values{fn.num_vals()};
+        cppp::fixed_array<Value> values(fn.num_vals());
         const targets::rtl::Function::ip_t end = fn.instructions().end();
         for(targets::rtl::Function::ip_t ip = fn.instructions().begin();ip != end;++ip){
             const auto& ins = *ip;

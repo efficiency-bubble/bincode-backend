@@ -1,12 +1,12 @@
 #pragma once
-#include"entity_pool.hpp"
+#include"function.hpp"
 #include"type.hpp"
 namespace bbe::impl{
     class ProjectEntitiesPool{
         public:
             using index_type = std::uint32_t;
         private:
-            EntityPool<Function,index_type> fn_p;
+            FunctionDatabase fd;
             TypeDatabase td;
         public:
             const TypeDatabase& types() const{
@@ -15,11 +15,11 @@ namespace bbe::impl{
             TypeDatabase& types(){
                 return td;
             }
-            EntityPool<Function,index_type>& function_pool(){
-                return fn_p;
+            FunctionDatabase& functions(){
+                return fd;
             }
-            const EntityPool<Function,index_type>& function_pool() const{
-                return fn_p;
+            const FunctionDatabase& functions() const{
+                return fd;
             }
     };
 }

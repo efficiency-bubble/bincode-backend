@@ -214,13 +214,16 @@ namespace bbe::targets::x86::impl{
                 }
         };
     }
-    Function::Function(const dfg::Function& f){
+    Function::Function(const dfg::Function& f,const TypeDatabase& tdb){
         FunctionCompiler compiler{*this};
         x::instructions::push::r64(b,x::reg::BP);
         x::instructions::mov::rm_r::for_width<x::width::W64>::encode(b,0b11_b,x::reg::BP,x::reg::SP);
         std::size_t enter = b.size();
         enter += x::instructions::sub::rm_imm::for_width<x::width::W64>::encode(b,0b11_b,x::reg::SP,x::skip_immediate).offset_of_first<x::ComponentType::IMMEDIATE>;
-        compiler.load_args(static_cast<std::uint32_t>(f.signature().parameters().size()));
+        type_id par = f.signature().parameter();
+        if(par != tdb.T_VOID){
+            compiler.load_args(static_cast<std::uint32_t>(tdb[par].pack_contents().types().size()));
+        }
         compiler.compile_node(*f.dfg().stdout_result());
         auto retv{compiler.compile_node(*f.dfg().root())};
         if(retv.is_pack()){

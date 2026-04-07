@@ -12,9 +12,10 @@
 using namespace cppp::literals;
 int main(){
     ProjectEntitiesPool pep;
-    std::uint32_t example_fn = pep.function_pool().emplace(FunctionSignature{TypeDatabase::T_UINT32,{TypeDatabase::T_UINT32}});
-    pep.function_pool()[example_fn].set(fibonacci());
-    bbe::targets::x86::Function fn{pep.function_pool()[example_fn]};
+    TypeDatabase tdb;
+    std::uint32_t example_fn = pep.functions().emplace(FunctionSignature{TypeDatabase::T_UINT32,tdb.pack_of({TypeDatabase::T_UINT32})});
+    pep.functions()[example_fn].set(fibonacci());
+    bbe::targets::x86::Function fn{pep.functions()[example_fn],tdb};
     for(const std::byte b : fn.instructions()){
         cppp::print<u8"{:02X} "_ts>(static_cast<std::uint8_t>(b));
     }

@@ -1,4 +1,5 @@
 #include<bbe/ast.hpp>
+#include<bbe/function.hpp>
 #include<cppp/binary.hpp>
 #include<cppp/bytearray.hpp>
 #include<cppp/assert.hpp>
@@ -80,51 +81,90 @@ namespace bbe::impl{
             c.serialize(b);
         }
     }
-    void ASTNode::recalculate_result_type(TypeDatabase& tdb){
+    void ASTNode::recalculate_result_type(const TypeDatabase& tdb,const FunctionDatabase& fdb){
         switch(_type){
             using enum NodeType;
             case UINT32: case UINT32SYM:
-                ret = TypeDatabase::T_UINT32;
+                ret = tdb.T_UINT32;
                 break;
             case UINT64:
-                ret = TypeDatabase::T_UINT64;
+                ret = tdb.T_UINT64;
                 break;
             case PACK: {
                 cppp::fixed_array<type_id> a(nchld);
                 for(std::uint32_t i=0;i<nchld;++i){
-                    a[i] = children()[i].result_type();
+                    if((a[i] = children()[i].result_type()) == tdb.T_ERROR){
+                        goto error;
+                    }
                 }
                 ret = tdb.pack_of(std::move(a));
                 break;
             }
             case COMMA:
-            case PACKIND: 
-                ret = tdb[children().front().result_type()].pack_contents().array()[getp32()];
+            case PACKIND:
+                if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
+                    const auto& ptypes = tdb[pt].pack_contents().types();
+                    if(getp32() >= ptypes.size()) goto error;
+                    ret = ptypes[getp32()];
+                }else goto error;
                 break;
             case ARGV:
                 throw std::logic_error("Unimplemented: getting type of argv"s);
             case CALL_BUILTIN:
-                throw std::logic_error("Unimplemented: getting type of builtin-fn"s);
+                switch(getp32()){
+                    case 0:
+                        if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
+                            ret = tdb[pt].function_signature().return_type();
+                        }else goto error;
+                        break;
+                    case 10:
+                    case 11:
+                        ret = tdb.T_UINT32;
+                        break;
+                    case 25:
+                        ret = tdb.T_VOID;
+                        break;
+                    case 50:
+                    case 51:
+                    case 60:
+                        ret = tdb.T_BOOL;
+                        break;
+                    default: throw std::logic_error("AST type inference: unknown magic "s+std::to_string(getp32()));
+                }
+                break;
             case SETVAR:
-                ret = TypeDatabase::T_VOID;
+                ret = tdb.T_VOID;
                 break;
             case GETVAR:
                 throw std::logic_error("Unimplemented: getting type of var read"s);
             case BOOL:
-                ret = TypeDatabase::T_BOOL;
+                ret = tdb.T_BOOL;
                 break;
-            case FORK:
-                throw std::logic_error("Unimplemented: getting type of fork"s);
+            case FORK: {
+                type_id lht = children()[1uz].result_type();
+                type_id rht = children()[2uz].result_type();
+                if(lht == rht){
+                    ret = lht;
+                }else goto error;
+                break;
+            }
             case FOREVER:
                 throw std::logic_error("Unimplemented: getting type of loop"s);
-            case FNSYM:
-                throw std::logic_error("Unimplemented: function types"s);
-            case NTYPE:
-                ret = TypeDatabase::T_ERROR;
+            case FNSYM: {
+                if(!fdb.has_func(getp32())) goto error;
+                const FunctionSignature& sig = fdb[getp32()].signature();
+                if(sig.parameter() == tdb.T_ERROR || sig.return_type() == tdb.T_ERROR) goto error;
+                ret = tdb.function_of(sig);
                 break;
+            }
+            case NTYPE:
+                goto error;
             case BREAK:
-                ret = TypeDatabase::T_VOID;
+                ret = tdb.T_VOID;
                 break;
         }
+        return;
+        error:
+        ret = tdb.T_ERROR;
     }
 }

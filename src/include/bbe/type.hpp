@@ -2,6 +2,7 @@
 #include"commons.hpp"
 #include"entity_pool.hpp"
 #include<cppp/object-view.hpp>
+#include<cppp/assert.hpp>
 #include<cppp/array.hpp>
 #include<unordered_map>
 #include<functional>
@@ -16,7 +17,7 @@ namespace bbe::impl{
         using view_t = cppp::view<type_id>;
         public:
             type_pack(cppp::fixed_array<type_id>&& a) : arr(a){}
-            const cppp::fixed_array<type_id>& array() const{
+            const cppp::fixed_array<type_id>& types() const{
                 return arr;
             }
             bool operator==(const type_pack& other) const{
@@ -30,30 +31,63 @@ namespace bbe::impl{
             }
         public:
             static std::size_t operator()(const type_pack& tp){
-                return std::rotr(std::transform_reduce(std::execution::unseq,tp.array().begin(),tp.array().end(),0uz,std::bit_xor<std::size_t>{},mix_shift),static_cast<std::uint16_t>(7*reinterpret_cast<std::uintptr_t>(tp.array().data())));
+                return std::rotr(std::transform_reduce(std::execution::unseq,tp.types().begin(),tp.types().end(),0uz,std::bit_xor<std::size_t>{},mix_shift),static_cast<std::uint16_t>(7*reinterpret_cast<std::uintptr_t>(tp.types().data())));
             }
+    };
+    class FunctionSignature{
+        type_id ret;
+        type_id par;
+        public:
+            FunctionSignature(type_id r,type_id a) : ret(r), par(a){}
+            type_id return_type() const{
+                return ret;
+            }
+            type_id parameter() const{
+                return par;
+            }
+            bool operator==(const FunctionSignature& other) const{
+                return ret == other.ret && par == other.par;
+            }
+    };
+    struct fsig_hash{
+        static std::size_t operator()(FunctionSignature fs){
+            return fs.return_type() ^ std::rotl(fs.parameter(),7);
+        }
+    };
+    enum class FundamentalTypeType : std::uint8_t{
+        VOID,UNSIGNED_INTEGRAL,PACK,FUNCTION
     };
     class TypeInfo{
         std::uint64_t _size;
-        std::uint64_t _align;
-        const type_pack* _contents;
+        std::uint64_t align;
+        const void* data;
+        FundamentalTypeType _type;
         friend class TypeDatabase;
         public:
-            TypeInfo(std::uint64_t sz,std::uint64_t al) : _size(sz), _align(al), _contents(nullptr){}
+            TypeInfo(FundamentalTypeType t,std::uint64_t sz,std::uint64_t al) : _size(sz), align(al), data(nullptr), _type(t){}
             std::uint64_t size() const{
                 return _size;
             }
             std::uint64_t alignment() const{
-                return _align;
+                return align;
+            }
+            std::uint64_t stride() const{
+                return _size + (-_size & (align-1));
+            }
+            FundamentalTypeType type() const{
+                return _type;
             }
             const type_pack& pack_contents() const{
-                return *_contents;
+                return *static_cast<const type_pack*>(data);
+            }
+            const FunctionSignature& function_signature() const{
+                return *static_cast<const FunctionSignature*>(data);
             }
     };
-    
     class TypeDatabase{
-        EntityPool<TypeInfo,type_id> infos;
-        std::unordered_map<type_pack,type_id,type_hash> packs;
+        mutable EntityPool<TypeInfo,type_id> infos;
+        mutable std::unordered_map<type_pack,type_id,type_hash> packs;
+        mutable std::unordered_map<FunctionSignature,type_id,fsig_hash> functions;
         public:
             constexpr static type_id T_VOID = 0;
             constexpr static type_id T_UINT32 = 1;
@@ -61,37 +95,27 @@ namespace bbe::impl{
             constexpr static type_id T_BOOL = 3;
             constexpr static type_id T_ERROR = std::numeric_limits<type_id>::max();
             TypeDatabase(){
-                emplace(0,0);
-                emplace(4,4);
-                emplace(8,8);
-                emplace(1,1);
+                emplace(FundamentalTypeType::VOID,0,0);
+                emplace(FundamentalTypeType::UNSIGNED_INTEGRAL,4,4);
+                emplace(FundamentalTypeType::UNSIGNED_INTEGRAL,8,8);
+                emplace(FundamentalTypeType::UNSIGNED_INTEGRAL,1,1); // TODO: make bool signed
             }
-            type_id pack_of(cppp::fixed_array<type_id>&& a){
-                type_pack key{std::move(a)};
-                if(auto it=packs.find(key);it!=packs.end()){
-                    return it->second;
-                }else{
-                    std::uint64_t size = 0, align = 0;
-                    for(const type_id i : key.array()){
-                        size += infos[i].size();
-                        align = std::max(align,infos[i].alignment());
-                    }
-                    type_id nt = emplace(size,align);
-                    infos[nt]._contents = &packs.try_emplace(std::move(key),nt).first->first;
-                    return nt;
-                }
-            }
+            type_id pack_of(cppp::fixed_array<type_id>&&) const;
+            type_id function_of(FunctionSignature sig) const;
             template<typename ...A>
             type_id emplace(A&& ...a){
                 return infos.emplace(std::forward<A>(a)...);
             }
             const TypeInfo& operator[](type_id i) const{
+                CPPP_ASSERT(i != T_ERROR);
                 return infos[i];
             }
     };
 }
 namespace bbe{
     BBE_EXPORT type_id;
+    BBE_EXPORT type_pack;
+    BBE_EXPORT FundamentalTypeType;
     BBE_EXPORT TypeInfo;
     BBE_EXPORT TypeDatabase;
 }

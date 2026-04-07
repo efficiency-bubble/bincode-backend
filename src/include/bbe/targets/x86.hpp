@@ -1,6 +1,7 @@
 #pragma once
 #include<cppp/bytearray.hpp>
 #include<cppp/string.hpp> // symbol names
+#include"../type.hpp"
 #include"dfg.hpp"
 #include"../project_entity_pool.hpp"
 namespace bbe::targets::x86::impl{
@@ -14,7 +15,7 @@ namespace bbe::targets::x86::impl{
         cppp::bytes b;
         std::vector<FunctionRelocation> rels;
         public:
-            Function(const dfg::Function& f);
+            Function(const dfg::Function& f,const TypeDatabase& tdb);
             void add_relocation(FunctionRelocation fr){
                 rels.emplace_back(fr);
             }
