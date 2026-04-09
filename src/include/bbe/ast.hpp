@@ -1,5 +1,6 @@
 #pragma once
 #include"commons.hpp"
+#include"error.hpp"
 #include"type.hpp"
 #include<cppp/object-view.hpp>
 #include<cppp/bytearray.hpp>
@@ -19,7 +20,7 @@ namespace bbe::impl{
         return static_cast<T*>(operator new(sizeof(T)*n));
     }
     enum class NodeType : std::uint8_t{
-        UINT32,UINT64,PACK,COMMA,PACKIND,ARGV,CALL_BUILTIN=9,SETVAR,GETVAR,BOOL=20,FORK,FOREVER=30,BREAK,UINT32SYM=100,FNSYM=200,
+        UINT32,UINT64,PACK,COMMA,PACKIND,ARG,CALL_BUILTIN=9,SETVAR,GETVAR,BOOL=20,FORK,FOREVER=30,BREAK,UINT32SYM=100,FNSYM=200,
         NTYPE = 255
     };
     // Public API: sequence for accessing children; implementation detail: also packs the 64-bit data field to save memory (otherwise it would be wasted on padding)
@@ -84,7 +85,7 @@ namespace bbe::impl{
                 _die();
             }
     };
-    class FunctionDatabase;
+    class ProjectEntitiesPool;
     class ASTNode : ASTChildren{
         std::uint32_t prim;
         type_id ret = TypeDatabase::T_ERROR;
@@ -111,12 +112,12 @@ namespace bbe::impl{
             type_id result_type() const{
                 return ret;
             }
-            void recalculate_result_type(const TypeDatabase&,const FunctionDatabase&);
-            void recursively_recalculate_result_type(const TypeDatabase& t,const FunctionDatabase& f){
+            void recalculate_result_type(const ProjectEntitiesPool&,ErrorDatabase&,FunctionSignature);
+            void recursively_recalculate_result_type(const ProjectEntitiesPool& p,ErrorDatabase& e,FunctionSignature sig){
                 for(auto& c : children()){
-                    c.recursively_recalculate_result_type(t,f);
+                    c.recursively_recalculate_result_type(p,e,sig);
                 }
-                recalculate_result_type(t,f);
+                recalculate_result_type(p,e,sig);
             }
             void setp32(std::uint32_t p){
                 prim = p;

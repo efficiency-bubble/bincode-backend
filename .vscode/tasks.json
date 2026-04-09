@@ -2,23 +2,52 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Compile Test",
+            "label": "Compile Tests",
             "command": "make",
             "args": [
                 "bin/test-x86",
+                "bin/auto-test",
                 "-j",
                 "7"
             ],
+            "presentation": {
+                "close": true
+            },
             "problemMatcher": "$gcc"
         },
         {
-            "label": "Run Test",
+            "label": "Test x86",
             "command": "bin/test-x86",
             "args": [],
             "problemMatcher": [],
+            "presentation": {
+                "group": "Testing",
+                "clear": true
+            },
             "dependsOn": [
-                "Compile Test"
+                "Compile Tests"
+            ]
+        },
+        {
+            "label": "Test others",
+            "command": "bin/auto-test",
+            "args": [],
+            "problemMatcher": [],
+            "presentation": {
+                "group": "Testing",
+                "clear": true
+            },
+            "dependsOn": [
+                "Compile Tests"
+            ]
+        },
+        {
+            "label": "Test all",
+            "dependsOn": [
+                "Test x86",
+                "Test others"
             ],
+            "dependsOrder": "parallel",
             "group": "test"
         },
         {

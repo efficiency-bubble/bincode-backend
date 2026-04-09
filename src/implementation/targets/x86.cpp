@@ -106,15 +106,11 @@ namespace bbe::targets::x86::impl{
                 void into(value_t v,std::byte reg) const{
                     stor(f.instructions(),soff_to_disp8(value_frame_off.at(v)),reg);
                 }
-                void load_args(std::uint32_t argc){
+                void load_args(type_id t,const TypeDatabase& tdb){
                     value_t pid = new_value_id();
-                    if(pid) throw std::logic_error("x86 compile: arguments, if present, must be loaded first"s);
-                    auto& contents = pack_contents.try_emplace(pid).first->second;
-                    for(std::uint32_t i=0;i<argc;++i){
-                        value_t avid = new_value_id();
-                        rtos(f.instructions(),arg_reg(i),soff_to_disp8(allocate_dw(avid)));
-                        contents.emplace_back(avid);
-                    }
+                    if(pid) throw std::logic_error("x86 compile: the argument, if present, must be loaded first"s);
+                    if(tdb[t].type() != FundamentalTypeType::UNSIGNED_INTEGRAL) throw std::logic_error("x86 compile: ABI: argument must be integral"s);
+                    rtos(f.instructions(),arg_reg(0),soff_to_disp8(allocate_dw(pid)));
                 }
                 DataValue compile_node(const dfg::DataNode& dn){
                     switch(dn.operation()){
@@ -136,17 +132,15 @@ namespace bbe::targets::x86::impl{
                             std::uint32_t pkid = require_pack(compile_node(*dn.parents().front()),u8"x86 compile: can't index a non-pack"s);
                             return {pack_contents[pkid][dn.primitive()],false};
                         }
-                        case ARGV:
-                            return {0,true};
+                        case ARG:
+                            return {0,false};
                         case CALL_BUILTIN: {
                             switch(dn.primitive()){
                                 case 0: {
                                     value_t ret = new_value_id();
                                     value_t fn = require_value(compile_node(*dn.parents().front()),u8"x86 compile: a pack is not a function pointer"s);
-                                    for(std::uint32_t i=1;i<static_cast<std::uint32_t>(dn.parents().size());++i){
-                                        value_t argv = require_value(compile_node(*dn.parents()[i]),u8"x86 compile: can't pass a pack as an argument"s);
-                                        stor(f.instructions(),soff_to_disp8(value_frame_off.at(argv)),arg_reg(i-1));
-                                    }
+                                    value_t argv = require_value(compile_node(*dn.parents()[1]),u8"x86 compile: ABI: can't pass a pack as argument"s);
+                                    stor(f.instructions(),soff_to_disp8(value_frame_off.at(argv)),arg_reg(0));
                                     x::instructions::call::near_abs::for_width<x::width::W64>::encode(f.instructions(),0x01_b /* disp8 */,x::reg::BP,soff_to_disp8(value_frame_off.at(fn)));
                                     rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(ret)));
                                     return {ret,false};
@@ -220,10 +214,7 @@ namespace bbe::targets::x86::impl{
         x::instructions::mov::rm_r::for_width<x::width::W64>::encode(b,0b11_b,x::reg::BP,x::reg::SP);
         std::size_t enter = b.size();
         enter += x::instructions::sub::rm_imm::for_width<x::width::W64>::encode(b,0b11_b,x::reg::SP,x::skip_immediate).offset_of_first<x::ComponentType::IMMEDIATE>;
-        type_id par = f.signature().parameter();
-        if(par != tdb.T_VOID){
-            compiler.load_args(static_cast<std::uint32_t>(tdb[par].pack_contents().types().size()));
-        }
+        compiler.load_args(f.signature().parameter(),tdb);
         compiler.compile_node(*f.dfg().stdout_result());
         auto retv{compiler.compile_node(*f.dfg().root())};
         if(retv.is_pack()){

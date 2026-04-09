@@ -4,7 +4,7 @@ Node type conventions (subject to change):
 2 = pack(node($)...)
 3 = (... , node($))[$0]
 4 = node($)[$0], pack indexing
-5 = argv;
+5 = arg;
 9 = callf(BUILTIN_FN[$0],node($1))
 10 = setvar(uint64($0),node($1))
 11 = getvar(uint64($0))

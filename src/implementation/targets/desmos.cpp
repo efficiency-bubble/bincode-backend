@@ -9,7 +9,7 @@ namespace bbe::targets::desmos::impl{
             cppp::str _compile_node(cppp::str& out,const dfg::DataNode* nd){
                 switch(nd->operation()){
                     using enum dfg::NodeType;
-                    case ARGV:
+                    case ARG:
                         return u8"a_{rgv}"s;
                     case UINT32:
                     case BOOL: {

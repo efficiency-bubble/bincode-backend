@@ -4,7 +4,7 @@
 #include<stdexcept>
 namespace bbe::inter::rtl::impl{
     using namespace cppp::literals;
-    Value CompiledFunctionPool::call(ProjectEntitiesPool::index_type i,const std::vector<Value>& argv) const{
+    Value CompiledFunctionPool::call(ProjectEntitiesPool::index_type i,const Value& arg) const{
         const auto& fn = function(i);
         cppp::fixed_array<Value> values(fn.num_vals());
         const targets::rtl::Function::ip_t end = fn.instructions().end();
@@ -13,7 +13,7 @@ namespace bbe::inter::rtl::impl{
             switch(ins.opcode){
                 using enum targets::rtl::Operation;
                 case CALL:
-                    values[ins.dst] = call(values[ins.src].get<fptr>().id,values[ins.dst].get<pack>().values);
+                    values[ins.dst] = call(values[ins.src].get<fptr>().id,values[ins.dst]);
                     break;
                 case LDFN:
                     values[ins.dst] = fptr{ins.src};
@@ -21,8 +21,8 @@ namespace bbe::inter::rtl::impl{
                 case LDI:
                     values[ins.dst] = uint32v{ins.src};
                     break;
-                case ARGV:
-                    values[ins.dst] = pack{argv};
+                case ARG:
+                    values[ins.dst] = arg;
                     break;
                 case IPACK:
                     values[ins.dst] = values[ins.dst].get<pack>().values[ins.src];

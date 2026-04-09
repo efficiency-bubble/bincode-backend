@@ -36,8 +36,8 @@ namespace bbe::targets::dfg::impl{
             }
             case PACKIND:
                 return &_nodes.emplace_back(NodeType::PACKIND,nd.getp32(),std::vector{compile(br,nd.children().front())});
-            case ARGV:
-                return &_nodes.emplace_back(NodeType::ARGV);
+            case ARG:
+                return &_nodes.emplace_back(NodeType::ARG);
             case CALL_BUILTIN: {
                 DataNode& cmag = _nodes.emplace_back(NodeType::CALL_BUILTIN,nd.getp32());
                 for(const ASTNode& c : nd.children()){

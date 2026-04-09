@@ -8,7 +8,7 @@
 #include<list>
 namespace bbe::targets::rtl::impl{
     using namespace std::literals;
-    BBE_DEBUG_NAMED_ENUM(Operation,CALL,LDFN,LDI,ARGV,IPACK,MKPACK,PACKATT,ADD,SUB,RET,JMP,JF,MOV,CLE,CEQ,PRI); // TODO: Remove PRI
+    BBE_DEBUG_NAMED_ENUM(Operation,CALL,LDFN,LDI,ARG,IPACK,MKPACK,PACKATT,ADD,SUB,RET,JMP,JF,MOV,CLE,CEQ,PRI); // TODO: Remove PRI
     struct Instruction{
         Operation opcode;
         std::uint32_t dst;

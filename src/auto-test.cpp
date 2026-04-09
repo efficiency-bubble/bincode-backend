@@ -84,9 +84,11 @@ int main(){
         }},
         {u8"AST type inference"sv,[] -> test_result_t {
             ProjectEntitiesPool pep;
+            ErrorDatabase e;
             auto an = u32(1024);
-            an.recursively_recalculate_result_type(pep.types(),pep.functions());
+            an.recursively_recalculate_result_type(pep,e,{pep.types().T_UINT32,pep.types().T_VOID});
             ASSERT_EQ(an.result_type(),pep.types().T_UINT32,"Wrong type for uint32 literal");
+            ASSERT_EQ(e.empty(),true,"Errors reported for inferring the type of a uint32 literal");
             return {};
         }},
         {u8"Dfg inter: add values"sv,[] -> test_result_t {

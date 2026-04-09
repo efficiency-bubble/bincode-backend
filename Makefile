@@ -26,5 +26,9 @@ setup:
 	mkdir obj/formats
 	mkdir obj/inter
 	mkdir obj/targets
-.PHONY: setup all
+clean:
+	find obj -type f -delete
+	find bin -type f -delete
+	find lib -type f -delete
+.PHONY: setup all clean
 	

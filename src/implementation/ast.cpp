@@ -1,5 +1,5 @@
 #include<bbe/ast.hpp>
-#include<bbe/function.hpp>
+#include<bbe/project_entity_pool.hpp>
 #include<cppp/binary.hpp>
 #include<cppp/bytearray.hpp>
 #include<cppp/assert.hpp>
@@ -30,7 +30,7 @@ namespace bbe::impl{
     static std::uint32_t nchld_of(NodeType t){
         switch(t){
             using enum NodeType;
-            case UINT32: case UINT64: case BOOL: case ARGV: case GETVAR: case BREAK: case UINT32SYM: case FNSYM: case NTYPE:
+            case UINT32: case UINT64: case BOOL: case ARG: case GETVAR: case BREAK: case UINT32SYM: case FNSYM: case NTYPE:
                 return 0;
             case SETVAR: case FOREVER: case PACKIND:
                 return 1;
@@ -81,7 +81,8 @@ namespace bbe::impl{
             c.serialize(b);
         }
     }
-    void ASTNode::recalculate_result_type(const TypeDatabase& tdb,const FunctionDatabase& fdb){
+    void ASTNode::recalculate_result_type(const ProjectEntitiesPool& p,ErrorDatabase& errors,FunctionSignature sig){
+        const auto& tdb = p.types();
         switch(_type){
             using enum NodeType;
             case UINT32: case UINT32SYM:
@@ -103,18 +104,35 @@ namespace bbe::impl{
             case COMMA:
             case PACKIND:
                 if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
-                    const auto& ptypes = tdb[pt].pack_contents().types();
-                    if(getp32() >= ptypes.size()) goto error;
-                    ret = ptypes[getp32()];
+                    if(const auto& t = tdb[pt];t.type() == FundamentalTypeType::PACK){
+                        if(getp32() >= t.pack_contents().types().size()){
+                            errors.add(this,u8"Pack indexing out of bounds"s);
+                            goto error;
+                        }
+                        ret = t.pack_contents().types()[getp32()];
+                    }else{
+                        errors.add(this,u8"Cannot index non-pack"s);
+                        goto error;
+                    }
                 }else goto error;
                 break;
-            case ARGV:
-                throw std::logic_error("Unimplemented: getting type of argv"s);
+            case ARG:
+                ret = sig.parameter();
+                break;
             case CALL_BUILTIN:
                 switch(getp32()){
                     case 0:
                         if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
-                            ret = tdb[pt].function_signature().return_type();
+                            if(const auto& t = tdb[pt];t.type() == FundamentalTypeType::FUNCTION){
+                                type_id at = children()[1uz].result_type();
+                                if(at != tdb.T_ERROR && t.function_signature().parameter() != at){
+                                    errors.add(this,u8"Argument and parameter type mismatch"s);
+                                }
+                                ret = t.function_signature().return_type();
+                            }else{
+                                errors.add(this,u8"Cannot call non-function"s);
+                                goto error;
+                            }
                         }else goto error;
                         break;
                     case 10:
@@ -151,9 +169,9 @@ namespace bbe::impl{
             case FOREVER:
                 throw std::logic_error("Unimplemented: getting type of loop"s);
             case FNSYM: {
-                if(!fdb.has_func(getp32())) goto error;
-                const FunctionSignature& sig = fdb[getp32()].signature();
-                if(sig.parameter() == tdb.T_ERROR || sig.return_type() == tdb.T_ERROR) goto error;
+                if(!p.functions().has_func(getp32())) goto error;
+                const FunctionSignature& sig = p.functions()[getp32()].signature();
+                CPPP_ASSERT(sig.parameter() != tdb.T_ERROR && sig.return_type() != tdb.T_ERROR);
                 ret = tdb.function_of(sig);
                 break;
             }

@@ -35,8 +35,8 @@ ASTNode comma(std::uint32_t ind,T&& ...children){
 ASTNode fn(std::uint32_t id){
     return {NodeType::FNSYM,id,0};
 }
-ASTNode argv(){
-    return {NodeType::ARGV};
+ASTNode arg(){
+    return {NodeType::ARG};
 }
 ASTNode pind(ASTNode&& arg,std::uint32_t ind){
     ASTNode x{NodeType::PACKIND,ind,1};
@@ -78,7 +78,7 @@ using namespace std::literals;
 std::unordered_map<std::uint32_t,cppp::sv> EXPLAIN{
     {0,u8"uint32"sv},
     {2,u8"pack"sv},
-    {5,u8"argv"sv},
+    {5,u8"arg"sv},
     {9,u8"cmag"sv},
     {21,u8"fork"sv},
     {300,u8"proxy"sv},
@@ -87,11 +87,11 @@ std::unordered_map<std::uint32_t,cppp::sv> EXPLAIN{
 
 ASTNode fibonacci(){
     return fork(
-        cmag(51,pind(argv(),0),u32(2)),
+        cmag(51,arg(),u32(2)),
         u32(1),
         cmag(10,
-            cmag(0,fn(0),cmag(11,pind(argv(),0),u32(1))),
-            cmag(0,fn(0),cmag(11,pind(argv(),0),u32(2)))
+            cmag(0,fn(0),cmag(11,arg(),u32(1))),
+            cmag(0,fn(0),cmag(11,arg(),u32(2)))
         )
     );
 }

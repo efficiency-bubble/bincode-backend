@@ -13,7 +13,7 @@ using namespace cppp::literals;
 int main(){
     ProjectEntitiesPool pep;
     TypeDatabase tdb;
-    std::uint32_t example_fn = pep.functions().emplace(FunctionSignature{TypeDatabase::T_UINT32,tdb.pack_of({TypeDatabase::T_UINT32})});
+    std::uint32_t example_fn = pep.functions().emplace(FunctionSignature{TypeDatabase::T_UINT32,TypeDatabase::T_UINT32});
     pep.functions()[example_fn].set(fibonacci());
     bbe::targets::x86::Function fn{pep.functions()[example_fn],tdb};
     for(const std::byte b : fn.instructions()){
