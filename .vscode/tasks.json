@@ -5,8 +5,8 @@
             "label": "Compile Tests",
             "command": "make",
             "args": [
-                "bin/test-x86",
-                "bin/auto-test",
+                "bin/test-x86_debug",
+                "bin/auto-test_debug",
                 "-j",
                 "7"
             ],
@@ -17,7 +17,7 @@
         },
         {
             "label": "Test x86",
-            "command": "bin/test-x86",
+            "command": "bin/test-x86_debug",
             "args": [],
             "problemMatcher": [],
             "presentation": {
@@ -30,7 +30,7 @@
         },
         {
             "label": "Test others",
-            "command": "bin/auto-test",
+            "command": "bin/auto-test_debug",
             "args": [],
             "problemMatcher": [],
             "presentation": {

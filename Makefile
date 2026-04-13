@@ -7,9 +7,11 @@ HEADERS := $(wildcard src/include/$(LIBNAME)/*.hpp) $(wildcard src/include/$(LIB
 SOURCES := $(wildcard src/implementation/*.cpp) $(wildcard src/implementation/*/*.cpp)
 OBJECTS := $(patsubst src/implementation/%.cpp,obj/%.o,$(SOURCES))
 DEBUG_OBJECTS := $(patsubst src/implementation/%.cpp,obj/%_debug.o,$(SOURCES))
-all: lib/$(LIBNAME).a lib/$(LIBNAME)_debug.a
+all: lib/$(LIBNAME).a lib/$(LIBNAME)_debug.a bin/bcc
 	
-bin/%: src/%.cpp lib/$(LIBNAME)_debug.a
+bin/%: src/%.cpp lib/$(LIBNAME).a
+	g++ $< lib/$(LIBNAME).a -o $@ $(RELEASEOPT) $(FINALOPT)
+bin/%_debug: src/%.cpp lib/$(LIBNAME)_debug.a
 	g++ $< lib/$(LIBNAME)_debug.a -o $@ $(DEBUGOPT) $(FINALOPT)
 lib/$(LIBNAME).a: $(OBJECTS)
 	ar rcs $@ $(OBJECTS)

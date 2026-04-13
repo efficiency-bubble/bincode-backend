@@ -9,6 +9,7 @@ namespace bbe::impl{
         ASTNode root;
         public:
             Function(FunctionSignature s) :  sig(std::move(s)){}
+            Function(ASTNode&& r,FunctionSignature s) :  sig(std::move(s)), root(std::move(r)){}
             void set(ASTNode&& r){
                 root = std::move(r);
             }
