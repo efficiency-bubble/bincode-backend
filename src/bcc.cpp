@@ -57,7 +57,7 @@ int main(int,char* argv[]){
         if(scan != args.end()) error(u8"missing operand"sv);
     }
     cppp::bytes indata;
-    {
+    try{
         cppp::BinaryFile infile{args[0uz],std::ios_base::in|std::ios_base::binary};
         std::array<std::byte,1024uz> buf;
         std::size_t nread;
@@ -65,6 +65,8 @@ int main(int,char* argv[]){
             nread = infile.read(buf);
             indata.append(std::span{buf.data(),nread});
         }while(nread);
+    }catch(const cppp::operation_failed&){
+        error(u8"couldn't read input file"sv);
     }
     cppp::frozen_byte_view scanner{indata};
     bbe::ASTNode root{scanner};
