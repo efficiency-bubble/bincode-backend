@@ -39,11 +39,37 @@ namespace bbe::targets::dfg::impl{
             case ARG:
                 return &_nodes.emplace_back(NodeType::ARG);
             case CALL_BUILTIN: {
-                DataNode& cmag = _nodes.emplace_back(NodeType::CALL_BUILTIN,nd.getp32());
+                std::uint32_t fnid = nd.getp32();
+                switch(fnid){
+                    case 10:
+                        switch(nd.result_type()){
+                            case TypeDatabase::T_UINT32:
+                                // fnid = 10; // already 10
+                                break;
+                            case TypeDatabase::T_INT32:
+                                fnid = 11;
+                                break;
+                            default: throw std::logic_error("DataFlowGraph::compile(): Don't know what kind of addition results in type "s+std::to_string(nd.result_type()));
+                        }
+                        break;
+                    case 20:
+                        switch(nd.result_type()){
+                            case TypeDatabase::T_UINT32:
+                                // fnid = 20; // already 20
+                                break;
+                            case TypeDatabase::T_INT32:
+                                fnid = 21;
+                                break;
+                            default: throw std::logic_error("DataFlowGraph::compile(): Don't know what kind of subtraction results in type "s+std::to_string(nd.result_type()));
+                        }
+                        break;
+                    default:;
+                }
+                DataNode& cmag = _nodes.emplace_back(NodeType::CALL_BUILTIN,fnid);
                 for(const ASTNode& c : nd.children()){
                     cmag.emplace(compile(br,c));
                 }
-                switch(nd.getp32()){
+                switch(fnid){
                     case 25:
                         cmag.emplace(br.getvar(IO_VAR));
                         br.setvar(IO_VAR,&cmag);
@@ -93,7 +119,7 @@ namespace bbe::targets::dfg::impl{
             case FNSYM:
                 return &_nodes.emplace_back(NodeType::FNSYM,nd.getp32());
             default:
-                throw std::logic_error("DfgCompiler::compile(): Unknown node type "s+std::to_string(std::to_underlying(nd.type())));
+                throw std::logic_error("DataFlowGraph::compile(): Unknown node type "s+std::to_string(std::to_underlying(nd.type())));
         }
     }
     DataFlowGraph::DataFlowGraph(const bbe::Function& f) : _root((main.setvar(IO_VAR,&_nodes.emplace_back(NodeType::STDOUT)),compile(main,f.ast()))){}

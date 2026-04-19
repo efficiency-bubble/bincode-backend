@@ -82,6 +82,7 @@ namespace bbe::impl{
         }
     }
     void ASTNode::recalculate_result_type(const ProjectEntitiesPool& p,ErrorDatabase& errors,FunctionSignature sig){
+        errors.clear(this);
         const auto& tdb = p.types();
         switch(_type){
             using enum NodeType;
@@ -136,8 +137,29 @@ namespace bbe::impl{
                         }else goto error;
                         break;
                     case 10:
-                    case 11:
-                        ret = tdb.T_UINT32;
+                        if(type_id lt = children()[0uz].result_type();lt != tdb.T_ERROR){
+                            if(type_id rt = children()[1uz].result_type();rt != tdb.T_ERROR){
+                                if(lt == rt){
+                                    ret = lt;
+                                }else{
+                                    errors.add(this,u8"Mismatched operands to +"s);
+                                    goto error;
+                                }
+                            }else goto error;
+                        }else goto error;
+                        break;
+                    case 20:
+                        if(type_id lt = children()[0uz].result_type();lt != tdb.T_ERROR){
+                            if(type_id rt = children()[1uz].result_type();rt != tdb.T_ERROR){
+                                if(lt == rt){
+                                    ret = lt;
+                                }else{
+                                    errors.add(this,u8"Mismatched operands to -"s);
+                                    goto error;
+                                }
+                            }else goto error;
+                        }else goto error;
+                        break;
                         break;
                     case 25:
                         ret = tdb.T_VOID;

@@ -23,6 +23,9 @@ namespace bbe::impl{
             void clear(){
                 records.clear();
             }
+            void clear(const ASTNode* key){
+                records.erase(key);
+            }
             bool empty() const{
                 return records.empty();
             }

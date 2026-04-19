@@ -4,12 +4,17 @@
 #include"ast.hpp"
 #include<vector>
 namespace bbe::impl{
+    class ProjectEntitiesPool;
+    class ErrorDatabase;
     class Function{
         FunctionSignature sig;
         ASTNode root;
         public:
             Function(FunctionSignature s) :  sig(std::move(s)){}
             Function(ASTNode&& r,FunctionSignature s) :  sig(std::move(s)), root(std::move(r)){}
+            void recalculate_types(ProjectEntitiesPool& p,ErrorDatabase& e){
+                root.recursively_recalculate_result_type(p,e,sig);
+            }
             void set(ASTNode&& r){
                 root = std::move(r);
             }

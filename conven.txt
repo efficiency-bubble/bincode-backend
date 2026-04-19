@@ -23,8 +23,11 @@ Additional DFG node types:
 
 Built-in functions:
 0 = call function
-10 = add uint32 # TODO: make type-generic in AST and resolve type in DFG
-11 = sub uint32
+10 = add (AST) / add uint32 (DFG)
+11 = add sint32 (DFG)
+
+20 = sub (AST) / sub uint32 (DFG)
+21 = sub sint32 (DFG)
 25 = print uint32
 50 = uint32 == uint32
 51 = uint32 <= uint32

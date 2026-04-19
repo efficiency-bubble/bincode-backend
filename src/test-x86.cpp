@@ -11,11 +11,13 @@
 #include<print>
 using namespace cppp::literals;
 int main(){
-    ProjectEntitiesPool pep;
+    ProjectEntitiesPool p;
     TypeDatabase tdb;
-    std::uint32_t example_fn = pep.functions().emplace(FunctionSignature{TypeDatabase::T_UINT32,TypeDatabase::T_UINT32});
-    pep.functions()[example_fn].set(fibonacci());
-    bbe::targets::x86::Function fn{pep.functions()[example_fn],tdb};
+    ErrorDatabase edb;
+    std::uint32_t example_fn = p.functions().emplace(FunctionSignature{TypeDatabase::T_UINT32,TypeDatabase::T_UINT32});
+    p.functions()[example_fn].set(fibonacci());
+    p.functions()[example_fn].recalculate_types(p,edb);
+    bbe::targets::x86::Function fn{p.functions()[example_fn],tdb};
     for(const std::byte b : fn.instructions()){
         cppp::print<u8"{:02X} "_ts>(static_cast<std::uint8_t>(b));
     }

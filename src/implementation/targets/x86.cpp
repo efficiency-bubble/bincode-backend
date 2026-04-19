@@ -146,8 +146,10 @@ namespace bbe::targets::x86::impl{
                                     return {ret,false};
                                 }
                                 case 10:
-                                    return encode_arith<x::instructions::add>(*dn.parents()[0uz],*dn.parents()[1uz]);
                                 case 11:
+                                    return encode_arith<x::instructions::add>(*dn.parents()[0uz],*dn.parents()[1uz]);
+                                case 20:
+                                case 21:
                                     return encode_arith<x::instructions::sub>(*dn.parents()[0uz],*dn.parents()[1uz]);
                                 case 50:
                                     return encode_comparison<x::instructions::set::e>(*dn.parents()[0uz],*dn.parents()[1uz]);

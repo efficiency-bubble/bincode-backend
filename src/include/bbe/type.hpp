@@ -55,7 +55,7 @@ namespace bbe::impl{
         }
     };
     enum class FundamentalTypeType : std::uint8_t{
-        VOID,UNSIGNED_INTEGRAL,PACK,FUNCTION
+        VOID,SIGNED_INTEGRAL,UNSIGNED_INTEGRAL,PACK,FUNCTION
     };
     class TypeInfo{
         std::uint64_t _size;
@@ -91,14 +91,18 @@ namespace bbe::impl{
         public:
             constexpr static type_id T_VOID = 0;
             constexpr static type_id T_UINT32 = 1;
-            constexpr static type_id T_UINT64 = 2;
-            constexpr static type_id T_BOOL = 3;
+            constexpr static type_id T_INT32 = 2;
+            constexpr static type_id T_UINT64 = 3;
+            constexpr static type_id T_INT64 = 4;
+            constexpr static type_id T_BOOL = 5;
             constexpr static type_id T_ERROR = std::numeric_limits<type_id>::max();
             TypeDatabase(){
                 emplace(FundamentalTypeType::VOID,0,0);
                 emplace(FundamentalTypeType::UNSIGNED_INTEGRAL,4,4);
+                emplace(FundamentalTypeType::SIGNED_INTEGRAL,4,4);
                 emplace(FundamentalTypeType::UNSIGNED_INTEGRAL,8,8);
-                emplace(FundamentalTypeType::UNSIGNED_INTEGRAL,1,1); // TODO: make bool signed
+                emplace(FundamentalTypeType::SIGNED_INTEGRAL,8,8);
+                emplace(FundamentalTypeType::SIGNED_INTEGRAL,1,1);
             }
             type_id pack_of(cppp::fixed_array<type_id>&&) const;
             type_id function_of(FunctionSignature sig) const;

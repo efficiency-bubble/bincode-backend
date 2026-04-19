@@ -44,6 +44,8 @@ namespace bbe::inter::dfg::impl{
             }
             case FNSYM:
                 return fptr{nr->primitive()};
+            case STDOUT:
+                return {};
             default: throw std::logic_error("bbe::inter::dfg::eval(): Unknown node type "s+std::to_string(std::to_underlying(nr->operation())));
         }
     }
