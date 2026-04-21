@@ -12,12 +12,31 @@
 using namespace cppp::literals;
 int main(){
     ProjectEntitiesPool p;
-    TypeDatabase tdb;
     ErrorDatabase edb;
-    std::uint32_t example_fn = p.functions().emplace(FunctionSignature{TypeDatabase::T_UINT32,TypeDatabase::T_UINT32});
-    p.functions()[example_fn].set(fibonacci());
+    
+    std::uint32_t example_fn = p.functions().emplace(FunctionSignature{TypeDatabase::T_UINT32,p.types().pack_of({TypeDatabase::T_UINT32,TypeDatabase::T_UINT32})});
+    p.functions()[example_fn].set(
+        fork(
+            cmag(FN_LEQ32,arg(0),u32(2)),
+            cmag(FN_ADD32,u32(1),arg(1)),
+            cmag(FN_ADD32,
+                cmag(0,fn(0),pack(cmag(FN_SUB32,arg(0),u32(1)),arg(1))),
+                cmag(0,fn(0),pack(cmag(FN_SUB32,arg(0),u32(2)),arg(1)))
+            )
+        )
+    );
     p.functions()[example_fn].recalculate_types(p,edb);
-    bbe::targets::x86::Function fn{p.functions()[example_fn],tdb};
+    if(!edb.empty()){
+        cppp::println<u8"There are errors:"_ts>();
+        for(const auto& [n,ev] : edb.all()){
+            cppp::println<u8"· Node 0x{:x}:"_ts>(reinterpret_cast<std::uintptr_t>(n));
+            for(const auto& e : ev){
+                cppp::println<u8"  {}"_ts>(e.reason());
+            }
+        }
+        return -1;
+    }
+    bbe::targets::x86::Function fn{p.functions()[example_fn],p.types()};
     for(const std::byte b : fn.instructions()){
         cppp::print<u8"{:02X} "_ts>(static_cast<std::uint8_t>(b));
     }

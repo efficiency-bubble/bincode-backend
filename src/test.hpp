@@ -5,10 +5,11 @@ using namespace bbe;
 
 constexpr static std::uint32_t FN_CALL = 0;
 constexpr static std::uint32_t FN_ADD32 = 10;
-constexpr static std::uint32_t FN_SUB32 = 11;
+constexpr static std::uint32_t FN_SUB32 = 20;
 constexpr static std::uint32_t FN_PRU32 = 25;
 constexpr static std::uint32_t FN_EQ32 = 50;
-constexpr static std::uint32_t FN_BNOT = 51;
+constexpr static std::uint32_t FN_LEQ32 = 51;
+constexpr static std::uint32_t FN_BNOT = 60;
 
 ASTNode u32(std::uint32_t val){
     return {NodeType::UINT32,val,0};
@@ -42,6 +43,9 @@ ASTNode pind(ASTNode&& arg,std::uint32_t ind){
     ASTNode x{NodeType::PACKIND,ind,1};
     x.emplace(0,std::move(arg));
     return x;
+}
+ASTNode arg(std::uint32_t ind){
+    return pind(arg(),ind);
 }
 template<typename ...T>
 ASTNode cmag(std::uint32_t magic,T&& ...children){
@@ -87,11 +91,11 @@ std::unordered_map<std::uint32_t,cppp::sv> EXPLAIN{
 
 ASTNode fibonacci(){
     return fork(
-        cmag(51,arg(),u32(2)),
+        cmag(FN_LEQ32,arg(),u32(2)),
         u32(1),
-        cmag(10,
-            cmag(0,fn(0),cmag(20,arg(),u32(1))),
-            cmag(0,fn(0),cmag(20,arg(),u32(2)))
+        cmag(FN_ADD32,
+            cmag(0,fn(0),cmag(FN_SUB32,arg(),u32(1))),
+            cmag(0,fn(0),cmag(FN_SUB32,arg(),u32(2)))
         )
     );
 }

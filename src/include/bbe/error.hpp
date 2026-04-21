@@ -29,6 +29,9 @@ namespace bbe::impl{
             bool empty() const{
                 return records.empty();
             }
+            const std::unordered_map<const ASTNode*,std::vector<Error>>& all() const{
+                return records;
+            }
             std::span<const Error> query(const ASTNode* for_node) const{
                 if(auto it=records.find(for_node);it!=records.end()){
                     return it->second;

@@ -124,7 +124,7 @@ namespace bbe::impl{
                 switch(getp32()){
                     case 0:
                         if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
-                            if(const auto& t = tdb[pt];t.type() == FundamentalTypeType::FUNCTION){
+                            if(const auto& t = tdb[pt];t.type() == FundamentalTypeType::FUNCTION_POINTER){
                                 type_id at = children()[1uz].result_type();
                                 if(at != tdb.T_ERROR && t.function_signature().parameter() != at){
                                     errors.add(this,u8"Argument and parameter type mismatch"s);

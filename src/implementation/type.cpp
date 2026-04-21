@@ -20,7 +20,7 @@ namespace bbe::impl{
         if(auto it=functions.find(sig);it!=functions.end()){
             return it->second;
         }else{
-            type_id nt = infos.emplace(FundamentalTypeType::FUNCTION,0,0);
+            type_id nt = infos.emplace(FundamentalTypeType::FUNCTION_POINTER,8,8);
             infos[nt].data = &functions.try_emplace(sig,nt).first->first;
             return nt;
         }

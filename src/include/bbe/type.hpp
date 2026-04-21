@@ -55,7 +55,7 @@ namespace bbe::impl{
         }
     };
     enum class FundamentalTypeType : std::uint8_t{
-        VOID,SIGNED_INTEGRAL,UNSIGNED_INTEGRAL,PACK,FUNCTION
+        VOID,SIGNED_INTEGRAL,UNSIGNED_INTEGRAL,PACK,FUNCTION_POINTER
     };
     class TypeInfo{
         std::uint64_t _size;

@@ -27,6 +27,7 @@ namespace bbe::targets::x86::impl{
                 using value_t = std::uint32_t;
             private:
                 Function& f;
+                const TypeDatabase& tdb;
                 value_t value_counter = 0;
                 std::uint32_t sp = 0;
                 std::unordered_map<std::uint32_t,std::vector<value_t>> pack_contents;
@@ -34,15 +35,16 @@ namespace bbe::targets::x86::impl{
                 value_t new_value_id(){
                     return value_counter++;
                 }
-                std::uint32_t allocate_dw(value_t vid){
-                    sp += 4;
+                std::uint32_t allocate_stack(std::uint32_t sz,value_t vid){
+                    sp += sz;
                     value_frame_off.try_emplace(vid,sp);
                     return sp;
                 }
+                std::uint32_t allocate_dw(value_t vid){
+                    return allocate_stack(4,vid);
+                }
                 std::uint32_t allocate_qw(value_t vid){
-                    sp += 8;
-                    value_frame_off.try_emplace(vid,sp);
-                    return sp;
+                    return allocate_stack(8,vid);
                 }
                 static x::displacement<x::width::W8> soff_to_disp8(std::uint32_t off){
                     if(off > 0xFF) throw std::logic_error("x86 compile: soff_to_disp8: stack offset too large");
@@ -64,6 +66,15 @@ namespace bbe::targets::x86::impl{
                 template<x::width w=x::width::W32>
                 static void rtos(cppp::bytes& b,std::byte r,x::displacement<x::width::W8> soff){
                     x::instructions::mov::rm_r::for_width<w>::encode(b,0b01_b,x::reg::BP,soff,r);
+                }
+                static void rtosd(std::uint32_t sz,cppp::bytes& b,std::byte r,x::displacement<x::width::W8> soff){
+                    switch(sz){
+                        case 1: rtos<x::width::W8>(b,r,soff); break;
+                        case 2: rtos<x::width::W16>(b,r,soff); break;
+                        case 4: rtos<x::width::W32>(b,r,soff); break;
+                        case 8: rtos<x::width::W64>(b,r,soff); break;
+                        default: std::unreachable();
+                    }
                 }
                 static void stor(cppp::bytes& b,x::displacement<x::width::W8> soff,std::byte r){
                     x::instructions::mov::r_rm::for_width<x::width::W32>::encode(b,r,0b01_b /* disp8 */,x::reg::BP,soff);
@@ -102,15 +113,30 @@ namespace bbe::targets::x86::impl{
                     }
                 }
             public:
-                FunctionCompiler(Function& f) : f(f){}
+                FunctionCompiler(Function& f,const TypeDatabase& tdb) : f(f), tdb(tdb){}
                 void into(value_t v,std::byte reg) const{
                     stor(f.instructions(),soff_to_disp8(value_frame_off.at(v)),reg);
                 }
-                void load_args(type_id t,const TypeDatabase& tdb){
+                void load_args(type_id t){
                     value_t pid = new_value_id();
-                    if(pid) throw std::logic_error("x86 compile: the argument, if present, must be loaded first"s);
-                    if(tdb[t].type() != FundamentalTypeType::UNSIGNED_INTEGRAL) throw std::logic_error("x86 compile: ABI: argument must be integral"s);
-                    rtos(f.instructions(),arg_reg(0),soff_to_disp8(allocate_dw(pid)));
+                    if(pid) throw std::logic_error("x86 compile: the argument, must be loaded first"s);
+                    const TypeInfo& ti = tdb[t];
+                    if(ti.type() == FundamentalTypeType::VOID) return; // nothing here
+                    else if(ti.type() == FundamentalTypeType::PACK){
+                        auto& contents = pack_contents.try_emplace(pid).first->second;
+                        for(std::uint32_t i=0;i<ti.pack_contents().types().size();++i){
+                            const TypeInfo& ati = tdb[ti.pack_contents().types()[i]];
+                            if(ati.type() == FundamentalTypeType::VOID) continue;
+                            else if(ati.type() == FundamentalTypeType::PACK) throw std::logic_error("x86 compile: ABI: Can't have packs in an argument pack"s);
+                            value_t vid = new_value_id();
+                            
+                            std::uint32_t asize = static_cast<std::uint32_t>(ati.size());
+                            rtosd(asize,f.instructions(),arg_reg(i),soff_to_disp8(allocate_stack(asize,vid)));
+                            contents.emplace_back(vid);
+                        }
+                    }else{
+                        rtos(f.instructions(),arg_reg(0),soff_to_disp8(allocate_stack(static_cast<std::uint32_t>(ti.size()),pid)));
+                    }
                 }
                 DataValue compile_node(const dfg::DataNode& dn){
                     switch(dn.operation()){
@@ -133,14 +159,24 @@ namespace bbe::targets::x86::impl{
                             return {pack_contents[pkid][dn.primitive()],false};
                         }
                         case ARG:
-                            return {0,false};
+                            return {0,pack_contents.contains(0)};
                         case CALL_BUILTIN: {
                             switch(dn.primitive()){
                                 case 0: {
                                     value_t ret = new_value_id();
                                     value_t fn = require_value(compile_node(*dn.parents().front()),u8"x86 compile: a pack is not a function pointer"s);
-                                    value_t argv = require_value(compile_node(*dn.parents()[1]),u8"x86 compile: ABI: can't pass a pack as argument"s);
-                                    stor(f.instructions(),soff_to_disp8(value_frame_off.at(argv)),arg_reg(0));
+                                    
+                                    DataValue arg = compile_node(*dn.parents()[1]);
+                                    if(arg.is_pack()){
+                                        const auto& pc = pack_contents.at(arg.id());
+                                        for(std::uint32_t i=0;i<pc.size();++i){
+                                            // TODO: figure out the correct argument width somehowx
+                                            stor(f.instructions(),soff_to_disp8(value_frame_off.at(pc[i])),arg_reg(i));
+                                        }
+                                    }else{
+                                        stor(f.instructions(),soff_to_disp8(value_frame_off.at(arg.id())),arg_reg(0));
+                                    }
+                                    
                                     x::instructions::call::near_abs::for_width<x::width::W64>::encode(f.instructions(),0x01_b /* disp8 */,x::reg::BP,soff_to_disp8(value_frame_off.at(fn)));
                                     rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(ret)));
                                     return {ret,false};
@@ -211,12 +247,12 @@ namespace bbe::targets::x86::impl{
         };
     }
     Function::Function(const dfg::Function& f,const TypeDatabase& tdb){
-        FunctionCompiler compiler{*this};
+        FunctionCompiler compiler{*this,tdb};
         x::instructions::push::r64(b,x::reg::BP);
         x::instructions::mov::rm_r::for_width<x::width::W64>::encode(b,0b11_b,x::reg::BP,x::reg::SP);
         std::size_t enter = b.size();
         enter += x::instructions::sub::rm_imm::for_width<x::width::W64>::encode(b,0b11_b,x::reg::SP,x::skip_immediate).offset_of_first<x::ComponentType::IMMEDIATE>;
-        compiler.load_args(f.signature().parameter(),tdb);
+        compiler.load_args(f.signature().parameter());
         compiler.compile_node(*f.dfg().stdout_result());
         auto retv{compiler.compile_node(*f.dfg().root())};
         if(retv.is_pack()){
