@@ -1,5 +1,5 @@
-#include<bbe/targets/x86.hpp>
 #include<assembly/instruction.hpp>
+#include<bbe/targets/x86.hpp>
 #include<unordered_map>
 #include<cppp/int.hpp>
 #include<vector>
@@ -7,18 +7,32 @@ namespace bbe::targets::x86::impl{
     namespace x = ::x86;
     using namespace std::literals;
     using namespace cppp::literals;
-    constexpr static std::uint32_t NVAL = std::numeric_limits<std::uint32_t>::max();
+    constexpr static std::uint32_t NSOFF = std::numeric_limits<std::uint32_t>::max();
     class DataValue{
-        std::uint32_t _v;
-        bool pack;
+        std::vector<const DataValue*> _pack;
+        const TypeInfo* _type;
+        std::uint32_t soff = NSOFF;
         public:
-            DataValue() : _v(NVAL), pack(false){}
-            DataValue(std::uint32_t v,bool pack) : _v(v), pack(pack){}
+            DataValue(const TypeInfo& t) : _type(&t){}
             bool is_pack() const{
-                return pack;
+                return _type->type() == FundamentalTypeType::PACK;
             }
-            std::uint32_t id() const{
-                return _v;
+            const TypeInfo& type() const{
+                return *_type;
+            }
+            const std::vector<const DataValue*>& pack_contents() const{
+                CPPP_ASSERT(is_pack());
+                return _pack;
+            }
+            std::vector<const DataValue*>& pack_contents(){
+                CPPP_ASSERT(is_pack());
+                return _pack;
+            }
+            void set_stack(std::uint32_t off){
+                soff = off;
+            }
+            std::uint32_t stack() const{
+                return soff;
             }
     };
     namespace{
@@ -30,38 +44,28 @@ namespace bbe::targets::x86::impl{
                 const TypeDatabase& tdb;
                 value_t value_counter = 0;
                 std::uint32_t sp = 0;
-                std::unordered_map<std::uint32_t,std::vector<value_t>> pack_contents;
-                std::unordered_map<value_t,std::uint32_t> value_frame_off;
-                value_t new_value_id(){
-                    return value_counter++;
+                std::unordered_map<value_t,DataValue> values;
+                DataValue& new_value(const TypeInfo& t){
+                    return values.try_emplace(value_counter++,t).first->second;
                 }
-                std::uint32_t allocate_stack(std::uint32_t sz,value_t vid){
+                DataValue& new_value(type_id t){
+                    return new_value(tdb[t]);
+                }
+                std::uint32_t allocate_stack(std::uint32_t sz,DataValue& v){
                     sp += sz;
-                    value_frame_off.try_emplace(vid,sp);
+                    v.set_stack(sp);
                     return sp;
                 }
-                std::uint32_t allocate_dw(value_t vid){
-                    return allocate_stack(4,vid);
+                std::uint32_t allocate_dw(DataValue& v){
+                    return allocate_stack(4,v);
                 }
-                std::uint32_t allocate_qw(value_t vid){
-                    return allocate_stack(8,vid);
+                std::uint32_t allocate_qw(DataValue& v){
+                    return allocate_stack(8,v);
                 }
                 static x::displacement<x::width::W8> soff_to_disp8(std::uint32_t off){
+                    CPPP_ASSERT(off != NSOFF);
                     if(off > 0xFF) throw std::logic_error("x86 compile: soff_to_disp8: stack offset too large");
                     return {static_cast<std::int8_t>(-static_cast<std::int32_t>(off))};
-                }
-                static value_t require_value(DataValue dv,const cppp::str& orelse){
-                    if(dv.is_pack()){
-                        throw std::logic_error(reinterpret_cast<const char*>(orelse.c_str()));
-                    }
-                    return dv.id();
-                }
-                static std::uint32_t require_pack(DataValue dv,const cppp::str& orelse){
-                    if(dv.is_pack()){
-                        return dv.id();
-                    }else{
-                        throw std::logic_error(reinterpret_cast<const char*>(orelse.c_str()));
-                    }
                 }
                 template<x::width w=x::width::W32>
                 static void rtos(cppp::bytes& b,std::byte r,x::displacement<x::width::W8> soff){
@@ -76,32 +80,42 @@ namespace bbe::targets::x86::impl{
                         default: std::unreachable();
                     }
                 }
+                template<x::width w=x::width::W32>
                 static void stor(cppp::bytes& b,x::displacement<x::width::W8> soff,std::byte r){
-                    x::instructions::mov::r_rm::for_width<x::width::W32>::encode(b,r,0b01_b /* disp8 */,x::reg::BP,soff);
+                    x::instructions::mov::r_rm::for_width<w>::encode(b,r,0b01_b /* disp8 */,x::reg::BP,soff);
+                }
+                static void stord(std::uint32_t sz,cppp::bytes& b,x::displacement<x::width::W8> soff,std::byte r){
+                    switch(sz){
+                        case 1: stor<x::width::W8>(b,soff,r); break;
+                        case 2: stor<x::width::W16>(b,soff,r); break;
+                        case 4: stor<x::width::W32>(b,soff,r); break;
+                        case 8: stor<x::width::W64>(b,soff,r); break;
+                        default: std::unreachable();
+                    }
                 }
                 template<typename T>
-                DataValue encode_arith(const dfg::DataNode& lhsn,const dfg::DataNode& rhsn){
-                    value_t vid = new_value_id();
-                    value_t lhs = require_value(compile_node(lhsn),u8"x86 compile: lhs to arithmetic op is erroneously a pack"s);
-                    value_t rhs = require_value(compile_node(rhsn),u8"x86 compile: rhs to arithmetic op is erroneously a pack"s);
+                DataValue& encode_arith(const TypeInfo& rt,const dfg::DataNode& lhsn,const dfg::DataNode& rhsn){
+                    DataValue& rv = new_value(rt);
+                    const DataValue& lhs = *compile_node(lhsn);
+                    const DataValue& rhs = *compile_node(rhsn);
                     into(lhs,x::reg::A);
                     into(rhs,x::reg::C);
                     T::rm_r::template for_width<x::width::W32>::encode(f.instructions(),0b11_b,x::reg::A,x::reg::C);
-                    rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(vid)));
-                    return {vid,false};
+                    rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(rv)));
+                    return rv;
                 }
                 template<typename T>
-                DataValue encode_comparison(const dfg::DataNode& lhsn,const dfg::DataNode& rhsn){
-                    value_t vid = new_value_id();
-                    value_t lhs = require_value(compile_node(lhsn),u8"x86 compile: lhs to compare is erroneously a pack"s);
-                    value_t rhs = require_value(compile_node(rhsn),u8"x86 compile: rhs to compare is erroneously a pack"s);
+                DataValue& encode_comparison(const TypeInfo& rt,const dfg::DataNode& lhsn,const dfg::DataNode& rhsn){
+                    DataValue& rv = new_value(rt);
+                    const DataValue& lhs = *compile_node(lhsn);
+                    const DataValue& rhs = *compile_node(rhsn);
                     into(lhs,x::reg::A);
                     into(rhs,x::reg::C);
                     x::instructions::cmp::rm_r::for_width<x::width::W32>::encode(f.instructions(),0b11_b,x::reg::A,x::reg::C);
                     T::encode(f.instructions(),0b11_b,x::reg::A);
                     x::instructions::movzx::from_b::for_width<x::width::W32>::encode(f.instructions(),x::reg::A,0b11_b,x::reg::A);
-                    rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(vid)));
-                    return {vid,false};
+                    rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(rv)));
+                    return rv;
                 }
                 static std::byte arg_reg(std::uint32_t ind){
                     switch(ind){
@@ -114,103 +128,97 @@ namespace bbe::targets::x86::impl{
                 }
             public:
                 FunctionCompiler(Function& f,const TypeDatabase& tdb) : f(f), tdb(tdb){}
-                void into(value_t v,std::byte reg) const{
-                    stor(f.instructions(),soff_to_disp8(value_frame_off.at(v)),reg);
+                void into(const DataValue& v,std::byte reg) const{
+                    stor(f.instructions(),soff_to_disp8(v.stack()),reg);
                 }
                 void load_args(type_id t){
-                    value_t pid = new_value_id();
-                    if(pid) throw std::logic_error("x86 compile: the argument, must be loaded first"s);
-                    const TypeInfo& ti = tdb[t];
-                    if(ti.type() == FundamentalTypeType::VOID) return; // nothing here
-                    else if(ti.type() == FundamentalTypeType::PACK){
-                        auto& contents = pack_contents.try_emplace(pid).first->second;
-                        for(std::uint32_t i=0;i<ti.pack_contents().types().size();++i){
-                            const TypeInfo& ati = tdb[ti.pack_contents().types()[i]];
-                            if(ati.type() == FundamentalTypeType::VOID) continue;
-                            else if(ati.type() == FundamentalTypeType::PACK) throw std::logic_error("x86 compile: ABI: Can't have packs in an argument pack"s);
-                            value_t vid = new_value_id();
+                    const TypeInfo& argt = tdb[t];
+                    DataValue& argv = new_value(argt);
+                    if(argt.type() == FundamentalTypeType::VOID) return; // nothing here
+                    else if(argt.type() == FundamentalTypeType::PACK){
+                        auto& contents = argv.pack_contents();
+                        for(std::uint32_t i=0;i<argt.pack_contents().types().size();++i){
+                            const TypeInfo& arg_i_t = tdb[argt.pack_contents().types()[i]];
+                            if(arg_i_t.type() == FundamentalTypeType::VOID) continue;
+                            else if(arg_i_t.type() == FundamentalTypeType::PACK) throw std::logic_error("x86 compile: ABI: Can't have packs in an argument pack"s);
+                            DataValue& arg_i_v = new_value(arg_i_t);
                             
-                            std::uint32_t asize = static_cast<std::uint32_t>(ati.size());
-                            rtosd(asize,f.instructions(),arg_reg(i),soff_to_disp8(allocate_stack(asize,vid)));
-                            contents.emplace_back(vid);
+                            std::uint32_t asize = static_cast<std::uint32_t>(arg_i_t.size());
+                            rtosd(asize,f.instructions(),arg_reg(i),soff_to_disp8(allocate_stack(asize,arg_i_v)));
+                            contents.emplace_back(&arg_i_v);
                         }
                     }else{
-                        rtos(f.instructions(),arg_reg(0),soff_to_disp8(allocate_stack(static_cast<std::uint32_t>(ti.size()),pid)));
+                        rtos(f.instructions(),arg_reg(0),soff_to_disp8(allocate_stack(static_cast<std::uint32_t>(argt.size()),argv)));
                     }
                 }
-                DataValue compile_node(const dfg::DataNode& dn){
+                const DataValue* compile_node(const dfg::DataNode& dn){
                     switch(dn.operation()){
                         using enum dfg::NodeType;
                         case UINT32: {
-                            value_t vid = new_value_id();
-                            x::instructions::mov::rm_imm::for_width<x::width::W32>::encode(f.instructions(),0b01_b /* disp8 */,x::reg::BP,soff_to_disp8(allocate_dw(vid)),dn.primitive());
-                            return {vid,false};
+                            DataValue& v = new_value(dn.return_type());
+                            x::instructions::mov::rm_imm::for_width<x::width::W32>::encode(f.instructions(),0b01_b /* disp8 */,x::reg::BP,soff_to_disp8(allocate_dw(v)),dn.primitive());
+                            return &v;
                         }
                         case PACK: {
-                            value_t pid = new_value_id();
-                            auto& contents = pack_contents.try_emplace(pid).first->second;
+                            DataValue& v = new_value(dn.return_type());
                             for(const dfg::DataNode* child : dn.parents()){
-                                contents.emplace_back(require_value(compile_node(*child),u8"x86 compile: nested packs are unsupported"s));
+                                v.pack_contents().emplace_back(compile_node(*child));
                             }
-                            return {pid,true};
+                            return &v;
                         }
-                        case PACKIND: {
-                            std::uint32_t pkid = require_pack(compile_node(*dn.parents().front()),u8"x86 compile: can't index a non-pack"s);
-                            return {pack_contents[pkid][dn.primitive()],false};
-                        }
+                        case PACKIND:
+                            return compile_node(*dn.parents().front())->pack_contents()[dn.primitive()];
                         case ARG:
-                            return {0,pack_contents.contains(0)};
+                            return &values.at(0);
                         case CALL_BUILTIN: {
                             switch(dn.primitive()){
                                 case 0: {
-                                    value_t ret = new_value_id();
-                                    value_t fn = require_value(compile_node(*dn.parents().front()),u8"x86 compile: a pack is not a function pointer"s);
+                                    DataValue& ret = new_value(dn.return_type());
+                                    const DataValue& fn = *compile_node(*dn.parents()[0uz]);
                                     
-                                    DataValue arg = compile_node(*dn.parents()[1]);
+                                    const DataValue& arg = *compile_node(*dn.parents()[1uz]);
                                     if(arg.is_pack()){
-                                        const auto& pc = pack_contents.at(arg.id());
-                                        for(std::uint32_t i=0;i<pc.size();++i){
-                                            // TODO: figure out the correct argument width somehowx
-                                            stor(f.instructions(),soff_to_disp8(value_frame_off.at(pc[i])),arg_reg(i));
+                                        for(std::uint32_t i=0;i<arg.pack_contents().size();++i){
+                                            stord(static_cast<std::uint32_t>(arg.pack_contents()[i]->type().size()),f.instructions(),soff_to_disp8(arg.pack_contents()[i]->stack()),arg_reg(i));
                                         }
                                     }else{
-                                        stor(f.instructions(),soff_to_disp8(value_frame_off.at(arg.id())),arg_reg(0));
+                                        stor(f.instructions(),soff_to_disp8(arg.stack()),arg_reg(0));
                                     }
                                     
-                                    x::instructions::call::near_abs::for_width<x::width::W64>::encode(f.instructions(),0x01_b /* disp8 */,x::reg::BP,soff_to_disp8(value_frame_off.at(fn)));
+                                    x::instructions::call::near_abs::for_width<x::width::W64>::encode(f.instructions(),0x01_b /* disp8 */,x::reg::BP,soff_to_disp8(fn.stack()));
                                     rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(ret)));
-                                    return {ret,false};
+                                    return &ret;
                                 }
                                 case 10:
                                 case 11:
-                                    return encode_arith<x::instructions::add>(*dn.parents()[0uz],*dn.parents()[1uz]);
+                                    return &encode_arith<x::instructions::add>(tdb[dn.return_type()],*dn.parents()[0uz],*dn.parents()[1uz]);
                                 case 20:
                                 case 21:
-                                    return encode_arith<x::instructions::sub>(*dn.parents()[0uz],*dn.parents()[1uz]);
+                                    return &encode_arith<x::instructions::sub>(tdb[dn.return_type()],*dn.parents()[0uz],*dn.parents()[1uz]);
                                 case 50:
-                                    return encode_comparison<x::instructions::set::e>(*dn.parents()[0uz],*dn.parents()[1uz]);
+                                    return &encode_comparison<x::instructions::set::e>(tdb[dn.return_type()],*dn.parents()[0uz],*dn.parents()[1uz]);
                                 case 51:
-                                    return encode_comparison<x::instructions::set::le>(*dn.parents()[0uz],*dn.parents()[1uz]);
+                                    return &encode_comparison<x::instructions::set::le>(tdb[dn.return_type()],*dn.parents()[0uz],*dn.parents()[1uz]);
                                 default:
                                     throw std::logic_error("x86 compile: unknown magic "s+std::to_string(dn.primitive()));
                             }
                         }
                         case BOOL: {
-                            value_t vid = new_value_id();
-                            x::instructions::mov::rm_imm::for_width<x::width::W32>::encode(f.instructions(),0b01_b /* disp8 */,x::reg::BP,soff_to_disp8(allocate_dw(vid)),dn.primitive());
-                            return {vid,false};
+                            DataValue& v = new_value(dn.return_type());
+                            x::instructions::mov::rm_imm::for_width<x::width::W32>::encode(f.instructions(),0b01_b /* disp8 */,x::reg::BP,soff_to_disp8(allocate_dw(v)),dn.primitive());
+                            return &v;
                         }
                         case FORK: {
-                            value_t rid = new_value_id();
-                            x::displacement<x::width::W8> spoff = soff_to_disp8(allocate_dw(rid));
-                            value_t cond = require_value(compile_node(*dn.parents()[0uz]),u8"x86 compile: condition in fork is erroneously a pack"s);
+                            DataValue& rv = new_value(dn.return_type());
+                            x::displacement<x::width::W8> spoff = soff_to_disp8(allocate_dw(rv));
+                            const DataValue& cond = *compile_node(*dn.parents()[0uz]);
                             into(cond,x::reg::A);
                             x::instructions::test::rm_r::for_width<x::width::W32>::encode(f.instructions(),0b11_b,x::reg::A,x::reg::A);
                             std::size_t jzloc = f.instructions().size();
                             auto jz = x::instructions::j::z::for_width<x::width::W8>::encode(f.instructions(),x::skip_immediate);
                             {
-                                value_t lv = require_value(compile_node(*dn.parents()[1uz]),u8"x86 compile: unsupported: lhs of fork being a pack"s);
-                                into(lv,x::reg::A);
+                                const DataValue& lhv = *compile_node(*dn.parents()[1uz]);
+                                into(lhv,x::reg::A);
                                 rtos(f.instructions(),x::reg::A,spoff);
                             }
                             std::size_t jeloc = f.instructions().size();
@@ -218,25 +226,25 @@ namespace bbe::targets::x86::impl{
                             
                             cppp::write<std::int8_t>(f.instructions().data()+jzloc+jz.offset_of_first<x::ComponentType::IMMEDIATE>,static_cast<std::int8_t>(f.instructions().size()-jzloc-jz.total_size));
                             {
-                                value_t rv = require_value(compile_node(*dn.parents()[2uz]),u8"x86 compile: unsupported: rhs of fork being a pack"s);
-                                into(rv,x::reg::A);
+                                const DataValue& rhv = *compile_node(*dn.parents()[2uz]);
+                                into(rhv,x::reg::A);
                                 rtos(f.instructions(),x::reg::A,spoff);
                             }
                             cppp::write<std::int8_t>(f.instructions().data()+jeloc+je.offset_of_first<x::ComponentType::IMMEDIATE>,static_cast<std::int8_t>(f.instructions().size()-jeloc-je.total_size));
-                            return {rid,false};
+                            return &rv;
                         }
                         case FNSYM: {
-                            value_t rid = new_value_id();
+                            DataValue& rv = new_value(dn.return_type());
                             std::size_t offs = f.instructions().size();
                             auto lea = x::instructions::lea::for_width<x::width::W64>::encode(f.instructions(),x::reg::A,0b00_b,0b101_b /* rip+disp32 on 64-bit mode*/,x::skip_displacement<x::width::W32>);
                             constexpr std::size_t disp_local_offs = lea.offset_of_first<x::ComponentType::DISPLACEMENT>;
                             offs += disp_local_offs;
                             f.add_relocation({.offset=static_cast<std::uint32_t>(offs),.fni=dn.primitive(),.isize=static_cast<std::uint32_t>(lea.total_size-disp_local_offs)});
-                            rtos<x::width::W64>(f.instructions(),x::reg::A,soff_to_disp8(allocate_qw(rid)));
-                            return {rid,false};
+                            rtos<x::width::W64>(f.instructions(),x::reg::A,soff_to_disp8(allocate_qw(rv)));
+                            return &rv;
                         }
                         case STDOUT:
-                            return {};
+                            return nullptr;
                         default:
                             throw std::logic_error("x86 compile: unknown op "s+std::to_string(std::to_underlying(dn.operation())));
                     }
@@ -254,11 +262,11 @@ namespace bbe::targets::x86::impl{
         enter += x::instructions::sub::rm_imm::for_width<x::width::W64>::encode(b,0b11_b,x::reg::SP,x::skip_immediate).offset_of_first<x::ComponentType::IMMEDIATE>;
         compiler.load_args(f.signature().parameter());
         compiler.compile_node(*f.dfg().stdout_result());
-        auto retv{compiler.compile_node(*f.dfg().root())};
+        const DataValue& retv{*compiler.compile_node(*f.dfg().root())};
         if(retv.is_pack()){
             throw std::logic_error("x86 compile: ABI: must not return a pack");
         }
-        compiler.into(retv.id(),x::reg::A);
+        compiler.into(retv,x::reg::A);
         x::instructions::leave(b);
         x::instructions::ret::near(b);
         cppp::write<std::uint32_t>(b.data()+enter,compiler.stack_size());

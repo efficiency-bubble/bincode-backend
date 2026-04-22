@@ -15,13 +15,14 @@ namespace bbe::targets::dfg::impl{
     };
     class DataNode{
         NodeType op;
+        type_id rtype;
         std::uint32_t prim;
         std::vector<const DataNode*> src;
         public:
-            DataNode(NodeType op) : op(op){}
-            DataNode(NodeType op,std::uint32_t prim) : op(op), prim(prim){}
-            DataNode(NodeType op,std::vector<const DataNode*>&& src) : op(op), src(std::move(src)){}
-            DataNode(NodeType op,std::uint32_t prim,std::vector<const DataNode*>&& src) : op(op), prim(prim), src(std::move(src)){}
+            DataNode(NodeType op,type_id rtype) : op(op), rtype(rtype){}
+            DataNode(NodeType op,type_id rtype,std::uint32_t prim) : op(op), rtype(rtype), prim(prim){}
+            DataNode(NodeType op,type_id rtype,std::vector<const DataNode*>&& src) : op(op), rtype(rtype), src(std::move(src)){}
+            DataNode(NodeType op,type_id rtype,std::uint32_t prim,std::vector<const DataNode*>&& src) : op(op), rtype(rtype), prim(prim), src(std::move(src)){}
             DataNode(const DataNode&) = delete;
             DataNode(DataNode&&) = default; // only use when nothing points to this
             DataNode& operator=(const DataNode&) = delete;
@@ -38,6 +39,9 @@ namespace bbe::targets::dfg::impl{
             }
             void emplace(const DataNode* nd){
                 src.emplace_back(nd);
+            }
+            type_id return_type() const{
+                return rtype;
             }
     };
     class CodeBranch{
