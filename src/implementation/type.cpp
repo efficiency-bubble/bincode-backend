@@ -11,7 +11,7 @@ namespace bbe::impl{
                 size += infos[i].size();
                 align = std::max(align,infos[i].alignment());
             }
-            type_id nt = infos.emplace(FundamentalTypeType::PACK,size,align);
+            type_id nt = infos.emplace(TypeCategory::PACK,size,align);
             infos[nt].data = &packs.try_emplace(std::move(key),nt).first->first;
             return nt;
         }
@@ -20,7 +20,7 @@ namespace bbe::impl{
         if(auto it=functions.find(sig);it!=functions.end()){
             return it->second;
         }else{
-            type_id nt = infos.emplace(FundamentalTypeType::FUNCTION_POINTER,8,8);
+            type_id nt = infos.emplace(TypeCategory::FUNCTION_POINTER,8,8);
             infos[nt].data = &functions.try_emplace(sig,nt).first->first;
             return nt;
         }

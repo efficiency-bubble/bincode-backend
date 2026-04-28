@@ -54,17 +54,17 @@ namespace bbe::impl{
             return fs.return_type() ^ std::rotl(fs.parameter(),7);
         }
     };
-    enum class FundamentalTypeType : std::uint8_t{
+    enum class TypeCategory : std::uint8_t{
         VOID,SIGNED_INTEGRAL,UNSIGNED_INTEGRAL,PACK,FUNCTION_POINTER
     };
     class TypeInfo{
         std::uint64_t _size;
         std::uint64_t align;
         const void* data;
-        FundamentalTypeType _type;
+        TypeCategory _type;
         friend class TypeDatabase;
         public:
-            TypeInfo(FundamentalTypeType t,std::uint64_t sz,std::uint64_t al) : _size(sz), align(al), data(nullptr), _type(t){}
+            TypeInfo(TypeCategory t,std::uint64_t sz,std::uint64_t al) : _size(sz), align(al), data(nullptr), _type(t){}
             std::uint64_t size() const{
                 return _size;
             }
@@ -74,7 +74,7 @@ namespace bbe::impl{
             std::uint64_t stride() const{
                 return _size + (-_size & (align-1));
             }
-            FundamentalTypeType type() const{
+            TypeCategory type() const{
                 return _type;
             }
             const type_pack& pack_contents() const{
@@ -97,12 +97,12 @@ namespace bbe::impl{
             constexpr static type_id T_BOOL = 5;
             constexpr static type_id T_ERROR = std::numeric_limits<type_id>::max();
             TypeDatabase(){
-                emplace(FundamentalTypeType::VOID,0,0);
-                emplace(FundamentalTypeType::UNSIGNED_INTEGRAL,4,4);
-                emplace(FundamentalTypeType::SIGNED_INTEGRAL,4,4);
-                emplace(FundamentalTypeType::UNSIGNED_INTEGRAL,8,8);
-                emplace(FundamentalTypeType::SIGNED_INTEGRAL,8,8);
-                emplace(FundamentalTypeType::SIGNED_INTEGRAL,1,1);
+                emplace(TypeCategory::VOID,0,0);
+                emplace(TypeCategory::UNSIGNED_INTEGRAL,4,4);
+                emplace(TypeCategory::SIGNED_INTEGRAL,4,4);
+                emplace(TypeCategory::UNSIGNED_INTEGRAL,8,8);
+                emplace(TypeCategory::SIGNED_INTEGRAL,8,8);
+                emplace(TypeCategory::SIGNED_INTEGRAL,1,1);
             }
             type_id pack_of(cppp::fixed_array<type_id>&&) const;
             type_id function_of(FunctionSignature sig) const;
@@ -119,7 +119,7 @@ namespace bbe::impl{
 namespace bbe{
     BBE_EXPORT type_id;
     BBE_EXPORT type_pack;
-    BBE_EXPORT FundamentalTypeType;
+    BBE_EXPORT TypeCategory;
     BBE_EXPORT TypeInfo;
     BBE_EXPORT TypeDatabase;
 }

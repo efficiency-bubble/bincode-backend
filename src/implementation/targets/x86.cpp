@@ -15,7 +15,7 @@ namespace bbe::targets::x86::impl{
         public:
             DataValue(const TypeInfo& t) : _type(&t){}
             bool is_pack() const{
-                return _type->type() == FundamentalTypeType::PACK;
+                return _type->type() == TypeCategory::PACK;
             }
             const TypeInfo& type() const{
                 return *_type;
@@ -134,13 +134,13 @@ namespace bbe::targets::x86::impl{
                 void load_args(type_id t){
                     const TypeInfo& argt = tdb[t];
                     DataValue& argv = new_value(argt);
-                    if(argt.type() == FundamentalTypeType::VOID) return; // nothing here
-                    else if(argt.type() == FundamentalTypeType::PACK){
+                    if(argt.type() == TypeCategory::VOID) return; // nothing here
+                    else if(argt.type() == TypeCategory::PACK){
                         auto& contents = argv.pack_contents();
                         for(std::uint32_t i=0;i<argt.pack_contents().types().size();++i){
                             const TypeInfo& arg_i_t = tdb[argt.pack_contents().types()[i]];
-                            if(arg_i_t.type() == FundamentalTypeType::VOID) continue;
-                            else if(arg_i_t.type() == FundamentalTypeType::PACK) throw std::logic_error("x86 compile: ABI: Can't have packs in an argument pack"s);
+                            if(arg_i_t.type() == TypeCategory::VOID) continue;
+                            else if(arg_i_t.type() == TypeCategory::PACK) throw std::logic_error("x86 compile: ABI: Can't have packs in an argument pack"s);
                             DataValue& arg_i_v = new_value(arg_i_t);
                             
                             std::uint32_t asize = static_cast<std::uint32_t>(arg_i_t.size());
