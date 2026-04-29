@@ -84,11 +84,12 @@ int main(){
         }},
         {u8"AST type inference"sv,[] -> test_result_t {
             ProjectEntitiesPool pep;
-            ErrorDatabase e;
+            ErrorDatabase edb;
             auto an = u32(1024);
-            an.recursively_recalculate_result_type(pep,e,{pep.types().T_UINT32,pep.types().T_VOID});
+            an.recursively_recalculate_result_type(pep,edb,{pep.types().T_UINT32,pep.types().T_VOID});
+            ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
+            
             ASSERT_EQ(an.result_type(),pep.types().T_UINT32,"Wrong type for uint32 literal");
-            ASSERT_EQ(e.empty(),true,"Errors reported for inferring the type of a uint32 literal");
             return {};
         }},
         {u8"Dfg inter: add values"sv,[] -> test_result_t {
@@ -97,6 +98,8 @@ int main(){
             std::uint32_t fn = proj.functions().emplace(FunctionSignature{TypeDatabase::T_UINT32,TypeDatabase::T_VOID});
             proj.functions()[fn].set(cmag(FN_ADD32,u32(1),u32(41)));
             proj.functions()[fn].recalculate_types(proj,edb);
+            ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
+            
             bbe::inter::dfg::CompiledFunctionPool cfp{proj};
             ASSERT_EQ(cfp.call(fn,{}).get<bbe::inter::uint32v>().value,42,"Wrong return value");
             return {};
@@ -107,6 +110,8 @@ int main(){
             std::uint32_t fn = proj.functions().emplace(FunctionSignature{TypeDatabase::T_BOOL,TypeDatabase::T_VOID});
             proj.functions()[fn].set(cmag(FN_EQ32,u32(42),u32(42)));
             proj.functions()[fn].recalculate_types(proj,edb);
+            ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
+            
             bbe::inter::dfg::CompiledFunctionPool cfp{proj};
             if(!cfp.call(fn,{}).get<bbe::inter::boolv>().value) return std::unexpected(u8"Wrong return value"s);
             return {};
@@ -117,6 +122,8 @@ int main(){
             std::uint32_t fn = proj.functions().emplace(FunctionSignature{TypeDatabase::T_UINT32,TypeDatabase::T_VOID});
             proj.functions()[fn].set(pind(pack(u32(42),u32(41)),1));
             proj.functions()[fn].recalculate_types(proj,edb);
+            ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
+            
             bbe::inter::dfg::CompiledFunctionPool cfp{proj};
             ASSERT_EQ(cfp.call(fn,{}).get<bbe::inter::uint32v>().value,41,"Wrong return value");
             return {};
@@ -127,6 +134,8 @@ int main(){
             std::uint32_t fn = proj.functions().emplace(FunctionSignature{TypeDatabase::T_UINT32,TypeDatabase::T_VOID});
             proj.functions()[fn].set(cmag(FN_ADD32,u32(42),u32(13)));
             proj.functions()[fn].recalculate_types(proj,edb);
+            ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
+            
             bbe::targets::dfg::DataFlowGraph dfg{proj.functions()[fn]};
             cppp::str buf;
             bbe::targets::yasbepl::compile(dfg,buf);
