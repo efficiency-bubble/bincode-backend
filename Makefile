@@ -1,6 +1,6 @@
-COMPOPT := -std=c++26 -flto=7 -fuse-linker-plugin -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wno-maybe-uninitialized -m64 -I"src/include" -I$(cppinclude)
-RELEASEOPT := -O3 -s -DNDEBUG
-DEBUGOPT := -O0 -g
+COMPOPT := -std=c++26 -freflection -flto=7 -fuse-linker-plugin -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wno-maybe-uninitialized -Werror -m64 -I"src/include" -I$(cppinclude)
+RELEASEOPT := -O3 -s -DNDEBUG -fcontract-evaluation-semantic=ignore
+DEBUGOPT := -O0 -g -fcontract-evaluation-semantic=enforce
 FINALOPT := $(COMPOPT) -L$(cpplibs) -ltbb
 LIBNAME := bbe
 HEADERS := $(wildcard src/include/$(LIBNAME)/*.hpp) $(wildcard src/include/$(LIBNAME)/*/*.hpp)
@@ -9,9 +9,9 @@ OBJECTS := $(patsubst src/implementation/%.cpp,obj/%.o,$(SOURCES))
 DEBUG_OBJECTS := $(patsubst src/implementation/%.cpp,obj/%_debug.o,$(SOURCES))
 all: lib/$(LIBNAME).a lib/$(LIBNAME)_debug.a bin/bcc
 	
-bin/%: src/%.cpp lib/$(LIBNAME).a
+bin/%: src/%.cpp lib/$(LIBNAME).a $(HEADERS)
 	g++ $< lib/$(LIBNAME).a -o $@ $(RELEASEOPT) $(FINALOPT)
-bin/%_debug: src/%.cpp lib/$(LIBNAME)_debug.a
+bin/%_debug: src/%.cpp lib/$(LIBNAME)_debug.a $(HEADERS)
 	g++ $< lib/$(LIBNAME)_debug.a -o $@ $(DEBUGOPT) $(FINALOPT)
 lib/$(LIBNAME).a: $(OBJECTS)
 	ar rcs $@ $(OBJECTS)
