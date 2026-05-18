@@ -8,7 +8,7 @@ namespace bbe::inter::impl{
         switch(magic){
             case 10: // add32
                 return uint32v(argv[0uz].get<uint32v>().value+argv[1uz].get<uint32v>().value);
-            case 11: // sub32
+            case 20: // sub32
                 return uint32v(argv[0uz].get<uint32v>().value-argv[1uz].get<uint32v>().value);
             case 25: // pru32
                 std::cout << argv[0uz].get<uint32v>().value << std::flush;
