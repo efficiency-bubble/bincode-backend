@@ -6,12 +6,13 @@
 namespace bbe::impl{
     class ProjectEntitiesPool;
     class ErrorDatabase;
-    class Function{
+    using func_id = std::uint32_t;
+    class Function : public Entity<func_id>{
         FunctionSignature sig;
         ASTNode root;
         public:
-            Function(FunctionSignature s) :  sig(std::move(s)){}
-            Function(ASTNode&& r,FunctionSignature s) :  sig(std::move(s)), root(std::move(r)){}
+            Function(func_id id,FunctionSignature s) : Entity(id), sig(std::move(s)){}
+            Function(func_id id,ASTNode&& r,FunctionSignature s) : Entity(id), sig(std::move(s)), root(std::move(r)){}
             void recalculate_types(ProjectEntitiesPool& p,ErrorDatabase& e){
                 root.recursively_recalculate_result_type(p,e,sig);
             }
@@ -28,9 +29,8 @@ namespace bbe::impl{
                 return root;
             }
     };
-    using func_id = std::uint32_t;
     class FunctionDatabase{
-        using pool_type = EntityPool<Function,func_id>;
+        using pool_type = EntityPool<Function>;
         pool_type funcs;
         public:
             template<typename ...A>

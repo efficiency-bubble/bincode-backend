@@ -1,35 +1,110 @@
 #pragma once
 #include"commons.hpp"
-#include<unordered_map>
 #include<cppp/freelist.hpp>
+#include<unordered_set>
+#include<concepts>
+#include<iterator>
 namespace bbe::impl{
-    template<typename T,typename K=std::uint32_t>
+    template<std::unsigned_integral I>
+    class Entity{
+        // const because changing this will break the hash
+        const I _index;
+        public:
+            Entity(I k) : _index(k){}
+            using id_type = I;
+            I index() const{
+                return _index;
+            }
+    };
+    template<typename T>
+    struct entity_wrapper{
+        mutable T e;
+        template<typename ...A>
+        entity_wrapper(A&& ...a) : e(std::forward<A>(a)...){}
+    };
+    template<typename I>
+    struct id_hash{
+        using is_transparent = void;
+        constexpr static std::size_t operator()(typename I::id_type i){
+            return std::hash<typename I::id_type>{}(i);
+        }
+        constexpr static std::size_t operator()(const entity_wrapper<I>& e){
+            return std::hash<typename I::id_type>{}(e.e.index());
+        }
+    };
+    template<typename I>
+    struct id_eq{
+        using is_transparent = void;
+        constexpr static bool operator()(const entity_wrapper<I>& e,const entity_wrapper<I>& f){
+            return e.e.index() == f.e.index();
+        }
+        constexpr static bool operator()(typename I::id_type i,const entity_wrapper<I>& e){
+            return i == e.e.index();
+        }
+        constexpr static bool operator()(const entity_wrapper<I>& e,typename I::id_type i){
+            return e.e.index() == i;
+        }
+    };
+    template<typename T>
     class EntityPool{
-        std::unordered_map<K,T> obj;
-        cppp::freelist<K> fl;
+        public:
+            using id_type = T::id_type;
+        private:
+            using container_type = std::unordered_set<entity_wrapper<T>,id_hash<T>,id_eq<T>>;
+            container_type obj;
+            cppp::freelist<id_type> fl;
+            template<bool is_const>
+            class _iterator{
+                friend EntityPool<T>;
+                container_type::const_iterator underlying;
+                _iterator(container_type::const_iterator it) : underlying(it){}
+                public:
+                    using value_type = std::conditional_t<is_const,const T,T>;
+                    using difference_type = std::ptrdiff_t;
+                    using pointer = value_type*;
+                    using reference = value_type&;
+                    using iterator_category = std::forward_iterator_tag;
+                    _iterator() = default;
+                    reference operator*() const{
+                        return underlying->e;
+                    }
+                    pointer operator->() const{
+                        return &underlying->e;
+                    }
+                    _iterator& operator++(){
+                        ++underlying;
+                        return *this;
+                    }
+                    _iterator operator++(int){
+                        return ++_iterator(*this);
+                    }
+                    bool operator==(_iterator other) const{
+                        return underlying == other.underlying;
+                    }
+            };
         public:
             EntityPool(){}
             template<typename ...A>
-            K emplace(A&& ...a){
-                K key = fl.allocate();
-                obj.try_emplace(key,std::forward<A>(a)...);
+            id_type emplace(A&& ...a){
+                id_type key = fl.allocate();
+                obj.emplace(key,std::forward<A>(a)...);
                 return key;
             }
-            void pop(K key){
+            void pop(id_type key){
                 fl.deallocate(key);
                 obj.erase(key);
             }
-            bool occupied(K key) const{
+            bool occupied(id_type key) const{
                 return fl.occupied(key);
             }
-            const T& operator[](K key) const{
-                return obj.at(key);
+            const T& operator[](id_type key) const{
+                return obj.find(key)->e;
             }
-            T& operator[](K key){
-                return obj.at(key);
+            T& operator[](id_type key){
+                return obj.find(key)->e;
             }
-            using iterator = std::unordered_map<K,T>::iterator;
-            using const_iterator = std::unordered_map<K,T>::const_iterator;
+            using iterator = _iterator<false>;
+            using const_iterator = _iterator<true>;
             iterator begin(){
                 return obj.begin();
             }

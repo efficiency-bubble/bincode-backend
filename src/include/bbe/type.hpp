@@ -4,6 +4,7 @@
 #include<cppp/object-view.hpp>
 #include<cppp/assert.hpp>
 #include<cppp/array.hpp>
+#include<cppp/int.hpp>
 #include<unordered_map>
 #include<functional>
 #include<algorithm>
@@ -57,14 +58,14 @@ namespace bbe::impl{
     enum class TypeCategory : std::uint8_t{
         VOID,SIGNED_INTEGRAL,UNSIGNED_INTEGRAL,PACK,FUNCTION_POINTER
     };
-    class TypeInfo{
+    class TypeInfo : public Entity<type_id>{
         std::uint64_t _size;
         std::uint64_t align;
         const void* data;
         TypeCategory _type;
         friend class TypeDatabase;
         public:
-            TypeInfo(TypeCategory t,std::uint64_t sz,std::uint64_t al) : _size(sz), align(al), data(nullptr), _type(t){}
+            TypeInfo(type_id id,TypeCategory t,std::uint64_t sz,std::uint64_t al) : Entity(id), _size(sz), align(al), data(nullptr), _type(t){}
             std::uint64_t size() const{
                 return _size;
             }
@@ -85,7 +86,7 @@ namespace bbe::impl{
             }
     };
     class TypeDatabase{
-        mutable EntityPool<TypeInfo,type_id> infos;
+        mutable EntityPool<TypeInfo> infos;
         mutable std::unordered_map<type_pack,type_id,type_hash> packs;
         mutable std::unordered_map<FunctionSignature,type_id,fsig_hash> functions;
         public:
@@ -97,12 +98,13 @@ namespace bbe::impl{
             constexpr static type_id T_BOOL = 5;
             constexpr static type_id T_ERROR = std::numeric_limits<type_id>::max();
             TypeDatabase(){
-                emplace(TypeCategory::VOID,0,0);
-                emplace(TypeCategory::UNSIGNED_INTEGRAL,4,4);
-                emplace(TypeCategory::SIGNED_INTEGRAL,4,4);
-                emplace(TypeCategory::UNSIGNED_INTEGRAL,8,8);
-                emplace(TypeCategory::SIGNED_INTEGRAL,8,8);
-                emplace(TypeCategory::SIGNED_INTEGRAL,1,1);
+                using namespace cppp::literals;
+                emplace(TypeCategory::VOID,0_u64,0_u64);
+                emplace(TypeCategory::UNSIGNED_INTEGRAL,4_u64,4_u64);
+                emplace(TypeCategory::SIGNED_INTEGRAL,4_u64,4_u64);
+                emplace(TypeCategory::UNSIGNED_INTEGRAL,8_u64,8_u64);
+                emplace(TypeCategory::SIGNED_INTEGRAL,8_u64,8_u64);
+                emplace(TypeCategory::SIGNED_INTEGRAL,1_u64,1_u64);
             }
             type_id pack_of(cppp::fixed_array<type_id>&&) const;
             type_id function_of(FunctionSignature sig) const;

@@ -6,8 +6,8 @@ namespace bbe::inter::impl{
         std::unordered_map<ProjectEntitiesPool::index_type,T> pool;
         public:
             CompiledFunctionPool(const ProjectEntitiesPool& pep){
-                for(const auto& [ind,fn] : pep.functions()){
-                    pool.try_emplace(ind,fn);
+                for(const auto& fn : pep.functions()){
+                    pool.try_emplace(fn.index(),fn);
                 }
             }
             const T& function(ProjectEntitiesPool::index_type i) const{

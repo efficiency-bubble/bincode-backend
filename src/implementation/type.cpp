@@ -1,4 +1,5 @@
 #include<bbe/type.hpp>
+#include<cppp/int.hpp>
 namespace bbe::impl{
     type_id TypeDatabase::pack_of(cppp::fixed_array<type_id>&& a) const{
         type_pack key{std::move(a)};
@@ -17,10 +18,11 @@ namespace bbe::impl{
         }
     }
     type_id TypeDatabase::function_of(FunctionSignature sig) const{
+        using namespace cppp::literals;
         if(auto it=functions.find(sig);it!=functions.end()){
             return it->second;
         }else{
-            type_id nt = infos.emplace(TypeCategory::FUNCTION_POINTER,8,8);
+            type_id nt = infos.emplace(TypeCategory::FUNCTION_POINTER,8_u64,8_u64);
             infos[nt].data = &functions.try_emplace(sig,nt).first->first;
             return nt;
         }
