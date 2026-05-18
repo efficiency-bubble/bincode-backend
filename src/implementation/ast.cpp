@@ -45,7 +45,7 @@ namespace bbe::impl{
     static bool has_extended_data(NodeType t){
         return t == NodeType::UINT64;
     }
-    ASTNode::ASTNode(cppp::frozen_byte_view& b) : _type{cppp::read<std::uint8_t>(b.read(1uz))}{
+    ASTNode::ASTNode(cppp::frozen_byte_view& b) : _type{cppp::read<std::uint8_t>(b)}{
         prim = uleb128_r<std::uint32_t>(b);
         nchld = nchld_of(_type);
         if(nchld == VARIABLE){
@@ -58,14 +58,14 @@ namespace bbe::impl{
             }
         }else{
             if(has_extended_data(_type)){
-                _data = cppp::read<std::uint64_t>(b.read(8uz));
+                _data = cppp::read<std::uint64_t>(b);
             }else{
                 _data = 0; // don't leave it uninitialized, to be compare friendly
             }
         }
     }
     void ASTNode::serialize(cppp::bytes& b) const{
-        cppp::write(b.resb(1uz),std::to_underlying(_type));
+        b.appendl(std::to_underlying(_type));
         uleb128_w(b,prim);
         std::uint32_t nc = nchld_of(_type);
         if(nc == VARIABLE){
@@ -75,7 +75,7 @@ namespace bbe::impl{
         }
         if(has_extended_data(_type)){
             CPPP_ASSERT(nchld == 0);
-            cppp::write(b.resb(8uz),_data);
+            b.appendl<std::uint64_t>(_data);
         }
         for(const auto& c : *this){
             c.serialize(b);
