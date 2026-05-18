@@ -1,7 +1,7 @@
 #include<bbe/ast.hpp>
 #include<bbe/targets/x86.hpp>
 #include<bbe/formats/elf.hpp>
-#include<cppp/tostring.hpp>
+#include<cppp/format.hpp>
 #include<cppp/string.hpp>
 #include<iostream>
 #include<array>
@@ -72,7 +72,8 @@ int main(int,char* argv[]){
     bbe::ASTNode root{scanner};
     bbe::TypeDatabase tdb;
     bbe::targets::x86::Program prog;
-    prog.export_function(args[1uz],{{bbe::Function{std::move(root),bbe::FunctionSignature{bbe::TypeDatabase::T_UINT32,bbe::TypeDatabase::T_UINT32}}},tdb});
+    // TODO: don't create a function with a dangling ID and without a backing store
+    prog.export_function(args[1uz],{{bbe::Function{0,std::move(root),bbe::FunctionSignature{bbe::TypeDatabase::T_UINT32,bbe::TypeDatabase::T_UINT32}}},tdb});
     bbe::formats::elf::Elf elf;
     elf.add_text(prog);
     cppp::BinaryFile outfile{args[2uz],std::ios_base::out|std::ios_base::trunc};
