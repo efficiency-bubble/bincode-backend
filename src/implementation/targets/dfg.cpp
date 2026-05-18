@@ -117,7 +117,7 @@ namespace bbe::targets::dfg::impl{
             case FOREVER:
                 assert(false); // TODO
             case FNSYM:
-                return &_nodes.emplace_back(NodeType::FNSYM,nd.getp32());
+                return &_nodes.emplace_back(NodeType::FNSYM,nd.result_type(),nd.getp32());
             default:
                 throw std::logic_error("DataFlowGraph::compile(): Unknown node type "s+std::to_string(std::to_underlying(nd.type())));
         }
