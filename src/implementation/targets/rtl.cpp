@@ -71,7 +71,7 @@ namespace bbe::targets::rtl::impl{
                             fn.ins.emplace_back(Operation::ADD,r,compile_node(par[1uz]));
                             return r;
                         }
-                        case 11: {
+                        case 20: {
                             std::uint32_t r = next_reg();
                             fn.ins.emplace_back(Operation::MOV,r,compile_node(par[0uz]));
                             fn.ins.emplace_back(Operation::SUB,r,compile_node(par[1uz]));

@@ -236,7 +236,7 @@ namespace bbe::targets::x86::impl{
                         case FNSYM: {
                             DataValue& rv = new_value(dn.return_type());
                             std::size_t offs = f.instructions().size();
-                            auto lea = x::instructions::lea::for_width<x::width::W64>::encode(f.instructions(),x::reg::A,0b00_b,0b101_b /* rip+disp32 on 64-bit mode*/,x::skip_displacement<x::width::W32>);
+                            auto lea = x::instructions::lea::for_width<x::width::W64>::encode(f.instructions(),x::reg::A,0b00_b,0b101_b /* rip+disp32 on 64-bit mode */,x::skip_displacement<x::width::W32>);
                             constexpr std::size_t disp_local_offs = lea.offset_of_first<x::ComponentType::DISPLACEMENT>;
                             offs += disp_local_offs;
                             f.add_relocation({.offset=static_cast<std::uint32_t>(offs),.fni=dn.primitive(),.isize=static_cast<std::uint32_t>(lea.total_size-disp_local_offs)});
