@@ -93,24 +93,25 @@ namespace bbe::impl{
                 ret = tdb.T_UINT64;
                 break;
             case PACK: {
-                cppp::fixed_array<type_id> a(nchld);
+                cppp::fixed_array<const TypeInfo*> a(nchld);
                 for(std::uint32_t i=0;i<nchld;++i){
-                    if((a[i] = children()[i].result_type()) == tdb.T_ERROR){
+                    if(children()[i].result_type() == tdb.T_ERROR){
                         goto error;
                     }
+                    a[i] = tdb[children()[i].result_type()];
                 }
-                ret = tdb.pack_of(std::move(a));
+                ret = tdb.pack_of(std::move(a))->index();
                 break;
             }
             case COMMA:
             case PACKIND:
                 if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
-                    if(const auto& t = tdb[pt];t.type() == TypeCategory::PACK){
-                        if(getp32() >= t.pack_contents().types().size()){
+                    if(const TypeInfo* t = tdb[pt];t->type() == TypeCategory::PACK){
+                        if(getp32() >= t->pack_contents().types().size()){
                             errors.add(this,u8"Pack indexing out of bounds"s);
                             goto error;
                         }
-                        ret = t.pack_contents().types()[getp32()];
+                        ret = t->pack_contents().types()[getp32()]->index();
                     }else{
                         errors.add(this,u8"Cannot index non-pack"s);
                         goto error;
@@ -118,18 +119,18 @@ namespace bbe::impl{
                 }else goto error;
                 break;
             case ARG:
-                ret = sig.parameter();
+                ret = sig.parameter()->index();
                 break;
             case CALL_BUILTIN:
                 switch(getp32()){
                     case 0:
                         if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
-                            if(const auto& t = tdb[pt];t.type() == TypeCategory::FUNCTION_POINTER){
+                            if(const TypeInfo* t = tdb[pt];t->type() == TypeCategory::FUNCTION_POINTER){
                                 type_id at = children()[1uz].result_type();
-                                if(at != tdb.T_ERROR && t.function_signature().parameter() != at){
+                                if(at != tdb.T_ERROR && t->function_signature().parameter()->index() != at){
                                     errors.add(this,u8"Argument and parameter type mismatch"s);
                                 }
-                                ret = t.function_signature().return_type();
+                                ret = t->function_signature().return_type()->index();
                             }else{
                                 errors.add(this,u8"Cannot call non-function"s);
                                 goto error;
@@ -193,8 +194,8 @@ namespace bbe::impl{
             case FNSYM: {
                 if(!p.functions().has_func(getp32())) goto error;
                 const FunctionSignature& sig = p.functions()[getp32()].signature();
-                CPPP_ASSERT(sig.parameter() != tdb.T_ERROR && sig.return_type() != tdb.T_ERROR);
-                ret = tdb.function_of(sig);
+                CPPP_ASSERT(sig.parameter() && sig.return_type());
+                ret = tdb.function_of(sig)->index();
                 break;
             }
             case NTYPE:

@@ -83,19 +83,19 @@ int main(){
             return {};
         }},
         {u8"AST type inference"sv,[] -> test_result_t {
-            ProjectEntitiesPool pep;
+            ProjectEntitiesPool proj;
             ErrorDatabase edb;
             auto an = u32(1024);
-            an.recursively_recalculate_result_type(pep,edb,{pep.types().T_UINT32,pep.types().T_VOID});
+            an.recursively_recalculate_result_type(proj,edb,{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
             
-            ASSERT_EQ(an.result_type(),pep.types().T_UINT32,"Wrong type for uint32 literal");
+            ASSERT_EQ(an.result_type(),proj.types().T_UINT32,"Wrong type for uint32 literal");
             return {};
         }},
         {u8"Dfg inter: add values"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            std::uint32_t fn = proj.functions().emplace(FunctionSignature{TypeDatabase::T_UINT32,TypeDatabase::T_VOID});
+            std::uint32_t fn = proj.functions().emplace(FunctionSignature{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
             proj.functions()[fn].set(cmag(FN_ADD32,u32(1),u32(41)));
             proj.functions()[fn].recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
@@ -107,7 +107,7 @@ int main(){
         {u8"Dfg inter: equality comparison"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            std::uint32_t fn = proj.functions().emplace(FunctionSignature{TypeDatabase::T_BOOL,TypeDatabase::T_VOID});
+            std::uint32_t fn = proj.functions().emplace(FunctionSignature{proj.types()[TypeDatabase::T_BOOL],proj.types()[TypeDatabase::T_VOID]});
             proj.functions()[fn].set(cmag(FN_EQ32,u32(42),u32(42)));
             proj.functions()[fn].recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
@@ -119,7 +119,7 @@ int main(){
         {u8"Dfg inter: pack indexing"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            std::uint32_t fn = proj.functions().emplace(FunctionSignature{TypeDatabase::T_UINT32,TypeDatabase::T_VOID});
+            std::uint32_t fn = proj.functions().emplace(FunctionSignature{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
             proj.functions()[fn].set(pind(pack(u32(42),u32(41)),1));
             proj.functions()[fn].recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
@@ -131,7 +131,7 @@ int main(){
         {u8"YASBEPL target: basic"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            std::uint32_t fn = proj.functions().emplace(FunctionSignature{TypeDatabase::T_UINT32,TypeDatabase::T_VOID});
+            std::uint32_t fn = proj.functions().emplace(FunctionSignature{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
             proj.functions()[fn].set(cmag(FN_ADD32,u32(42),u32(13)));
             proj.functions()[fn].recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");

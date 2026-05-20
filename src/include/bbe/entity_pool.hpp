@@ -85,10 +85,8 @@ namespace bbe::impl{
         public:
             EntityPool(){}
             template<typename ...A>
-            id_type emplace(A&& ...a){
-                id_type key = fl.allocate();
-                obj.emplace(key,std::forward<A>(a)...);
-                return key;
+            T& emplace(A&& ...a){
+                return obj.emplace(fl.allocate(),std::forward<A>(a)...).first->e;
             }
             void pop(id_type key){
                 fl.deallocate(key);

@@ -35,7 +35,7 @@ namespace bbe::impl{
         public:
             template<typename ...A>
             func_id emplace(A&& ...a){
-                return funcs.emplace(std::forward<A>(a)...);
+                return funcs.emplace(std::forward<A>(a)...).index();
             }
             const Function& operator[](func_id i) const{
                 return funcs[i];

@@ -13,12 +13,12 @@ namespace bbe::targets::x86::impl{
         const TypeInfo* _type;
         std::uint32_t soff = NSOFF;
         public:
-            DataValue(const TypeInfo& t) : _type(&t){}
+            DataValue(const TypeInfo* t) : _type(t){}
             bool is_pack() const{
                 return _type->type() == TypeCategory::PACK;
             }
-            const TypeInfo& type() const{
-                return *_type;
+            const TypeInfo* type() const{
+                return _type;
             }
             const std::vector<const DataValue*>& pack_contents() const{
                 CPPP_ASSERT(is_pack());
@@ -45,7 +45,7 @@ namespace bbe::targets::x86::impl{
                 value_t value_counter = 0;
                 std::uint32_t sp = 0;
                 std::unordered_map<value_t,DataValue> values;
-                DataValue& new_value(const TypeInfo& t){
+                DataValue& new_value(const TypeInfo* t){
                     return values.try_emplace(value_counter++,t).first->second;
                 }
                 DataValue& new_value(type_id t){
@@ -94,7 +94,7 @@ namespace bbe::targets::x86::impl{
                     }
                 }
                 template<typename T>
-                DataValue& encode_arith(const TypeInfo& rt,const dfg::DataNode& lhsn,const dfg::DataNode& rhsn){
+                DataValue& encode_arith(const TypeInfo* rt,const dfg::DataNode& lhsn,const dfg::DataNode& rhsn){
                     DataValue& rv = new_value(rt);
                     const DataValue& lhs = *compile_node(lhsn);
                     const DataValue& rhs = *compile_node(rhsn);
@@ -105,7 +105,7 @@ namespace bbe::targets::x86::impl{
                     return rv;
                 }
                 template<typename T>
-                DataValue& encode_comparison(const TypeInfo& rt,const dfg::DataNode& lhsn,const dfg::DataNode& rhsn){
+                DataValue& encode_comparison(const TypeInfo* rt,const dfg::DataNode& lhsn,const dfg::DataNode& rhsn){
                     DataValue& rv = new_value(rt);
                     const DataValue& lhs = *compile_node(lhsn);
                     const DataValue& rhs = *compile_node(rhsn);
@@ -131,24 +131,23 @@ namespace bbe::targets::x86::impl{
                 void into(const DataValue& v,std::byte reg) const{
                     stor(f.instructions(),soff_to_disp8(v.stack()),reg);
                 }
-                void load_args(type_id t){
-                    const TypeInfo& argt = tdb[t];
+                void load_args(const TypeInfo* argt){
                     DataValue& argv = new_value(argt);
-                    if(argt.type() == TypeCategory::VOID) return; // nothing here
-                    else if(argt.type() == TypeCategory::PACK){
+                    if(argt->type() == TypeCategory::VOID) return; // nothing here
+                    else if(argt->type() == TypeCategory::PACK){
                         auto& contents = argv.pack_contents();
-                        for(std::uint32_t i=0;i<argt.pack_contents().types().size();++i){
-                            const TypeInfo& arg_i_t = tdb[argt.pack_contents().types()[i]];
-                            if(arg_i_t.type() == TypeCategory::VOID) continue;
-                            else if(arg_i_t.type() == TypeCategory::PACK) throw std::logic_error("x86 compile: ABI: Can't have packs in an argument pack"s);
+                        for(std::uint32_t i=0;i<argt->pack_contents().types().size();++i){
+                            const TypeInfo* arg_i_t = argt->pack_contents().types()[i];
+                            if(arg_i_t->type() == TypeCategory::VOID) continue;
+                            else if(arg_i_t->type() == TypeCategory::PACK) throw std::logic_error("x86 compile: ABI: Can't have packs in an argument pack"s);
                             DataValue& arg_i_v = new_value(arg_i_t);
                             
-                            std::uint32_t asize = static_cast<std::uint32_t>(arg_i_t.size());
+                            std::uint32_t asize = static_cast<std::uint32_t>(arg_i_t->size());
                             rtosd(asize,f.instructions(),arg_reg(i),soff_to_disp8(allocate_stack(asize,arg_i_v)));
                             contents.emplace_back(&arg_i_v);
                         }
                     }else{
-                        rtos(f.instructions(),arg_reg(0),soff_to_disp8(allocate_stack(static_cast<std::uint32_t>(argt.size()),argv)));
+                        rtos(f.instructions(),arg_reg(0),soff_to_disp8(allocate_stack(static_cast<std::uint32_t>(argt->size()),argv)));
                     }
                 }
                 const DataValue* compile_node(const dfg::DataNode& dn){
@@ -179,7 +178,7 @@ namespace bbe::targets::x86::impl{
                                     const DataValue& arg = *compile_node(*dn.parents()[1uz]);
                                     if(arg.is_pack()){
                                         for(std::uint32_t i=0;i<arg.pack_contents().size();++i){
-                                            stord(static_cast<std::uint32_t>(arg.pack_contents()[i]->type().size()),f.instructions(),soff_to_disp8(arg.pack_contents()[i]->stack()),arg_reg(i));
+                                            stord(static_cast<std::uint32_t>(arg.pack_contents()[i]->type()->size()),f.instructions(),soff_to_disp8(arg.pack_contents()[i]->stack()),arg_reg(i));
                                         }
                                     }else{
                                         stor(f.instructions(),soff_to_disp8(arg.stack()),arg_reg(0));

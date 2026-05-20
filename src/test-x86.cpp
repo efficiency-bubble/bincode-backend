@@ -14,7 +14,8 @@ int main(){
     ProjectEntitiesPool p;
     ErrorDatabase edb;
     
-    std::uint32_t example_fn = p.functions().emplace(FunctionSignature{TypeDatabase::T_UINT32,p.types().pack_of({TypeDatabase::T_UINT32,TypeDatabase::T_UINT32})});
+    const TypeInfo* ui32 = p.types()[TypeDatabase::T_UINT32];
+    std::uint32_t example_fn = p.functions().emplace(FunctionSignature{ui32,p.types().pack_of({ui32,ui32})});
     p.functions()[example_fn].set(
         fork(
             cmag(FN_LEQ32,arg(0),u32(2)),

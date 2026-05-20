@@ -13,51 +13,11 @@
 #include<bit>
 namespace bbe::impl{
     using type_id = std::uint32_t;
-    class type_pack{
-        cppp::fixed_array<type_id> arr;
-        using view_t = cppp::view<type_id>;
-        public:
-            type_pack(cppp::fixed_array<type_id>&& a) : arr(a){}
-            const cppp::fixed_array<type_id>& types() const{
-                return arr;
-            }
-            bool operator==(const type_pack& other) const{
-                return std::ranges::equal(arr,other.arr);
-            }
-    };
-    struct type_hash{
-        private:
-            static std::size_t mix_shift(const type_id& v){
-                return std::rotl(static_cast<std::size_t>(v),static_cast<std::uint16_t>(7*reinterpret_cast<std::uintptr_t>(&v)));
-            }
-        public:
-            static std::size_t operator()(const type_pack& tp){
-                return std::rotr(std::transform_reduce(std::execution::unseq,tp.types().begin(),tp.types().end(),0uz,std::bit_xor<std::size_t>{},mix_shift),static_cast<std::uint16_t>(7*reinterpret_cast<std::uintptr_t>(tp.types().data())));
-            }
-    };
-    class FunctionSignature{
-        type_id ret;
-        type_id par;
-        public:
-            FunctionSignature(type_id r,type_id a) : ret(r), par(a){}
-            type_id return_type() const{
-                return ret;
-            }
-            type_id parameter() const{
-                return par;
-            }
-            bool operator==(const FunctionSignature& other) const{
-                return ret == other.ret && par == other.par;
-            }
-    };
-    struct fsig_hash{
-        static std::size_t operator()(FunctionSignature fs){
-            return fs.return_type() ^ std::rotl(fs.parameter(),7);
-        }
-    };
     enum class TypeCategory : std::uint8_t{
         VOID,SIGNED_INTEGRAL,UNSIGNED_INTEGRAL,PACK,FUNCTION_POINTER
     };
+    class type_pack;
+    class FunctionSignature;
     class TypeInfo : public Entity<type_id>{
         std::uint64_t _size;
         std::uint64_t align;
@@ -85,10 +45,52 @@ namespace bbe::impl{
                 return *static_cast<const FunctionSignature*>(data);
             }
     };
+    class type_pack{
+        cppp::fixed_array<const TypeInfo*> arr;
+        using view_t = cppp::view<const TypeInfo*>;
+        public:
+            type_pack(cppp::fixed_array<const TypeInfo*>&& a) : arr(a){}
+            const cppp::fixed_array<const TypeInfo*>& types() const{
+                return arr;
+            }
+            bool operator==(const type_pack& other) const{
+                return std::ranges::equal(arr,other.arr);
+            }
+    };
+    struct type_hash{
+        private:
+            static std::size_t mix_shift(const TypeInfo* v){
+                return std::rotl(static_cast<std::size_t>(v->index()),static_cast<std::uint16_t>(7*reinterpret_cast<std::uintptr_t>(v)));
+            }
+        public:
+            static std::size_t operator()(const type_pack& tp){
+                return std::transform_reduce(std::execution::unseq,tp.types().begin(),tp.types().end(),0uz,std::bit_xor<std::size_t>{},mix_shift);
+            }
+    };
+    class FunctionSignature{
+        const TypeInfo* ret;
+        const TypeInfo* par;
+        public:
+            FunctionSignature(const TypeInfo* r,const TypeInfo* a) : ret(r), par(a){}
+            const TypeInfo* return_type() const{
+                return ret;
+            }
+            const TypeInfo* parameter() const{
+                return par;
+            }
+            bool operator==(const FunctionSignature& other) const{
+                return ret == other.ret && par == other.par;
+            }
+    };
+    struct fsig_hash{
+        static std::size_t operator()(FunctionSignature fs){
+            return fs.return_type()->index() ^ std::rotl(fs.parameter()->index(),7);
+        }
+    };
     class TypeDatabase{
         mutable EntityPool<TypeInfo> infos;
-        mutable std::unordered_map<type_pack,type_id,type_hash> packs;
-        mutable std::unordered_map<FunctionSignature,type_id,fsig_hash> functions;
+        mutable std::unordered_map<type_pack,const TypeInfo*,type_hash> packs;
+        mutable std::unordered_map<FunctionSignature,const TypeInfo*,fsig_hash> functions;
         public:
             constexpr static type_id T_VOID = 0;
             constexpr static type_id T_UINT32 = 1;
@@ -106,15 +108,15 @@ namespace bbe::impl{
                 emplace(TypeCategory::SIGNED_INTEGRAL,8_u64,8_u64);
                 emplace(TypeCategory::SIGNED_INTEGRAL,1_u64,1_u64);
             }
-            type_id pack_of(cppp::fixed_array<type_id>&&) const;
-            type_id function_of(FunctionSignature sig) const;
+            const TypeInfo* pack_of(cppp::fixed_array<const TypeInfo*>&&) const;
+            const TypeInfo* function_of(FunctionSignature sig) const;
             template<typename ...A>
-            type_id emplace(A&& ...a){
-                return infos.emplace(std::forward<A>(a)...);
+            const TypeInfo* emplace(A&& ...a){
+                return &infos.emplace(std::forward<A>(a)...);
             }
-            const TypeInfo& operator[](type_id i) const{
+            const TypeInfo* operator[](type_id i) const{
                 CPPP_ASSERT(i != T_ERROR);
-                return infos[i];
+                return &infos[i];
             }
     };
 }
