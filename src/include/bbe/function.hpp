@@ -34,17 +34,17 @@ namespace bbe::impl{
         pool_type funcs;
         public:
             template<typename ...A>
-            func_id emplace(A&& ...a){
-                return funcs.emplace(std::forward<A>(a)...).index();
+            Function* emplace(A&& ...a){
+                return &funcs.emplace(std::forward<A>(a)...);
             }
-            const Function& operator[](func_id i) const{
-                return funcs[i];
+            const Function* operator[](func_id i) const{
+                return &funcs[i];
             }
             bool has_func(func_id i) const{
                 return funcs.occupied(i);
             }
-            Function& operator[](func_id i){
-                return funcs[i];
+            Function* operator[](func_id i){
+                return &funcs[i];
             }
             using iterator = pool_type::iterator;
             using const_iterator = pool_type::const_iterator;

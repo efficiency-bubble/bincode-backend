@@ -193,7 +193,7 @@ namespace bbe::impl{
                 throw std::logic_error("Unimplemented: getting type of loop"s);
             case FNSYM: {
                 if(!p.functions().has_func(getp32())) goto error;
-                const FunctionSignature& sig = p.functions()[getp32()].signature();
+                const FunctionSignature& sig = p.functions()[getp32()]->signature();
                 CPPP_ASSERT(sig.parameter() && sig.return_type());
                 ret = tdb.function_of(sig)->index();
                 break;

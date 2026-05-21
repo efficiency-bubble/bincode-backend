@@ -95,48 +95,48 @@ int main(){
         {u8"Dfg inter: add values"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            std::uint32_t fn = proj.functions().emplace(FunctionSignature{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
-            proj.functions()[fn].set(cmag(FN_ADD32,u32(1),u32(41)));
-            proj.functions()[fn].recalculate_types(proj,edb);
+            bbe::Function* fn = proj.functions().emplace(FunctionSignature{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
+            fn->set(cmag(FN_ADD32,u32(1),u32(41)));
+            fn->recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
             
             bbe::inter::dfg::CompiledFunctionPool cfp{proj};
-            ASSERT_EQ(cfp.call(fn,{}).get<bbe::inter::uint32v>().value,42,"Wrong return value");
+            ASSERT_EQ(cfp.call(fn->index(),{}).get<bbe::inter::uint32v>().value,42,"Wrong return value");
             return {};
         }},
         {u8"Dfg inter: equality comparison"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            std::uint32_t fn = proj.functions().emplace(FunctionSignature{proj.types()[TypeDatabase::T_BOOL],proj.types()[TypeDatabase::T_VOID]});
-            proj.functions()[fn].set(cmag(FN_EQ32,u32(42),u32(42)));
-            proj.functions()[fn].recalculate_types(proj,edb);
+            Function* fn = proj.functions().emplace(FunctionSignature{proj.types()[TypeDatabase::T_BOOL],proj.types()[TypeDatabase::T_VOID]});
+            fn->set(cmag(FN_EQ32,u32(42),u32(42)));
+            fn->recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
             
             bbe::inter::dfg::CompiledFunctionPool cfp{proj};
-            if(!cfp.call(fn,{}).get<bbe::inter::boolv>().value) return std::unexpected(u8"Wrong return value"s);
+            if(!cfp.call(fn->index(),{}).get<bbe::inter::boolv>().value) return std::unexpected(u8"Wrong return value"s);
             return {};
         }},
         {u8"Dfg inter: pack indexing"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            std::uint32_t fn = proj.functions().emplace(FunctionSignature{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
-            proj.functions()[fn].set(pind(pack(u32(42),u32(41)),1));
-            proj.functions()[fn].recalculate_types(proj,edb);
+            Function* fn = proj.functions().emplace(FunctionSignature{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
+            fn->set(pind(pack(u32(42),u32(41)),1));
+            fn->recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
             
             bbe::inter::dfg::CompiledFunctionPool cfp{proj};
-            ASSERT_EQ(cfp.call(fn,{}).get<bbe::inter::uint32v>().value,41,"Wrong return value");
+            ASSERT_EQ(cfp.call(fn->index(),{}).get<bbe::inter::uint32v>().value,41,"Wrong return value");
             return {};
         }},
         {u8"YASBEPL target: basic"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            std::uint32_t fn = proj.functions().emplace(FunctionSignature{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
-            proj.functions()[fn].set(cmag(FN_ADD32,u32(42),u32(13)));
-            proj.functions()[fn].recalculate_types(proj,edb);
+            Function* fn = proj.functions().emplace(FunctionSignature{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
+            fn->set(cmag(FN_ADD32,u32(42),u32(13)));
+            fn->recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
             
-            bbe::targets::dfg::DataFlowGraph dfg{proj.functions()[fn]};
+            bbe::targets::dfg::DataFlowGraph dfg{*fn};
             cppp::str buf;
             bbe::targets::yasbepl::compile(dfg,buf);
             ASSERT_EQ(buf,u8">42>13+"s,"Wrong output");
