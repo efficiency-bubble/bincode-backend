@@ -98,20 +98,20 @@ namespace bbe::impl{
                     if(children()[i].result_type() == tdb.T_ERROR){
                         goto error;
                     }
-                    a[i] = tdb[children()[i].result_type()];
+                    a[i] = &tdb[children()[i].result_type()];
                 }
-                ret = tdb.pack_of(std::move(a))->index();
+                ret = tdb.pack_of(std::move(a)).index();
                 break;
             }
             case COMMA:
             case PACKIND:
                 if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
-                    if(const TypeInfo* t = tdb[pt];t->type() == TypeCategory::PACK){
-                        if(getp32() >= t->pack_contents().types().size()){
+                    if(const TypeInfo& t = tdb[pt];t.type() == TypeCategory::PACK){
+                        if(getp32() >= t.pack_contents().types().size()){
                             errors.add(this,u8"Pack indexing out of bounds"s);
                             goto error;
                         }
-                        ret = t->pack_contents().types()[getp32()]->index();
+                        ret = t.pack_contents().types()[getp32()]->index();
                     }else{
                         errors.add(this,u8"Cannot index non-pack"s);
                         goto error;
@@ -119,18 +119,18 @@ namespace bbe::impl{
                 }else goto error;
                 break;
             case ARG:
-                ret = sig.parameter()->index();
+                ret = optindex(sig.parameter());
                 break;
             case CALL_BUILTIN:
                 switch(getp32()){
                     case 0:
                         if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
-                            if(const TypeInfo* t = tdb[pt];t->type() == TypeCategory::FUNCTION_POINTER){
+                            if(const TypeInfo& t = tdb[pt];t.type() == TypeCategory::FUNCTION_POINTER){
                                 type_id at = children()[1uz].result_type();
-                                if(at != tdb.T_ERROR && t->function_signature().parameter()->index() != at){
+                                if(at != tdb.T_ERROR && optindex(t.function_signature().parameter()) != at){
                                     errors.add(this,u8"Argument and parameter type mismatch"s);
                                 }
-                                ret = t->function_signature().return_type()->index();
+                                ret = optindex(t.function_signature().return_type());
                             }else{
                                 errors.add(this,u8"Cannot call non-function"s);
                                 goto error;
@@ -193,9 +193,8 @@ namespace bbe::impl{
                 throw std::logic_error("Unimplemented: getting type of loop"s);
             case FNSYM: {
                 if(!p.functions().has_func(getp32())) goto error;
-                const FunctionSignature& sig = p.functions()[getp32()]->signature();
-                CPPP_ASSERT(sig.parameter() && sig.return_type());
-                ret = tdb.function_of(sig)->index();
+                const FunctionSignature& sig = p.functions()[getp32()].signature();
+                ret = tdb.function_of(sig).index();
                 break;
             }
             case NTYPE:

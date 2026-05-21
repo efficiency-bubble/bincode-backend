@@ -14,9 +14,9 @@ int main(){
     ProjectEntitiesPool p;
     ErrorDatabase edb;
     
-    const TypeInfo* ui32 = p.types()[TypeDatabase::T_UINT32];
-    Function* example_fn = p.functions().emplace(FunctionSignature{ui32,p.types().pack_of({ui32,ui32})});
-    example_fn->set(
+    const TypeInfo& ui32 = p.types()[TypeDatabase::T_UINT32];
+    Function& example_fn = p.functions().emplace(FunctionSignature{&ui32,&p.types().pack_of({&ui32,&ui32})});
+    example_fn.set(
         fork(
             cmag(FN_LEQ32,arg(0),u32(2)),
             cmag(FN_ADD32,u32(1),arg(1)),
@@ -26,7 +26,7 @@ int main(){
             )
         )
     );
-    example_fn->recalculate_types(p,edb);
+    example_fn.recalculate_types(p,edb);
     if(!edb.empty()){
         cppp::println<u8"There are errors:"_ts>();
         for(const auto& [n,ev] : edb.all()){
@@ -37,7 +37,7 @@ int main(){
         }
         return -1;
     }
-    bbe::targets::x86::Function fn{*example_fn,p.types()};
+    bbe::targets::x86::Function fn{example_fn,p.types()};
     for(const std::byte b : fn.instructions()){
         cppp::print<u8"{:02X} "_ts>(static_cast<std::uint8_t>(b));
     }

@@ -11,7 +11,8 @@
                 "7"
             ],
             "presentation": {
-                "close": true
+                "close": true,
+                "clear": true
             },
             "problemMatcher": "$gcc"
         },

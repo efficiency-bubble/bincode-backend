@@ -45,6 +45,9 @@ namespace bbe::impl{
                 return *static_cast<const FunctionSignature*>(data);
             }
     };
+    inline type_id optindex(const TypeInfo* p){
+        return p?p->index():std::numeric_limits<type_id>::max();
+    }
     class type_pack{
         cppp::fixed_array<const TypeInfo*> arr;
         using view_t = cppp::view<const TypeInfo*>;
@@ -84,7 +87,7 @@ namespace bbe::impl{
     };
     struct fsig_hash{
         static std::size_t operator()(FunctionSignature fs){
-            return fs.return_type()->index() ^ std::rotl(fs.parameter()->index(),7);
+            return optindex(fs.return_type()) ^ std::rotl(optindex(fs.parameter()),7);
         }
     };
     class TypeDatabase{
@@ -108,15 +111,15 @@ namespace bbe::impl{
                 emplace(TypeCategory::SIGNED_INTEGRAL,8_u64,8_u64);
                 emplace(TypeCategory::SIGNED_INTEGRAL,1_u64,1_u64);
             }
-            const TypeInfo* pack_of(cppp::fixed_array<const TypeInfo*>&&) const;
-            const TypeInfo* function_of(FunctionSignature sig) const;
+            const TypeInfo& pack_of(cppp::fixed_array<const TypeInfo*>&&) const;
+            const TypeInfo& function_of(FunctionSignature sig) const;
             template<typename ...A>
-            const TypeInfo* emplace(A&& ...a){
-                return &infos.emplace(std::forward<A>(a)...);
+            const TypeInfo& emplace(A&& ...a){
+                return infos.emplace(std::forward<A>(a)...);
             }
-            const TypeInfo* operator[](type_id i) const{
+            const TypeInfo& operator[](type_id i) const{
                 CPPP_ASSERT(i != T_ERROR);
-                return &infos[i];
+                return infos[i];
             }
             const TypeInfo* getopt(type_id i) const{
                 if(i == T_ERROR) return nullptr;

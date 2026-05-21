@@ -72,9 +72,9 @@ int main(int,char* argv[]){
     bbe::ASTNode root{scanner};
     bbe::TypeDatabase tdb;
     bbe::targets::x86::Program prog;
-    const bbe::TypeInfo* ui32 = tdb[tdb.T_UINT32];
+    const bbe::TypeInfo& ui32 = tdb[tdb.T_UINT32];
     // TODO: don't create a function with a dangling ID and without a backing store
-    prog.export_function(args[1uz],{{bbe::Function{0,std::move(root),bbe::FunctionSignature{ui32,ui32}}},tdb});
+    prog.export_function(args[1uz],{{bbe::Function{0,std::move(root),bbe::FunctionSignature{&ui32,&ui32}}},tdb});
     bbe::formats::elf::Elf elf;
     elf.add_text(prog);
     cppp::BinaryFile outfile{args[2uz],std::ios_base::out|std::ios_base::trunc};
