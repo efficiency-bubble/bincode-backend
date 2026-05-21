@@ -118,6 +118,10 @@ namespace bbe::impl{
                 CPPP_ASSERT(i != T_ERROR);
                 return &infos[i];
             }
+            const TypeInfo* getopt(type_id i) const{
+                if(i == T_ERROR) return nullptr;
+                return &infos[i];
+            }
     };
 }
 namespace bbe{
