@@ -6,7 +6,7 @@ extern "C" {
 }
 std::uint32_t correct_behavior(std::uint32_t i,std::uint32_t j){
     if(i <= 2){
-        return j + 1;
+        return j * j + 1;
     }else{
         return correct_behavior(i-1,j) + correct_behavior(i-2,j);
     }

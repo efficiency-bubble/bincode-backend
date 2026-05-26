@@ -19,7 +19,7 @@ int main(){
     example_fn.set(
         fork(
             cmag(FN_LEQ32,arg(0),u32(2)),
-            cmag(FN_ADD32,u32(1),arg(1)),
+            cmag(FN_ADD32,u32(1),cmag(FN_MUL32,arg(1),arg(1))),
             cmag(FN_ADD32,
                 cmag(0,fn(0),pack(cmag(FN_SUB32,arg(0),u32(1)),arg(1))),
                 cmag(0,fn(0),pack(cmag(FN_SUB32,arg(0),u32(2)),arg(1)))

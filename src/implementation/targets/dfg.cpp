@@ -63,6 +63,17 @@ namespace bbe::targets::dfg::impl{
                             default: throw std::logic_error("DataFlowGraph::compile(): Don't know what kind of subtraction results in type "s+std::to_string(nd.result_type()));
                         }
                         break;
+                    case 30:
+                        switch(nd.result_type()){
+                            case TypeDatabase::T_UINT32:
+                                // fnid = 30; // already 30
+                                break;
+                            case TypeDatabase::T_INT32:
+                                fnid = 31;
+                                break;
+                            default: throw std::logic_error("DataFlowGraph::compile(): Don't know what kind of multiplication results in type "s+std::to_string(nd.result_type()));
+                        }
+                        break;
                     default:;
                 }
                 DataNode& cmag = _nodes.emplace_back(NodeType::CALL_BUILTIN,nd.result_type(),fnid);

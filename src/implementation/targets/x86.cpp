@@ -194,6 +194,17 @@ namespace bbe::targets::x86::impl{
                                 case 20:
                                 case 21:
                                     return &encode_arith<x::instructions::sub>(tdb[dn.return_type()],*dn.parents()[0uz],*dn.parents()[1uz]);
+                                case 30:{
+                                    DataValue& ret = new_value(dn.return_type());
+                                    
+                                    const DataValue& lhs = *compile_node(*dn.parents()[0uz]);
+                                    const DataValue& rhs = *compile_node(*dn.parents()[1uz]);
+                                    into(lhs,x::reg::A);
+                                    into(rhs,x::reg::C);
+                                    x::instructions::imul::for_width<x::width::W32>::encode(f.instructions(),0b11_b,x::reg::A);
+                                    rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(ret)));
+                                    return &ret;
+                                }
                                 case 50:
                                     return &encode_comparison<x::instructions::set::e>(tdb[dn.return_type()],*dn.parents()[0uz],*dn.parents()[1uz]);
                                 case 51:

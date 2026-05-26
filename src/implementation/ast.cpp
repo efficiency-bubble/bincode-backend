@@ -138,24 +138,14 @@ namespace bbe::impl{
                         }else goto error;
                         break;
                     case 10:
-                        if(type_id lt = children()[0uz].result_type();lt != tdb.T_ERROR){
-                            if(type_id rt = children()[1uz].result_type();rt != tdb.T_ERROR){
-                                if(lt == rt){
-                                    ret = lt;
-                                }else{
-                                    errors.add(this,u8"Mismatched operands to +"s);
-                                    goto error;
-                                }
-                            }else goto error;
-                        }else goto error;
-                        break;
                     case 20:
+                    case 30:
                         if(type_id lt = children()[0uz].result_type();lt != tdb.T_ERROR){
                             if(type_id rt = children()[1uz].result_type();rt != tdb.T_ERROR){
                                 if(lt == rt){
                                     ret = lt;
                                 }else{
-                                    errors.add(this,u8"Mismatched operands to -"s);
+                                    errors.add(this,u8"Mismatched operands to arithmetic"s);
                                     goto error;
                                 }
                             }else goto error;

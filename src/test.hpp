@@ -6,6 +6,7 @@ using namespace bbe;
 constexpr static std::uint32_t FN_CALL = 0;
 constexpr static std::uint32_t FN_ADD32 = 10;
 constexpr static std::uint32_t FN_SUB32 = 20;
+constexpr static std::uint32_t FN_MUL32 = 30;
 constexpr static std::uint32_t FN_PRU32 = 25;
 constexpr static std::uint32_t FN_EQ32 = 50;
 constexpr static std::uint32_t FN_LEQ32 = 51;

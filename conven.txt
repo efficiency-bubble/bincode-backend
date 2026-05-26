@@ -28,7 +28,12 @@ Built-in functions:
 
 20 = sub (AST) / sub uint32 (DFG)
 21 = sub sint32 (DFG)
-25 = print uint32
+
+25 = print uint32 // TODO: change the ID of this
+
+30 = mul (AST) / mul uint32 (DFG)
+31 = mul sint32 (DFG)
+
 50 = uint32 == uint32
 51 = uint32 <= uint32
 60 = !bool
