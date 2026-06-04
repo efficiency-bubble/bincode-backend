@@ -45,14 +45,14 @@ namespace bbe::impl{
     static bool has_extended_data(NodeType t){
         return t == NodeType::UINT64;
     }
-    ASTNode::ASTNode(cppp::frozen_byte_view& b) : _type{cppp::read<std::uint8_t>(b)}{
+    ASTNode::ASTNode(cppp::frozen_byte_view& b) noexcept : _type{cppp::read<std::uint8_t>(b)}{
         prim = uleb128_r<std::uint32_t>(b);
         nchld = nchld_of(_type);
         if(nchld == VARIABLE){
             nchld = uleb128_r<std::uint32_t>(b);
         }
         if(nchld){
-            _data = reinterpret_cast<std::uint64_t>(uninitialized_alloc32<ASTNode>(nchld));
+            _data = reinterpret_cast<std::uint64_t>(std::allocator<ASTNode>::allocate(nchld));
             for(std::uint32_t i=0;i<nchld;++i){
                 new(m()+i) ASTNode(b);
             }
@@ -93,8 +93,8 @@ namespace bbe::impl{
                 ret = tdb.T_UINT64;
                 break;
             case PACK: {
-                cppp::fixed_array<const TypeInfo*> a(nchld);
-                for(std::uint32_t i=0;i<nchld;++i){
+                cppp::fixed_array<const TypeInfo*> a(children().size());
+                for(std::uint32_t i=0;i<children().size();++i){
                     if(children()[i].result_type() == tdb.T_ERROR){
                         goto error;
                     }
@@ -104,6 +104,13 @@ namespace bbe::impl{
                 break;
             }
             case COMMA:
+                if(std::uint32_t ind=getp32();ind < children().size()){
+                    ret = children()[ind].result_type();
+                }else{
+                    errors.add(this,u8"Comma indexing out of bounds"s);
+                    goto error;
+                }
+                break;
             case PACKIND:
                 if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
                     if(const TypeInfo& t = tdb[pt];t.type() == TypeCategory::PACK){

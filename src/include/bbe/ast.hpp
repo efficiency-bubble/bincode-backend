@@ -14,11 +14,6 @@
 namespace bbe::impl{
     class ASTNode;
     struct _uninit_tag_t{};
-    template<typename T>
-    T* uninitialized_alloc32(std::uint32_t n){
-        if(!n) return nullptr;
-        return static_cast<T*>(operator new(sizeof(T)*n));
-    }
     enum class NodeType : std::uint8_t{
         UINT32,UINT64,PACK,COMMA,PACKIND,ARG,CALL_BUILTIN=9,SETVAR,GETVAR,BOOL=20,FORK,FOREVER=30,BREAK,UINT32SYM=100,FNSYM=200,
         NTYPE = 255
@@ -26,7 +21,7 @@ namespace bbe::impl{
     // Public API: sequence for accessing children; implementation detail: also packs the 64-bit data field to save memory (otherwise it would be wasted on padding)
     static_assert(sizeof(std::uintptr_t)==sizeof(std::uint64_t),"Non-64-bit systems unsupported");
 
-    class ASTChildren{
+    class ASTChildren : protected std::allocator<ASTNode>{
         protected:
             std::uint64_t _data;
             std::uint32_t nchld;
@@ -37,7 +32,6 @@ namespace bbe::impl{
             ASTNode* m(){
                 return reinterpret_cast<ASTNode*>(_data);
             }
-            
             ASTChildren(){}
             inline ASTChildren(std::uint32_t n);
             ASTChildren(ASTChildren&& other) : _data(other._data), nchld(std::exchange(other.nchld,0)){}
@@ -73,6 +67,7 @@ namespace bbe::impl{
             bool empty() const{
                 return !nchld;
             }
+            inline void pop(std::uint32_t i);
             inline void emplace(ASTNode&&);
             inline ASTNode* end();
             inline const ASTNode* end() const;
@@ -134,7 +129,8 @@ namespace bbe::impl{
             ASTNode(NodeType tp,std::uint32_t prim,std::uint32_t nchld) : ASTChildren(nchld), prim(prim), _type(tp){}
             ASTNode(const ASTNode&) = delete;
             ASTNode(ASTNode&&) = default;
-            ASTNode(cppp::frozen_byte_view&);
+            // TODO: add robust exception handling so we don't have to std::terminate() on failure
+            ASTNode(cppp::frozen_byte_view&) noexcept;
             void serialize(cppp::bytes&) const;
             bool operator==(const ASTNode& other) const{
                 return (_type == other._type) && (prim == other.prim) && ASTChildren::operator==(other);
@@ -145,7 +141,7 @@ namespace bbe::impl{
     #ifndef __INTELLISENSE__ // intellisense doesn't reuse the base class padding, so it always thinks we have a regression
     static_assert(sizeof(ASTNode)<=24,"Regression");
     #endif
-    inline ASTChildren::ASTChildren(std::uint32_t n) : _data(reinterpret_cast<std::uint64_t>(uninitialized_alloc32<ASTNode>(n))), nchld(n){
+    inline ASTChildren::ASTChildren(std::uint32_t n) : _data(reinterpret_cast<std::uint64_t>(std::allocator<ASTNode>::allocate(n))), nchld(n){
         std::uninitialized_default_construct_n(m(),n);
     }
     inline ASTChildren& ASTChildren::operator=(ASTChildren&& other){
@@ -188,16 +184,43 @@ namespace bbe::impl{
     inline void ASTChildren::_die(){
         if(nchld){
             std::destroy_n(m(),nchld);
-            operator delete(m());
+            std::allocator<ASTNode>::deallocate(m(),nchld);
         }
     }
+    inline void ASTChildren::pop(std::uint32_t indx){
+        ASTNode* nmem = std::allocator<ASTNode>::allocate(nchld-1);
+        try{
+            /*
+            indx = 2
+            ~~~~~v
+            [1 2 3 4 5] = m
+            [       ]  = nmem
+            
+            uninitialized_move_n(m, 2, nmem)
+            [1 2 3 4 5] = m
+            [1 2    ]  = nmem
+            
+            uninitialized_move_n(m + 2 + 1, 5 - 2 - 1, nmem+indx)
+            [1 2 3 | 4 5] = m
+            [1 2   | 4 5]  = nmem
+            */
+            std::uninitialized_move_n(m(),indx,nmem);
+            std::uninitialized_move_n(m()+indx+1,nchld-indx-1,nmem+indx);
+        }catch(...){
+            std::allocator<ASTNode>::deallocate(nmem,nchld-1);
+            throw;
+        }
+        _die();
+        _data = reinterpret_cast<std::uintptr_t>(nmem);
+        --nchld;
+    }
     inline void ASTChildren::emplace(ASTNode&& nnode){
-        ASTNode* nmem = uninitialized_alloc32<ASTNode>(nchld+1);
+        ASTNode* nmem = std::allocator<ASTNode>::allocate(nchld+1);
         try{
             std::uninitialized_move_n(m(),nchld,nmem);
             new(nmem+nchld) ASTNode(std::move(nnode));
         }catch(...){
-            operator delete(nmem);
+            std::allocator<ASTNode>::deallocate(nmem,nchld+1);
             throw;
         }
         _die();
