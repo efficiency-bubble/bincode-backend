@@ -150,7 +150,12 @@ namespace bbe::impl{
                         if(type_id lt = children()[0uz].result_type();lt != tdb.T_ERROR){
                             if(type_id rt = children()[1uz].result_type();rt != tdb.T_ERROR){
                                 if(lt == rt){
-                                    ret = lt;
+                                    if(TypeCategory cat = tdb[lt].type();cat == TypeCategory::UNSIGNED_INTEGRAL || cat == TypeCategory::SIGNED_INTEGRAL){
+                                        ret = lt;
+                                    }else{
+                                        errors.add(this,u8"Non-arithmetic type passed to arithmetic"s);
+                                        goto error;
+                                    }
                                 }else{
                                     errors.add(this,u8"Mismatched operands to arithmetic"s);
                                     goto error;
