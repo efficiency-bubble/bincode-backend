@@ -11,7 +11,7 @@ namespace bbe::impl{
         FunctionSignature sig;
         ASTNode root;
         public:
-            Function(func_id id,FunctionSignature s) : Entity(id), sig(std::move(s)){}
+            Function(func_id id,FunctionSignature s) : Entity(id), sig(std::move(s)), root(NodeType::NTYPE){}
             Function(func_id id,ASTNode&& r,FunctionSignature s) : Entity(id), sig(std::move(s)), root(std::move(r)){}
             void recalculate_types(ProjectEntitiesPool& p,ErrorDatabase& e){
                 root.recursively_recalculate_result_type(p,e,sig);
@@ -37,17 +37,23 @@ namespace bbe::impl{
             Function& emplace(A&& ...a){
                 return funcs.emplace(std::forward<A>(a)...);
             }
+            Function& operator[](func_id i){
+                return funcs[i];
+            }
             const Function& operator[](func_id i) const{
                 return funcs[i];
             }
             bool has_func(func_id i) const{
                 return funcs.occupied(i);
             }
-            Function& operator[](func_id i){
-                return funcs[i];
-            }
             using iterator = pool_type::iterator;
             using const_iterator = pool_type::const_iterator;
+            iterator begin(){
+                return funcs.begin();
+            }
+            iterator end(){
+                return funcs.end();
+            }
             const_iterator begin() const{
                 return funcs.begin();
             }

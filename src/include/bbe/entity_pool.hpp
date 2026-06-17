@@ -104,10 +104,10 @@ namespace bbe::impl{
             using iterator = _iterator<false>;
             using const_iterator = _iterator<true>;
             iterator begin(){
-                return obj.begin();
+                return obj.cbegin();
             }
             iterator end(){
-                return obj.end();
+                return obj.cend();
             }
             const_iterator begin() const{
                 return obj.cbegin();
