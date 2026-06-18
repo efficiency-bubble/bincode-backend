@@ -22,6 +22,9 @@ namespace bbe::impl{
             const FunctionSignature& signature() const{
                 return sig;
             }
+            FunctionSignature& signature(){
+                return sig;
+            }
             ASTNode& ast(){
                 return root;
             }

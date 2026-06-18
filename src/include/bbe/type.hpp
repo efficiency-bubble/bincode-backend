@@ -75,8 +75,14 @@ namespace bbe::impl{
         const TypeInfo* par;
         public:
             FunctionSignature(const TypeInfo* r,const TypeInfo* a) : ret(r), par(a){}
+            void set_return(const TypeInfo* t){
+                ret = t;
+            }
             const TypeInfo* return_type() const{
                 return ret;
+            }
+            void set_param(const TypeInfo* t){
+                par = t;
             }
             const TypeInfo* parameter() const{
                 return par;
