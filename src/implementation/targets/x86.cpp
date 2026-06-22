@@ -8,34 +8,34 @@ namespace bbe::targets::x86::impl{
     using namespace std::literals;
     using namespace cppp::literals;
     constexpr static std::uint32_t NSOFF = std::numeric_limits<std::uint32_t>::max();
-    class DataValue{
-        std::vector<const DataValue*> _pack;
-        const TypeInfo* _type;
-        std::uint32_t soff = NSOFF;
-        public:
-            DataValue(const TypeInfo& t) : _type(&t){}
-            bool is_pack() const{
-                return _type->type() == TypeCategory::PACK;
-            }
-            const TypeInfo& type() const{
-                return *_type;
-            }
-            const std::vector<const DataValue*>& pack_contents() const{
-                CPPP_ASSERT(is_pack());
-                return _pack;
-            }
-            std::vector<const DataValue*>& pack_contents(){
-                CPPP_ASSERT(is_pack());
-                return _pack;
-            }
-            void set_stack(std::uint32_t off){
-                soff = off;
-            }
-            std::uint32_t stack() const{
-                return soff;
-            }
-    };
     namespace{
+        class DataValue{
+            std::vector<const DataValue*> _pack;
+            const TypeInfo* _type;
+            std::uint32_t soff = NSOFF;
+            public:
+                DataValue(const TypeInfo& t) : _type(&t){}
+                bool is_pack() const{
+                    return _type->type() == TypeCategory::PACK;
+                }
+                const TypeInfo& type() const{
+                    return *_type;
+                }
+                const std::vector<const DataValue*>& pack_contents() const{
+                    CPPP_ASSERT(is_pack());
+                    return _pack;
+                }
+                std::vector<const DataValue*>& pack_contents(){
+                    CPPP_ASSERT(is_pack());
+                    return _pack;
+                }
+                void set_stack(std::uint32_t off){
+                    soff = off;
+                }
+                std::uint32_t stack() const{
+                    return soff;
+                }
+        };
         class FunctionCompiler{
             public:
                 using value_t = std::uint32_t;
