@@ -38,9 +38,9 @@ namespace bbe::formats::elf::impl{
             static_cast<std::uint32_t>(SYMBOL_NAME_TABLE_INDEX+1),1);
         }
         cppp::bytes& reltab = section_data.emplace_back();
-        for(const auto& fn : prog.functions()){
-            for(const targets::x86::FunctionRelocation rel : fn.relocations()){
-                reltab.appendl<std::uint64_t>(rel.offset);
+        for(std::size_t i=0;i<prog.functions().size();++i){
+            for(const targets::x86::FunctionRelocation rel : prog.functions()[i].relocations()){
+                reltab.appendl<std::uint64_t>(entoffs[i] + rel.offset);
                 reltab.appendl<std::uint64_t>(static_cast<std::uint64_t>(prog.get_index(rel.fni)+1)<<32uz | 2 /* PC-relative */);
                 reltab.appendl<std::int64_t>(-static_cast<std::int64_t>(rel.isize));
             }
