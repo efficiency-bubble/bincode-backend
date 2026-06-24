@@ -4,7 +4,7 @@
 #include<stdexcept>
 namespace bbe::inter::rtl::impl{
     using namespace cppp::literals;
-    Value CompiledFunctionPool::call(ProjectEntitiesPool::index_type i,const Value& arg) const{
+    Value CompiledFunctionPool::call(func_id i,const Value& arg) const{
         const auto& fn = function(i);
         cppp::fixed_array<Value> values(fn.num_vals());
         const targets::rtl::Function::ip_t end = fn.instructions().end();

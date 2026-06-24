@@ -9,7 +9,7 @@ namespace bbe::inter::dfg::impl{
     class CompiledFunctionPool : public inter::impl::CompiledFunctionPool<targets::dfg::DataFlowGraph>{
         public:
             using inter::impl::CompiledFunctionPool<targets::dfg::DataFlowGraph>::CompiledFunctionPool;
-            Value call(ProjectEntitiesPool::index_type,const Value&) const;
+            Value call(func_id,const Value&) const;
     };
 }
 namespace bbe::inter::dfg{

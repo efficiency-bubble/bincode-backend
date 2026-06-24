@@ -41,7 +41,7 @@ namespace bbe::formats::elf::impl{
         for(const auto& fn : prog.functions()){
             for(const targets::x86::FunctionRelocation rel : fn.relocations()){
                 reltab.appendl<std::uint64_t>(rel.offset);
-                reltab.appendl<std::uint64_t>(static_cast<std::uint64_t>(rel.fni+1)<<32uz | 2 /* PC-relative */);
+                reltab.appendl<std::uint64_t>(static_cast<std::uint64_t>(prog.get_index(rel.fni)+1)<<32uz | 2 /* PC-relative */);
                 reltab.appendl<std::int64_t>(-static_cast<std::int64_t>(rel.isize));
             }
         }

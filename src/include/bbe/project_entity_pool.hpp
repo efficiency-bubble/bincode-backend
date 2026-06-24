@@ -3,11 +3,8 @@
 #include"type.hpp"
 namespace bbe::impl{
     class ProjectEntitiesPool{
-        public:
-            using index_type = std::uint32_t;
-        private:
-            FunctionDatabase fd;
-            TypeDatabase td;
+        FunctionDatabase fd;
+        TypeDatabase td;
         public:
             const TypeDatabase& types() const{
                 return td;

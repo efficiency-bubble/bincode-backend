@@ -17,23 +17,35 @@ namespace bbe::targets::rtl::impl{
         std::uint32_t src;
     };
     class Function{
-        friend class FunctionCompiler;
         using insv_t = std::list<Instruction>;
         public:
             using ip_t = insv_t::const_iterator;
         private:
             insv_t ins;
             // stores one before the target statement
-            std::vector<ip_t> labels;
+            std::vector<ip_t> _labels;
             std::uint32_t nvals;
         public:
             Function(const dfg::DataFlowGraph&);
+            std::uint32_t alloc_val(){
+                return nvals++;
+            }
+            std::vector<ip_t>& labels(){
+                return _labels;
+            }
+            const std::vector<ip_t>& labels() const{
+                return _labels;
+            }
             const std::list<Instruction>& instructions() const{
                 return ins;
             }
+            template<typename ...A>
+            void add_instruction(A&& ...a){
+                ins.emplace_back(std::forward<A>(a)...);
+            }
             // returns one before the target statement
             ip_t get_label(std::size_t i) const{
-                return labels[i];
+                return _labels[i];
             }
             std::uint32_t num_vals() const{
                 return nvals;

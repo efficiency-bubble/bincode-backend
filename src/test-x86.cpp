@@ -44,7 +44,7 @@ int main(){
     std::println();
     bbe::formats::elf::Elf elf;
     bbe::targets::x86::Program prog;
-    prog.export_function(u8"example"s,std::move(fn));
+    prog.export_function(u8"example"s,0,std::move(fn));
     elf.add_text(prog);
     {
         cppp::BinaryFile outf{u8"test/example.o"s,std::ios_base::out|std::ios_base::binary|std::ios_base::trunc};

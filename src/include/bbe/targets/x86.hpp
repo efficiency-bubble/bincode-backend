@@ -7,7 +7,7 @@
 namespace bbe::targets::x86::impl{
     struct FunctionRelocation{
         std::uint32_t offset;
-        ProjectEntitiesPool::index_type fni;
+        func_id fni;
         // size of the instruction being relocated; since IP-relative 
         std::uint32_t isize;
     };
@@ -54,14 +54,19 @@ namespace bbe::targets::x86::impl{
     };
     class Program{
         std::vector<Function> fnv;
+        std::unordered_map<func_id,std::uint32_t> function_order;
         std::vector<SymbolInfo> symtab;
         public:
-            void add_function(Function&& fn){
+            void add_function(func_id fid,Function&& fn){
+                function_order.try_emplace(fid,fnv.size());
                 fnv.emplace_back(std::move(fn));
             }
-            void export_function(cppp::str n,Function&& fn){
+            std::uint32_t get_index(func_id fid) const{
+                return function_order.at(fid);
+            }
+            void export_function(cppp::str n,func_id fid,Function&& fn){
                 symtab.emplace_back(std::move(n),SymbolType::FUNCTION,fnv.size(),false);
-                add_function(std::move(fn));
+                add_function(fid,std::move(fn));
             }
             const std::vector<SymbolInfo>& symbols() const{
                 return symtab;

@@ -49,7 +49,7 @@ namespace bbe::inter::dfg::impl{
             default: throw std::logic_error("bbe::inter::dfg::eval(): Unknown node type "s+std::to_string(std::to_underlying(nr->operation())));
         }
     }
-    Value CompiledFunctionPool::call(ProjectEntitiesPool::index_type fn,const Value& arg) const{
+    Value CompiledFunctionPool::call(func_id fn,const Value& arg) const{
         return eval(*this,function(fn).root(),arg);
     }
 }

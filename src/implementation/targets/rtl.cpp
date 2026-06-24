@@ -12,20 +12,17 @@ namespace bbe::targets::rtl::impl{
         class FunctionCompiler{
             Function& fn;
             std::unordered_map<const dfg::DataNode*,std::uint32_t> cache;
-            std::uint32_t next_reg(){
-                return fn.nvals++;
-            }
             std::uint32_t compile_fork(const dfg::DataNode* cond,const dfg::DataNode* tru,const dfg::DataNode* fals){
                 std::uint32_t result = NVAL;
                 fork(cond,[this,tru,&result]{
                     if(std::uint32_t tr = compile_node(tru);tr != NVAL){
-                        result = next_reg();
-                        fn.ins.emplace_back(Operation::MOV,result,tr);
+                        result = fn.alloc_val();
+                        fn.add_instruction(Operation::MOV,result,tr);
                     }
                 },[this,fals,&result]{
                     if(std::uint32_t fr = compile_node(fals);fr != NVAL){
-                        if(result == NVAL) result = next_reg();
-                        fn.ins.emplace_back(Operation::MOV,result,fr);
+                        if(result == NVAL) result = fn.alloc_val();
+                        fn.add_instruction(Operation::MOV,result,fr);
                     }
                 });
                 return result;
@@ -34,64 +31,64 @@ namespace bbe::targets::rtl::impl{
                 switch(node->operation()){
                     using enum dfg::NodeType;
                     case UINT32: case BOOL: {
-                        std::uint32_t r = next_reg();
-                        fn.ins.emplace_back(Operation::LDI,r,node->primitive());
+                        std::uint32_t r = fn.alloc_val();
+                        fn.add_instruction(Operation::LDI,r,node->primitive());
                         return r;
                     }
                     case PACK: {
-                        std::uint32_t r = next_reg();
-                        fn.ins.emplace_back(Operation::MKPACK,r);
+                        std::uint32_t r = fn.alloc_val();
+                        fn.add_instruction(Operation::MKPACK,r);
                         for(const dfg::DataNode* p : node->parents()){
-                            fn.ins.emplace_back(Operation::PACKATT,r,compile_node(p));
+                            fn.add_instruction(Operation::PACKATT,r,compile_node(p));
                         }
                         return r;
                     }
                     case PACKIND: {
-                        std::uint32_t r = next_reg();
-                        fn.ins.emplace_back(Operation::MOV,r,_compile_node(node->parents().front()));
-                        fn.ins.emplace_back(Operation::IPACK,r,node->primitive());
+                        std::uint32_t r = fn.alloc_val();
+                        fn.add_instruction(Operation::MOV,r,_compile_node(node->parents().front()));
+                        fn.add_instruction(Operation::IPACK,r,node->primitive());
                         return r;
                     }
                     case ARG: {
-                        std::uint32_t r = next_reg();
-                        fn.ins.emplace_back(Operation::ARG,r);
+                        std::uint32_t r = fn.alloc_val();
+                        fn.add_instruction(Operation::ARG,r);
                         return r;
                     }
                     case CALL_BUILTIN: {
                         const auto& par = node->parents();
                         switch(node->primitive()){
                             case 0: {
-                                std::uint32_t r = next_reg();
-                                fn.ins.emplace_back(Operation::MOV,r,compile_node(par[1uz]));
-                                fn.ins.emplace_back(Operation::CALL,r,compile_node(par[0uz]));
+                                std::uint32_t r = fn.alloc_val();
+                                fn.add_instruction(Operation::MOV,r,compile_node(par[1uz]));
+                                fn.add_instruction(Operation::CALL,r,compile_node(par[0uz]));
                                 return r;
                             }
                             case 10: {
-                                std::uint32_t r = next_reg();
-                                fn.ins.emplace_back(Operation::MOV,r,compile_node(par[0uz]));
-                                fn.ins.emplace_back(Operation::ADD,r,compile_node(par[1uz]));
+                                std::uint32_t r = fn.alloc_val();
+                                fn.add_instruction(Operation::MOV,r,compile_node(par[0uz]));
+                                fn.add_instruction(Operation::ADD,r,compile_node(par[1uz]));
                                 return r;
                             }
                             case 20: {
-                                std::uint32_t r = next_reg();
-                                fn.ins.emplace_back(Operation::MOV,r,compile_node(par[0uz]));
-                                fn.ins.emplace_back(Operation::SUB,r,compile_node(par[1uz]));
+                                std::uint32_t r = fn.alloc_val();
+                                fn.add_instruction(Operation::MOV,r,compile_node(par[0uz]));
+                                fn.add_instruction(Operation::SUB,r,compile_node(par[1uz]));
                                 return r;
                             }
                             case 25:
                                 static_cast<void>(compile_node(par[1uz])); // place side effect before
-                                fn.ins.emplace_back(Operation::PRI,compile_node(par[0uz]));
+                                fn.add_instruction(Operation::PRI,compile_node(par[0uz]));
                                 return NVAL;
                             case 50: {
-                                std::uint32_t r = next_reg();
-                                fn.ins.emplace_back(Operation::MOV,r,compile_node(par[0uz]));
-                                fn.ins.emplace_back(Operation::CEQ,r,compile_node(par[1uz]));
+                                std::uint32_t r = fn.alloc_val();
+                                fn.add_instruction(Operation::MOV,r,compile_node(par[0uz]));
+                                fn.add_instruction(Operation::CEQ,r,compile_node(par[1uz]));
                                 return r;
                             }
                             case 51: {
-                                std::uint32_t r = next_reg();
-                                fn.ins.emplace_back(Operation::MOV,r,compile_node(par[0uz]));
-                                fn.ins.emplace_back(Operation::CLE,r,compile_node(par[1uz]));
+                                std::uint32_t r = fn.alloc_val();
+                                fn.add_instruction(Operation::MOV,r,compile_node(par[0uz]));
+                                fn.add_instruction(Operation::CLE,r,compile_node(par[1uz]));
                                 return r;
                             }
                             default:
@@ -103,8 +100,8 @@ namespace bbe::targets::rtl::impl{
                         return compile_fork(par[0uz],par[1uz],par[2uz]);
                     }
                     case FNSYM: {
-                        std::uint32_t r = next_reg();
-                        fn.ins.emplace_back(Operation::LDFN,r,node->primitive());
+                        std::uint32_t r = fn.alloc_val();
+                        fn.add_instruction(Operation::LDFN,r,node->primitive());
                         return r;
                     }
                     case STDOUT: // _stdout
@@ -125,14 +122,14 @@ namespace bbe::targets::rtl::impl{
                 template<typename Ft,typename Ff>
                 void fork(const dfg::DataNode* cond,Ft&& tru,Ff&& fals){
                     std::uint32_t condv = compile_node(cond);
-                    std::uint32_t elselid = next(fn.labels);
-                    std::uint32_t donelid = next(fn.labels);
-                    fn.ins.emplace_back(Operation::JF,elselid,condv);
+                    std::uint32_t elselid = next(fn.labels());
+                    std::uint32_t donelid = next(fn.labels());
+                    fn.add_instruction(Operation::JF,elselid,condv);
                     tru();
-                    fn.ins.emplace_back(Operation::JMP,donelid,0);
-                    fn.labels[elselid] = std::prev(fn.ins.end());
+                    fn.add_instruction(Operation::JMP,donelid,0);
+                    fn.labels()[elselid] = std::prev(fn.instructions().end());
                     fals();
-                    fn.labels[donelid] = std::prev(fn.ins.end());
+                    fn.labels()[donelid] = std::prev(fn.instructions().end());
                 }
         };
     }

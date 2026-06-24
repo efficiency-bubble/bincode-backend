@@ -7,7 +7,7 @@ namespace bbe::inter::rtl::impl{
     class CompiledFunctionPool : public inter::impl::CompiledFunctionPool<targets::rtl::Function>{
         public:
             using inter::impl::CompiledFunctionPool<targets::rtl::Function>::CompiledFunctionPool;
-            Value call(ProjectEntitiesPool::index_type,const Value&) const;
+            Value call(func_id,const Value&) const;
     };
 }
 namespace bbe::inter::rtl{
