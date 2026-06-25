@@ -8,7 +8,7 @@ namespace bbe::targets::x86::impl{
     struct FunctionRelocation{
         std::uint32_t offset;
         func_id fni;
-        // size of the instruction being relocated; since IP-relative 
+        // size of the instruction being relocated; since IP-relative addressing is relative to the next instruction
         std::uint32_t isize;
     };
     class Function{
