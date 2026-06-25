@@ -46,6 +46,9 @@ namespace bbe::impl{
             const Function& operator[](func_id i) const{
                 return funcs[i];
             }
+            void erase(func_id i){
+                funcs.pop(i);
+            }
             bool has_func(func_id i) const{
                 return funcs.occupied(i);
             }
