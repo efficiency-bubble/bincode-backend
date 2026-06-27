@@ -2,7 +2,9 @@
 #include<cppp/string.hpp> // test names
 #include<bbe/bbe.hpp>
 #include<bbe/inter/dfg.hpp>
+#include<cppp/format.hpp>
 #include<bbe/targets/yasbepl.hpp>
+#include<cppp/stringify-enum.hpp>
 #include"test.hpp"
 #include<expected>
 #include<chrono>
@@ -35,15 +37,23 @@ void test(const cppp::view<const TestCase> cases){
     }
     std::println("{}/{} passed\x1b[0m"sv,pass,cases.size());
 }
-template<typename T>
+cppp::str to_string(cppp::str v){
+    return v;
+}
+template<typename T> requires(std::is_enum_v<T>)
 cppp::str to_string(T v){
-    if constexpr(std::convertible_to<cppp::str,T>){
-        return v;
-    }else if constexpr(std::is_enum_v<T>){
-        return to_string(std::to_underlying(v));
-    }else{
-        return cppp::tou8(std::to_string(v));
-    }
+    return cppp::str(cppp::stringify_enum(v));
+}
+template<std::integral T>
+cppp::str to_string(T v){
+    return cppp::tou8(std::to_string(v));
+}
+using namespace cppp::literals;
+cppp::str to_string(const void* p){
+    return cppp::format<u8"{:p}"_ts>(p);
+}
+cppp::str to_string(bool b){
+    return b ? u8"true"s : u8"false"s;
 }
 #define ASSERT_EQ(p,q,msg) if(auto r=(p);r!=q) return std::unexpected(u8 ## msg ## s + u8": "s + to_string(r) + u8" != "s + to_string(q));else static_cast<void>(0)
 int main(){
@@ -71,7 +81,7 @@ int main(){
             test.children()[0uz] = bbe::ASTNode{NodeType::COMMA,0,1};
             test.children()[0uz].children()[0uz] = bbe::ASTNode{NodeType::NTYPE,0};
             test.children()[1uz] = bbe::ASTNode{NodeType::NTYPE,0};
-            test.serialize(buf);
+            test.serialize(buf,{});
             for(std::size_t i=0;i<buf.size();++i){
                 printf("%02x ",(int)buf[i]);
             }
@@ -90,6 +100,30 @@ int main(){
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
             
             ASSERT_EQ(an.result_type(),proj.types().T_UINT32,"Wrong type for uint32 literal");
+            return {};
+        }},
+        {u8"PEP serialization/deserialization"sv,[] -> test_result_t {
+            bbe::ProjectEntitiesPool proj;
+            bbe::ErrorDatabase edb;
+            Function& fn = proj.functions().emplace(FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
+            fn.set(pind(pack(u32(42),u32(41)),1));
+            fn.recalculate_types(proj,edb);
+            ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
+            
+            cppp::bytes buf;
+            proj.serialize(buf);
+            for(std::size_t i=0;i<buf.size();++i){
+                printf("%02x ",(int)buf[i]);
+            }
+            putchar('\n');
+            cppp::frozen_byte_view reader{buf};
+            bbe::ProjectEntitiesPool deser{reader};
+            ASSERT_EQ(deser.functions().has_func(0),true,"Deserialization does not include func id 0");
+            ASSERT_EQ(deser.functions()[0].ast() == fn.ast(),true,"Deserialized AST was changed");
+            ASSERT_EQ(deser.functions()[0].signature().parameter()->index(),TypeDatabase::T_VOID,"Deserialized function parameter type was changed");
+            ASSERT_EQ(deser.functions()[0].signature().return_type()->index(),TypeDatabase::T_UINT32,"Deserialized function return type was changed");
+            ASSERT_EQ(deser.functions()[0].signature().parameter(),&deser.types()[TypeDatabase::T_VOID],"Deserialized function parameter type address was changed");
+            ASSERT_EQ(deser.functions()[0].signature().return_type(),&deser.types()[TypeDatabase::T_UINT32],"Deserialized function return type was changed");
             return {};
         }},
         {u8"Dfg inter: add values"sv,[] -> test_result_t {

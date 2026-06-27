@@ -39,7 +39,7 @@ int main(){
     }
     bbe::targets::x86::Function fn{example_fn,p.types()};
     for(const std::byte b : fn.instructions()){
-        cppp::print<u8"{:02X} "_ts>(static_cast<std::uint8_t>(b));
+        cppp::print<u8"{:02x} "_ts>(static_cast<std::uint8_t>(b));
     }
     std::println();
     bbe::formats::elf::Elf elf;

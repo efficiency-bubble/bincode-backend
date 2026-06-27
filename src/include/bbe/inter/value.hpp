@@ -1,10 +1,12 @@
 #pragma once
 #include"../commons.hpp"
+#include"../idfwd.hpp"
 #include<cppp/variant.hpp>
 #include<cppp/string.hpp> // value stringification
 #include<cassert>
 #include<vector>
 namespace bbe::inter::impl{
+    using namespace bbe::impl;
     struct uint32v{
         std::uint32_t value;
     };
@@ -12,7 +14,7 @@ namespace bbe::inter::impl{
         bool value;
     };
     struct fptr{
-        std::uint32_t id;
+        func_id id;
     };
     struct pack;
     class Value{

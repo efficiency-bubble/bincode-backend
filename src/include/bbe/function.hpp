@@ -1,18 +1,29 @@
 #pragma once
+#include"serialization.hpp"
 #include"entity_pool.hpp"
+#include"idfwd.hpp"
 #include"type.hpp"
 #include"ast.hpp"
 #include<vector>
 namespace bbe::impl{
     class ProjectEntitiesPool;
     class ErrorDatabase;
-    using func_id = std::uint32_t;
     class Function : public Entity<func_id>{
         FunctionSignature sig;
         ASTNode root;
         public:
+            Function(func_id id,uninitialize_for_deserialization_t uninit) : Entity(id), sig(uninit), root(uninit){}
             Function(func_id id,FunctionSignature s) : Entity(id), sig(std::move(s)), root(NodeType::NTYPE){}
             Function(func_id id,ASTNode&& r,FunctionSignature s) : Entity(id), sig(std::move(s)), root(std::move(r)){}
+            void deserialize(cppp::frozen_byte_view& buf,const TypeDatabase& tdb){
+                sig.deserialize(buf,tdb);
+                root.deserialize(buf);
+            }
+            // can't use EntityPool<Function>::consolidation_map yet, since we're not a complete type. sad.
+            void serialize(cppp::bytes& dst,const TypeDatabase::consolidation_map& tcmap,const std::unordered_map<type_id,type_id>& fcmap) const{
+                sig.serialize(dst,tcmap);
+                root.serialize(dst,fcmap);
+            }
             void recalculate_types(ProjectEntitiesPool& p,ErrorDatabase& e){
                 root.recursively_recalculate_result_type(p,e,sig);
             }
@@ -36,6 +47,19 @@ namespace bbe::impl{
         using pool_type = EntityPool<Function>;
         pool_type funcs;
         public:
+            FunctionDatabase() = default;
+            FunctionDatabase(cppp::frozen_byte_view& buf,const TypeDatabase& tdb) : funcs(buf){
+                for(func_id i=0;i<funcs.size();++i){
+                    funcs[i].deserialize(buf,tdb);
+                }
+            }
+            using consolidation_map = pool_type::consolidation_map;
+            consolidation_map make_consolidation_map() const{
+                return funcs.make_consolidation_map();
+            }
+            void serialize(cppp::bytes& dst,const TypeDatabase::consolidation_map& tcmap,const consolidation_map& fcmap) const{
+                funcs.serialize(dst,tcmap,fcmap);
+            }
             template<typename ...A>
             Function& emplace(A&& ...a){
                 return funcs.emplace(std::forward<A>(a)...);

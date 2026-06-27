@@ -1,32 +1,11 @@
 #include<bbe/ast.hpp>
 #include<bbe/project_entity_pool.hpp>
-#include<cppp/binary.hpp>
-#include<cppp/bytearray.hpp>
+#include<bbe/serialization.hpp>
 #include<cppp/assert.hpp>
 namespace bbe::impl{
     constexpr static std::uint32_t VARIABLE = std::numeric_limits<std::uint32_t>::max();
     using namespace cppp::literals;
-    // Custom version of ULEB128, highest bit of each byte is the opposite of its normal value
-    template<typename T>
-    static T uleb128_r(cppp::frozen_byte_view& b){
-        T r = 0;
-        std::byte v;
-        std::uint16_t n = 0;
-        do{
-            v = b.pop_front();
-            r |= static_cast<T>(v&0x7f_b) << n;
-            n += 7;
-        }while((v&0x80_b) == 0_b);
-        return r;
-    }
-    template<typename T>
-    static void uleb128_w(cppp::bytes& dst,T v){
-        do{
-            dst.append(static_cast<std::byte>(v)&0x7f_b);
-            v >>= 7;
-        }while(v);
-        dst[dst.size()-1] |= 0x80_b;
-    }
+    
     static std::uint32_t nchld_of(NodeType t){
         switch(t){
             using enum NodeType;
@@ -45,27 +24,28 @@ namespace bbe::impl{
     static bool has_extended_data(NodeType t){
         return t == NodeType::UINT64;
     }
-    ASTNode::ASTNode(cppp::frozen_byte_view& b) noexcept : _type{cppp::read<std::uint8_t>(b)}{
-        prim = uleb128_r<std::uint32_t>(b);
+    void ASTNode::deserialize(cppp::frozen_byte_view& buf){
+        _type = static_cast<NodeType>(cppp::read<std::uint8_t>(buf));
+        prim = uleb128_r<std::uint32_t>(buf);
         nchld = nchld_of(_type);
         if(nchld == VARIABLE){
-            nchld = uleb128_r<std::uint32_t>(b);
+            nchld = uleb128_r<std::uint32_t>(buf);
         }
         if(nchld){
-            _data = reinterpret_cast<std::uint64_t>(std::allocator<ASTNode>::allocate(nchld));
+            if(!(_data = reinterpret_cast<std::uint64_t>(std::allocator<ASTNode>::allocate(nchld)))) throw std::bad_alloc();
             for(std::uint32_t i=0;i<nchld;++i){
-                new(m()+i) ASTNode(b);
+                new(m()+i) ASTNode(buf);
             }
         }else{
             if(has_extended_data(_type)){
-                _data = cppp::read<std::uint64_t>(b);
+                _data = cppp::read<std::uint64_t>(buf);
             }else{
                 _data = 0; // don't leave it uninitialized, to be compare friendly
             }
         }
     }
-    void ASTNode::serialize(cppp::bytes& b) const{
-        b.appendl(std::to_underlying(_type));
+    void ASTNode::serialize(cppp::bytes& b,const FunctionDatabase::consolidation_map& fcmap) const{
+        b.appendl<std::uint8_t>(std::to_underlying(_type));
         uleb128_w(b,prim);
         std::uint32_t nc = nchld_of(_type);
         if(nc == VARIABLE){
@@ -78,7 +58,7 @@ namespace bbe::impl{
             b.appendl<std::uint64_t>(_data);
         }
         for(const auto& c : *this){
-            c.serialize(b);
+            c.serialize(b,fcmap);
         }
     }
     void ASTNode::recalculate_result_type(const ProjectEntitiesPool& p,ErrorDatabase& errors,FunctionSignature sig){

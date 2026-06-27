@@ -1,10 +1,13 @@
 #pragma once
 #include"commons.hpp"
+#include"serialization.hpp"
 #include"error.hpp"
+#include"idfwd.hpp"
 #include"type.hpp"
 #include<cppp/object-view.hpp>
 #include<cppp/bytearray.hpp>
 #include<cppp/assert.hpp>
+#include<unordered_map>
 #include<algorithm>
 #include<cstdint>
 #include<utility>
@@ -13,7 +16,6 @@
 #include<new>
 namespace bbe::impl{
     class ASTNode;
-    struct _uninit_tag_t{};
     enum class NodeType : std::uint8_t{
         UINT32,UINT64,PACK,COMMA,PACKIND,ARG,CALL_BUILTIN=9,SETVAR,GETVAR,BOOL=20,FORK,FOREVER=30,BREAK,UINT32SYM=100,FNSYM=200,
         NTYPE = 255
@@ -32,7 +34,7 @@ namespace bbe::impl{
             ASTNode* m(){
                 return reinterpret_cast<ASTNode*>(_data);
             }
-            ASTChildren(){}
+            ASTChildren(uninitialize_for_deserialization_t){}
             inline ASTChildren(std::uint32_t n);
             ASTChildren(ASTChildren&& other) : _data(other._data), nchld(std::exchange(other.nchld,0)){}
             ASTChildren(const ASTChildren& other) = delete
@@ -83,7 +85,7 @@ namespace bbe::impl{
     class ProjectEntitiesPool;
     class ASTNode : ASTChildren{
         std::uint32_t prim;
-        type_id ret = TypeDatabase::T_ERROR;
+        type_id ret;
         NodeType _type;
         public:
             explicit operator bool() const{
@@ -124,14 +126,24 @@ namespace bbe::impl{
             ASTNode& emplace(std::uint32_t ind,ASTNode&& n){
                 return children()[ind] = std::move(n);
             }
-            ASTNode() : ASTChildren(0){}
-            ASTNode(NodeType tp,std::uint32_t nchld=0) : ASTChildren(nchld), prim(0), _type(tp){}
-            ASTNode(NodeType tp,std::uint32_t prim,std::uint32_t nchld) : ASTChildren(nchld), prim(prim), _type(tp){}
+            [[deprecated("Either uninitialize then initialize, or construct in-place")]] ASTNode() : ASTChildren(0){}
+            ASTNode(uninitialize_for_deserialization_t uninit) : ASTChildren(uninit){}
+            ASTNode(NodeType tp,std::uint32_t nchld=0) : ASTChildren(nchld), prim(0), ret(TypeDatabase::T_ERROR), _type(tp){}
+            ASTNode(NodeType tp,std::uint32_t prim,std::uint32_t nchld) : ASTChildren(nchld), prim(prim), ret(TypeDatabase::T_ERROR), _type(tp){}
+            ASTNode(cppp::frozen_byte_view& buf) : ASTNode(uninitialize_for_deserialization){
+                deserialize(buf);
+            }
             ASTNode(const ASTNode&) = delete;
             ASTNode(ASTNode&&) = default;
-            // TODO: add robust exception handling so we don't have to std::terminate() on failure
-            ASTNode(cppp::frozen_byte_view&) noexcept;
-            void serialize(cppp::bytes&) const;
+            void deserialize(cppp::frozen_byte_view&);
+            void serialize(cppp::bytes&,const std::unordered_map<func_id,func_id>&) const;
+            void initialize(ASTNode&& other){
+                _data = other._data;
+                nchld = std::exchange(other.nchld,0);
+                prim = other.prim;
+                ret = other.ret;
+                _type = other._type;
+            }
             bool operator==(const ASTNode& other) const{
                 return (_type == other._type) && (prim == other.prim) && ASTChildren::operator==(other);
             }

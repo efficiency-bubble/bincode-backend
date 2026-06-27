@@ -1,16 +1,21 @@
 #pragma once
 #include"commons.hpp"
+#include"serialization.hpp"
 #include<cppp/freelist.hpp>
 #include<unordered_set>
+#include<unordered_map>
 #include<concepts>
 #include<iterator>
 namespace bbe::impl{
-    template<std::unsigned_integral I>
+    template<typename I>
     class Entity{
         // const because changing this will break the hash
         const I _index;
         public:
             Entity(I k) : _index(k){}
+            // probably should let this be copyable or movable, considering we expect pointers to us
+            Entity(const Entity&) = delete;
+            Entity(Entity&&) = delete;
             using id_type = I;
             I index() const{
                 return _index;
@@ -49,6 +54,7 @@ namespace bbe::impl{
     class EntityPool{
         public:
             using id_type = T::id_type;
+            using consolidation_map = std::unordered_map<id_type,id_type>;
         private:
             using container_type = std::unordered_set<entity_wrapper<T>,id_hash<T>,id_eq<T>>;
             container_type obj;
@@ -83,10 +89,40 @@ namespace bbe::impl{
                     }
             };
         public:
-            EntityPool(){}
+            EntityPool() = default;
+            id_type size() const{
+                return static_cast<id_type>(obj.size());
+            }
+            template<typename ...Ctx>
+            EntityPool(id_type from,cppp::frozen_byte_view& buf,Ctx& ...ctx) : fl(from+uleb128_r<id_type>(buf)){
+                for(id_type i=from;i<fl.size();++i){
+                    obj.emplace(i,uninitialize_for_deserialization);
+                }
+            }
+            template<typename ...Ctx>
+            EntityPool(cppp::frozen_byte_view& buf,Ctx& ...ctx) : EntityPool(static_cast<id_type>(0),buf,ctx...){}
+            consolidation_map make_consolidation_map() const{
+                consolidation_map mp;
+                id_type index = 0;
+                for(const auto& ent : *this){
+                    mp.try_emplace(ent.index(),index++);
+                }
+                return mp;
+            }
+            template<typename ...Ctx>
+            void serialize(cppp::bytes& dst,Ctx& ...ctx) const{
+                uleb128_w<id_type>(dst,size());
+                for(const auto& ent : *this){
+                    ent.serialize(dst,ctx...);
+                }
+            }
             template<typename ...A>
             T& emplace(A&& ...a){
                 return obj.emplace(fl.allocate(),std::forward<A>(a)...).first->e;
+            }
+            template<typename ...A  >
+            T& emplace_at(id_type at,A&& ...a){
+                return obj.emplace(at,std::forward<A>(a)...).first->e;
             }
             void pop(id_type key){
                 fl.deallocate(key);
