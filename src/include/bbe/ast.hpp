@@ -85,6 +85,18 @@ namespace bbe::impl{
             }
     };
     class ProjectEntitiesPool;
+    struct null_initialize_t{} constexpr inline null_initialize;
+    /*
+    Nodes have invalid state when constructed with uninitialize_t, or as a children of a node constructed with children + uninitialize_t
+    In this state, you cannot:
+    - Query it
+    - Assign to it
+    - Assign it to something else or move-construct something else with it
+    - Destroy it
+    You are ONLY permitted to initialize its state with initialize() or deserialize().
+    
+    Note that resolution of CWG2264 may allow move-assignment and move-construction from an invalid node to work. In this case, a moved-from invalid node is now partially invalid such that it is also valid to destroy or query the children count of (a query which will return 0).
+    */
     class ASTNode : ASTChildren{
         std::uint32_t prim;
         type_id ret;
@@ -128,8 +140,18 @@ namespace bbe::impl{
             ASTNode(uninitialize_t uninit) : ASTChildren(uninit){}
             ASTNode(NodeType tp) : ASTChildren(), prim(0), ret(TypeDatabase::T_ERROR), _type(tp){}
             ASTNode(NodeType tp,std::uint32_t nchld,uninitialize_t uninit) : ASTChildren(nchld,uninit), prim(0), ret(TypeDatabase::T_ERROR), _type(tp){}
+            ASTNode(NodeType tp,std::uint32_t nchld,null_initialize_t) : ASTNode(tp,nchld,uninitialize){
+                while(nchld--){
+                    children()[nchld].initialize();
+                }
+            }
             ASTNode(NodeType tp,std::uint32_t prim) : ASTChildren(), prim(prim), ret(TypeDatabase::T_ERROR), _type(tp){}
             ASTNode(NodeType tp,std::uint32_t prim,std::uint32_t nchld,uninitialize_t uninit) : ASTChildren(nchld,uninit), prim(prim), ret(TypeDatabase::T_ERROR), _type(tp){}
+            ASTNode(NodeType tp,std::uint32_t prim,std::uint32_t nchld,null_initialize_t) : ASTNode(tp,prim,nchld,uninitialize){
+                while(nchld--){
+                    children()[nchld].initialize();
+                }
+            }
             ASTNode(cppp::frozen_byte_view& buf) : ASTNode(uninitialize){
                 deserialize(buf);
             }
@@ -137,6 +159,15 @@ namespace bbe::impl{
             ASTNode(ASTNode&&) = default;
             void deserialize(cppp::frozen_byte_view&);
             void serialize(cppp::bytes&,const std::unordered_map<func_id,func_id>&) const;
+            void initialize(NodeType type,std::uint32_t p){
+                nchld = 0;
+                prim = p;
+                ret = TypeDatabase::T_ERROR;
+                _type = type;
+            }
+            void initialize(){
+                initialize(NodeType::NTYPE,0);
+            }
             void initialize(ASTNode&& other){
                 _data = other._data;
                 nchld = std::exchange(other.nchld,0);
@@ -243,4 +274,6 @@ namespace bbe::impl{
 namespace bbe{
     BBE_EXPORT NodeType;
     BBE_EXPORT ASTNode;
+    BBE_EXPORT null_initialize_t;
+    BBE_EXPORT null_initialize;
 }

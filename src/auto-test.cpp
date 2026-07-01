@@ -59,7 +59,7 @@ int main(){
     std::initializer_list<TestCase> test_cases{
         {u8"AST construct and move"sv,[] -> test_result_t {
             bbe::ASTNode test{NodeType::BOOL,1,bbe::uninitialize};
-            test.children().front().initialize({NodeType::PACK,12});
+            test.children().front().initialize(NodeType::PACK,12);
             ASSERT_EQ(test.type(),NodeType::BOOL,"Wrong type");
             ASSERT_EQ(test.children().size(),1,"Wrong nchld");
             ASSERT_EQ(test.children().front().type(),NodeType::PACK,"Wrong type of child");
@@ -78,8 +78,8 @@ int main(){
             cppp::bytes buf;
             bbe::ASTNode test{NodeType::PACK,2,bbe::uninitialize};
             test.children()[0uz].initialize({NodeType::COMMA,0,1,bbe::uninitialize});
-            test.children()[0uz].children()[0uz].initialize({NodeType::NTYPE});
-            test.children()[1uz].initialize({NodeType::NTYPE});
+            test.children()[0uz].children()[0uz].initialize();
+            test.children()[1uz].initialize();
             test.serialize(buf,{});
             for(std::size_t i=0;i<buf.size();++i){
                 printf("%02x ",(int)buf[i]);
