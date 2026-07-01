@@ -2,17 +2,21 @@
 #include"function.hpp"
 #include"type.hpp"
 namespace bbe::impl{
+    struct SCM{
+        TypeDatabase::consolidation_map tcmap;
+        FunctionDatabase::consolidation_map fcmap;
+    };
     class ProjectEntitiesPool{
         TypeDatabase td;
         FunctionDatabase fd;
         public:
             ProjectEntitiesPool() = default;
             ProjectEntitiesPool(cppp::frozen_byte_view& b) : td(b), fd(b,td){}
-            void serialize(cppp::bytes& dst) const{
-                const TypeDatabase::consolidation_map tcmap{td.make_consolidation_map()};
-                td.serialize(dst,tcmap);
-                const FunctionDatabase::consolidation_map fcmap{fd.make_consolidation_map()};
-                fd.serialize(dst,tcmap,fcmap);
+            SCM serialize(cppp::bytes& dst) const{
+                SCM scm{.tcmap{td.make_consolidation_map()},.fcmap{fd.make_consolidation_map()}};
+                td.serialize(dst,scm.tcmap);
+                fd.serialize(dst,scm.tcmap,scm.fcmap);
+                return scm;
             }
             const TypeDatabase& types() const{
                 return td;
@@ -29,5 +33,6 @@ namespace bbe::impl{
     };
 }
 namespace bbe{
+    BBE_EXPORT SCM;
     BBE_EXPORT ProjectEntitiesPool;
 }
