@@ -14,7 +14,6 @@ using test_result_t = std::expected<void,cppp::str>;
 struct TestCase{
     cppp::sv name;
     test_result_t(*fn)();
-    
 };
 void test(const cppp::view<const TestCase> cases){
     std::size_t pass=0uz;
