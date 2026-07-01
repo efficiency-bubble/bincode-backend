@@ -12,7 +12,7 @@ namespace bbe::impl{
         FunctionSignature sig;
         ASTNode root;
         public:
-            Function(func_id id,uninitialize_for_deserialization_t uninit) : Entity(id), sig(uninit), root(uninit){}
+            Function(func_id id,uninitialize_t uninit) : Entity(id), sig(uninit), root(uninit){}
             Function(func_id id,FunctionSignature s) : Entity(id), sig(std::move(s)), root(NodeType::NTYPE){}
             Function(func_id id,ASTNode&& r,FunctionSignature s) : Entity(id), sig(std::move(s)), root(std::move(r)){}
             void deserialize(cppp::frozen_byte_view& buf,const TypeDatabase& tdb){

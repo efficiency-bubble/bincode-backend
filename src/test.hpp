@@ -13,36 +13,36 @@ constexpr static std::uint32_t FN_LEQ32 = 51;
 constexpr static std::uint32_t FN_BNOT = 60;
 
 ASTNode u32(std::uint32_t val){
-    return {NodeType::UINT32,val,0};
+    return {NodeType::UINT32,val};
 }
 ASTNode cbool(bool val){
-    return {NodeType::BOOL,val,0};
+    return {NodeType::BOOL,val};
 }
 template<typename ...T>
 ASTNode pack(T&& ...children){
-    ASTNode x{NodeType::PACK,sizeof...(T)};
-    [&]<std::size_t ...i>(std::index_sequence<i...>){
-        (... , x.emplace(i,std::forward<T>(children)));
-    }(std::index_sequence_for<T...>());
+    ASTNode x{NodeType::PACK,sizeof...(T),uninitialize};
+    template for(constexpr std::size_t i : std::views::indices(sizeof...(T))){
+        x.children()[i].initialize(std::forward<T...[i]>(children...[i]));
+    }
     return x;
 }
 template<typename ...T>
 ASTNode comma(std::uint32_t ind,T&& ...children){
-    ASTNode x{NodeType::COMMA,ind,sizeof...(T)};
-    [&]<std::size_t ...i>(std::index_sequence<i...>){
-        (... , x.emplace(i,std::forward<T>(children)));
-    }(std::index_sequence_for<T...>());
+    ASTNode x{NodeType::COMMA,ind,sizeof...(T),uninitialize};
+    template for(constexpr std::size_t i : std::views::indices(sizeof...(T))){
+        x.children()[i].initialize(std::forward<T...[i]>(children...[i]));
+    }
     return x;
 }
 ASTNode fn(std::uint32_t id){
-    return {NodeType::FNSYM,id,0};
+    return {NodeType::FNSYM,id};
 }
 ASTNode arg(){
     return {NodeType::ARG};
 }
 ASTNode pind(ASTNode&& arg,std::uint32_t ind){
-    ASTNode x{NodeType::PACKIND,ind,1};
-    x.emplace(0,std::move(arg));
+    ASTNode x{NodeType::PACKIND,ind,1,uninitialize};
+    x.children()[0uz].initialize(std::move(arg));
     return x;
 }
 ASTNode arg(std::uint32_t ind){
@@ -50,34 +50,34 @@ ASTNode arg(std::uint32_t ind){
 }
 template<typename ...T>
 ASTNode cmag(std::uint32_t magic,T&& ...children){
-    ASTNode x{NodeType::CALL_BUILTIN,magic,sizeof...(T)};
-    [&]<std::size_t ...i>(std::index_sequence<i...>){
-        (... , x.emplace(i,std::forward<T>(children)));
-    }(std::index_sequence_for<T...>());
+    ASTNode x{NodeType::CALL_BUILTIN,magic,sizeof...(T),uninitialize};
+    template for(constexpr std::size_t i : std::views::indices(sizeof...(T))){
+        x.children()[i].initialize(std::forward<T...[i]>(children...[i]));
+    }
     return x;
 }
 ASTNode loop(ASTNode&& arg){
-    ASTNode x{NodeType::FOREVER,1};
-    x.emplace(0,std::move(arg));
+    ASTNode x{NodeType::FOREVER,1,uninitialize};
+    x.children()[0uz].initialize(std::move(arg));
     return x;
 }
 ASTNode break_(){
     return {NodeType::BREAK};
 }
 ASTNode fork(ASTNode&& cond,ASTNode&& tru,ASTNode&& fals){
-    ASTNode x{NodeType::FORK,3};
-    x.emplace(0,std::move(cond));
-    x.emplace(1,std::move(tru));
-    x.emplace(2,std::move(fals));
+    ASTNode x{NodeType::FORK,3,uninitialize};
+    x.children()[0uz].initialize(std::move(cond));
+    x.children()[1uz].initialize(std::move(tru));
+    x.children()[2uz].initialize(std::move(fals));
     return x;
 }
 ASTNode setvar(std::uint32_t var,ASTNode&& val){
-    ASTNode x{NodeType::SETVAR,var,1};
-    x.emplace(0,std::move(val));
+    ASTNode x{NodeType::SETVAR,var,1,uninitialize};
+    x.children()[0uz].initialize(std::move(val));
     return x;
 }
 ASTNode getvar(std::uint32_t var){
-    return {NodeType::GETVAR,var,0};
+    return {NodeType::GETVAR,var};
 }
 using namespace std::literals;
 std::unordered_map<std::uint32_t,cppp::sv> EXPLAIN{

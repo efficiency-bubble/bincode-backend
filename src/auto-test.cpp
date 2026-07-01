@@ -58,8 +58,8 @@ cppp::str to_string(bool b){
 int main(){
     std::initializer_list<TestCase> test_cases{
         {u8"AST construct and move"sv,[] -> test_result_t {
-            bbe::ASTNode test{NodeType::BOOL,1};
-            test.children().front() = bbe::ASTNode{NodeType::PACK,12,0};
+            bbe::ASTNode test{NodeType::BOOL,1,bbe::uninitialize};
+            test.children().front().initialize({NodeType::PACK,12});
             ASSERT_EQ(test.type(),NodeType::BOOL,"Wrong type");
             ASSERT_EQ(test.children().size(),1,"Wrong nchld");
             ASSERT_EQ(test.children().front().type(),NodeType::PACK,"Wrong type of child");
@@ -76,10 +76,10 @@ int main(){
         }},
         {u8"AST serialization/deserialization"sv,[] -> test_result_t {
             cppp::bytes buf;
-            bbe::ASTNode test{NodeType::PACK,2};
-            test.children()[0uz] = bbe::ASTNode{NodeType::COMMA,0,1};
-            test.children()[0uz].children()[0uz] = bbe::ASTNode{NodeType::NTYPE,0};
-            test.children()[1uz] = bbe::ASTNode{NodeType::NTYPE,0};
+            bbe::ASTNode test{NodeType::PACK,2,bbe::uninitialize};
+            test.children()[0uz].initialize({NodeType::COMMA,0,1,bbe::uninitialize});
+            test.children()[0uz].children()[0uz].initialize({NodeType::NTYPE});
+            test.children()[1uz].initialize({NodeType::NTYPE});
             test.serialize(buf,{});
             for(std::size_t i=0;i<buf.size();++i){
                 printf("%02x ",(int)buf[i]);

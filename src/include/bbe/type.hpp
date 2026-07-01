@@ -28,7 +28,7 @@ namespace bbe::impl{
         friend TypeDatabase;
         public:
             TypeInfo(type_id id,TypeCategory t,std::uint64_t sz,std::uint64_t al) : Entity(id), _size(sz), align(al), _type(t){}
-            TypeInfo(type_id id,uninitialize_for_deserialization_t) : Entity(id){}
+            TypeInfo(type_id id,uninitialize_t) : Entity(id){}
             // can't use EntityPool<TypeInfo>::consolidation_map yet, since we're not a complete type. sad.
             inline void serialize(cppp::bytes& dst,const std::unordered_map<type_id,type_id>& tcmap) const;
             inline void deserialize(cppp::frozen_byte_view& buf,TypeDatabase&);
@@ -87,9 +87,9 @@ namespace bbe::impl{
         const TypeInfo* ret;
         const TypeInfo* par;
         public:
-            FunctionSignature(uninitialize_for_deserialization_t){}
+            FunctionSignature(uninitialize_t){}
             FunctionSignature(const TypeInfo* r,const TypeInfo* a) : ret(r), par(a){}
-            FunctionSignature(cppp::frozen_byte_view& buf,const TypeDatabase& tdb) : FunctionSignature(uninitialize_for_deserialization){
+            FunctionSignature(cppp::frozen_byte_view& buf,const TypeDatabase& tdb) : FunctionSignature(uninitialize){
                 deserialize(buf,tdb);
             }
             inline void deserialize(cppp::frozen_byte_view&,const TypeDatabase&);

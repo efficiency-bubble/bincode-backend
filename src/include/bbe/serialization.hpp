@@ -28,5 +28,4 @@ namespace bbe::impl{
         }while(v);
         dst[dst.size()-1] |= 0x80_b;
     }
-    struct uninitialize_for_deserialization_t{} constexpr inline uninitialize_for_deserialization;
 }

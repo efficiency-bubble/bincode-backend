@@ -1,6 +1,7 @@
 #pragma once
 #include"commons.hpp"
 #include"serialization.hpp"
+#include"uninit.hpp"
 #include"error.hpp"
 #include"idfwd.hpp"
 #include"type.hpp"
@@ -22,7 +23,7 @@ namespace bbe::impl{
     };
     // Public API: sequence for accessing children; implementation detail: also packs the 64-bit data field to save memory (otherwise it would be wasted on padding)
     static_assert(sizeof(std::uintptr_t)==sizeof(std::uint64_t),"Non-64-bit systems unsupported");
-
+    
     class ASTChildren : protected std::allocator<ASTNode>{
         protected:
             std::uint64_t _data;
@@ -34,8 +35,9 @@ namespace bbe::impl{
             ASTNode* m(){
                 return reinterpret_cast<ASTNode*>(_data);
             }
-            ASTChildren(uninitialize_for_deserialization_t){}
-            inline ASTChildren(std::uint32_t n);
+            explicit ASTChildren() : nchld(0){}
+            ASTChildren(uninitialize_t){}
+            inline ASTChildren(std::uint32_t,uninitialize_t);
             ASTChildren(ASTChildren&& other) : _data(other._data), nchld(std::exchange(other.nchld,0)){}
             ASTChildren(const ASTChildren& other) = delete
             #ifndef __INTELLISENSE__ // vscode intellisense/EDG doesn't support delete("reason") yet
@@ -123,14 +125,12 @@ namespace bbe::impl{
                 CPPP_ASSERT(nchld);
                 _data = p;
             }
-            ASTNode& emplace(std::uint32_t ind,ASTNode&& n){
-                return children()[ind] = std::move(n);
-            }
-            [[deprecated("Either uninitialize then initialize, or construct in-place")]] ASTNode() : ASTChildren(0){}
-            ASTNode(uninitialize_for_deserialization_t uninit) : ASTChildren(uninit){}
-            ASTNode(NodeType tp,std::uint32_t nchld=0) : ASTChildren(nchld), prim(0), ret(TypeDatabase::T_ERROR), _type(tp){}
-            ASTNode(NodeType tp,std::uint32_t prim,std::uint32_t nchld) : ASTChildren(nchld), prim(prim), ret(TypeDatabase::T_ERROR), _type(tp){}
-            ASTNode(cppp::frozen_byte_view& buf) : ASTNode(uninitialize_for_deserialization){
+            ASTNode(uninitialize_t uninit) : ASTChildren(uninit){}
+            ASTNode(NodeType tp) : ASTChildren(), prim(0), ret(TypeDatabase::T_ERROR), _type(tp){}
+            ASTNode(NodeType tp,std::uint32_t nchld,uninitialize_t uninit) : ASTChildren(nchld,uninit), prim(0), ret(TypeDatabase::T_ERROR), _type(tp){}
+            ASTNode(NodeType tp,std::uint32_t prim) : ASTChildren(), prim(prim), ret(TypeDatabase::T_ERROR), _type(tp){}
+            ASTNode(NodeType tp,std::uint32_t prim,std::uint32_t nchld,uninitialize_t uninit) : ASTChildren(nchld,uninit), prim(prim), ret(TypeDatabase::T_ERROR), _type(tp){}
+            ASTNode(cppp::frozen_byte_view& buf) : ASTNode(uninitialize){
                 deserialize(buf);
             }
             ASTNode(const ASTNode&) = delete;
@@ -153,8 +153,8 @@ namespace bbe::impl{
     #ifndef __INTELLISENSE__ // intellisense doesn't reuse the base class padding, so it always thinks we have a regression
     static_assert(sizeof(ASTNode)<=24,"Regression");
     #endif
-    inline ASTChildren::ASTChildren(std::uint32_t n) : _data(reinterpret_cast<std::uint64_t>(std::allocator<ASTNode>::allocate(n))), nchld(n){
-        std::uninitialized_default_construct_n(m(),n);
+    inline ASTChildren::ASTChildren(std::uint32_t n,uninitialize_t uninit) : _data(reinterpret_cast<std::uint64_t>(std::allocator<ASTNode>::allocate(n))), nchld(n){
+        std::uninitialized_fill_n(m(),n,uninit);
     }
     inline ASTChildren& ASTChildren::operator=(ASTChildren&& other){
         if(this!=&other){

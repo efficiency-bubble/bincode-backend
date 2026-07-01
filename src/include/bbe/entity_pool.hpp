@@ -1,6 +1,7 @@
 #pragma once
 #include"commons.hpp"
 #include"serialization.hpp"
+#include"uninit.hpp"
 #include<cppp/freelist.hpp>
 #include<unordered_set>
 #include<unordered_map>
@@ -96,7 +97,7 @@ namespace bbe::impl{
             template<typename ...Ctx>
             EntityPool(id_type from,cppp::frozen_byte_view& buf,Ctx& ...ctx) : fl(from+uleb128_r<id_type>(buf)){
                 for(id_type i=from;i<fl.size();++i){
-                    obj.emplace(i,uninitialize_for_deserialization);
+                    obj.emplace(i,uninitialize);
                 }
             }
             template<typename ...Ctx>
