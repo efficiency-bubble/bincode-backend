@@ -1,7 +1,6 @@
 #pragma once
 #include"commons.hpp"
 #include"entity_pool.hpp"
-#include"serialization.hpp"
 #include"idfwd.hpp"
 #include<cppp/object-view.hpp>
 #include<cppp/assert.hpp>
@@ -61,9 +60,9 @@ namespace bbe::impl{
             type_pack(cppp::fixed_array<const TypeInfo*>&& a) : arr(a){}
             inline type_pack(cppp::frozen_byte_view&,const TypeDatabase&);
             void serialize(cppp::bytes& dst,const EntityPool<TypeInfo>::consolidation_map& cmap) const{
-                uleb128_w<std::uint64_t>(dst,arr.size());
+                cppp::muleb128_w<std::uint64_t>(dst,arr.size());
                 for(const TypeInfo* p : arr){
-                    uleb128_w<type_id>(dst,cmap.at(p->index()));
+                    cppp::muleb128_w<type_id>(dst,cmap.at(p->index()));
                 }
             }
             const cppp::fixed_array<const TypeInfo*>& types() const{
@@ -94,8 +93,8 @@ namespace bbe::impl{
             }
             inline void deserialize(cppp::frozen_byte_view&,const TypeDatabase&);
             void serialize(cppp::bytes& dst,const EntityPool<TypeInfo>::consolidation_map& cmap) const{
-                uleb128_w<type_id>(dst,cmap.at(ret->index()));
-                uleb128_w<type_id>(dst,cmap.at(par->index()));
+                cppp::muleb128_w<type_id>(dst,cmap.at(ret->index()));
+                cppp::muleb128_w<type_id>(dst,cmap.at(par->index()));
             }
             void set_return(const TypeInfo* t){
                 ret = t;
@@ -178,7 +177,7 @@ namespace bbe::impl{
                 return cmap;
             }
             void serialize(cppp::bytes& dst,const consolidation_map& tcmap) const{
-                uleb128_w<type_id>(dst,infos.size() - T_INTRINSIC_END);
+                cppp::muleb128_w<type_id>(dst,infos.size() - T_INTRINSIC_END);
                 for(const TypeInfo& ent : infos){
                     if(ent.index() >= T_INTRINSIC_END){
                         ent.serialize(dst,tcmap);
@@ -200,19 +199,19 @@ namespace bbe::impl{
                 return &infos[i];
             }
     };
-    inline type_pack::type_pack(cppp::frozen_byte_view& buf,const TypeDatabase& tdb) : arr(uleb128_r<std::uint64_t>(buf)){
+    inline type_pack::type_pack(cppp::frozen_byte_view& buf,const TypeDatabase& tdb) : arr(cppp::muleb128_r<std::uint64_t>(buf)){
         for(const TypeInfo*& p : arr){
-            p = &tdb[uleb128_r<type_id>(buf)];
+            p = &tdb[cppp::muleb128_r<type_id>(buf)];
         }
     }
     inline void FunctionSignature::deserialize(cppp::frozen_byte_view& buf,const TypeDatabase& tdb){
-        ret = &tdb[uleb128_r<type_id>(buf)];
-        par = &tdb[uleb128_r<type_id>(buf)];
+        ret = &tdb[cppp::muleb128_r<type_id>(buf)];
+        par = &tdb[cppp::muleb128_r<type_id>(buf)];
     }
     inline void TypeInfo::serialize(cppp::bytes& dst,const TypeDatabase::consolidation_map& cmap) const{
-        uleb128_w<std::uint64_t>(dst,_size);
-        uleb128_w<std::uint64_t>(dst,align);
-        uleb128_w(dst,static_cast<std::uint8_t>(_type));
+        cppp::muleb128_w<std::uint64_t>(dst,_size);
+        cppp::muleb128_w<std::uint64_t>(dst,align);
+        cppp::muleb128_w(dst,static_cast<std::uint8_t>(_type));
         switch(_type){
             case TypeCategory::PACK:
                 pack_contents().serialize(dst,cmap);
@@ -224,9 +223,9 @@ namespace bbe::impl{
         }
     }
     inline void TypeInfo::deserialize(cppp::frozen_byte_view& buf,TypeDatabase& tdb){
-        _size = uleb128_r<std::uint64_t>(buf);
-        align = uleb128_r<std::uint64_t>(buf);
-        switch(_type = static_cast<TypeCategory>(uleb128_r<std::uint8_t>(buf))){
+        _size = cppp::muleb128_r<std::uint64_t>(buf);
+        align = cppp::muleb128_r<std::uint64_t>(buf);
+        switch(_type = static_cast<TypeCategory>(cppp::muleb128_r<std::uint8_t>(buf))){
             case TypeCategory::PACK:
                 data = &tdb.inject_pack({buf,tdb},*this);
                 break;

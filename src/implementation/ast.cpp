@@ -26,10 +26,10 @@ namespace bbe::impl{
     }
     void ASTNode::deserialize(cppp::frozen_byte_view& buf){
         _type = static_cast<NodeType>(cppp::read<std::uint8_t>(buf));
-        prim = uleb128_r<std::uint32_t>(buf);
+        prim = cppp::muleb128_r<std::uint32_t>(buf);
         nchld = nchld_of(_type);
         if(nchld == VARIABLE){
-            nchld = uleb128_r<std::uint32_t>(buf);
+            nchld = cppp::muleb128_r<std::uint32_t>(buf);
         }
         if(nchld){
             if(!(_data = reinterpret_cast<std::uint64_t>(std::allocator<ASTNode>::allocate(nchld)))) throw std::bad_alloc();
@@ -46,10 +46,10 @@ namespace bbe::impl{
     }
     void ASTNode::serialize(cppp::bytes& b,const FunctionDatabase::consolidation_map& fcmap) const{
         b.appendl<std::uint8_t>(std::to_underlying(_type));
-        uleb128_w(b,prim);
+        cppp::muleb128_w(b,prim);
         std::uint32_t nc = nchld_of(_type);
         if(nc == VARIABLE){
-            uleb128_w(b,nchld);
+            cppp::muleb128_w(b,nchld);
         }else{
             CPPP_ASSERT(nc == nchld);
         }

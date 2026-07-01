@@ -95,7 +95,7 @@ namespace bbe::impl{
                 return static_cast<id_type>(obj.size());
             }
             template<typename ...Ctx>
-            EntityPool(id_type from,cppp::frozen_byte_view& buf,Ctx& ...ctx) : fl(from+uleb128_r<id_type>(buf)){
+            EntityPool(id_type from,cppp::frozen_byte_view& buf,Ctx& ...ctx) : fl(from+cppp::muleb128_r<id_type>(buf)){
                 for(id_type i=from;i<fl.size();++i){
                     obj.emplace(i,uninitialize);
                 }
@@ -112,7 +112,7 @@ namespace bbe::impl{
             }
             template<typename ...Ctx>
             void serialize(cppp::bytes& dst,Ctx& ...ctx) const{
-                uleb128_w<id_type>(dst,size());
+                cppp::muleb128_w<id_type>(dst,size());
                 for(const auto& ent : *this){
                     ent.serialize(dst,ctx...);
                 }
