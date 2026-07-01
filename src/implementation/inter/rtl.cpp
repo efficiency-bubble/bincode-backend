@@ -62,9 +62,6 @@ namespace bbe::inter::rtl::impl{
                 case CLE:
                     values[ins.dst] = boolv{values[ins.dst].get<uint32v>().value <= values[ins.src].get<uint32v>().value};
                     break;
-                case PRI:
-                    std::cout << values[ins.dst].get<uint32v>().value << std::flush;
-                    break;
                 default:
                     throw std::logic_error("CompiledFunctionPool::call(): Unknown instruction "s+std::to_string(std::to_underlying(ins.opcode)));
             }

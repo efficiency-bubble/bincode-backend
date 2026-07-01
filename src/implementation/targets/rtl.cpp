@@ -75,10 +75,6 @@ namespace bbe::targets::rtl::impl{
                                 fn.add_instruction(Operation::SUB,r,compile_node(par[1uz]));
                                 return r;
                             }
-                            case 25:
-                                static_cast<void>(compile_node(par[1uz])); // place side effect before
-                                fn.add_instruction(Operation::PRI,compile_node(par[0uz]));
-                                return NVAL;
                             case 50: {
                                 std::uint32_t r = fn.alloc_val();
                                 fn.add_instruction(Operation::MOV,r,compile_node(par[0uz]));

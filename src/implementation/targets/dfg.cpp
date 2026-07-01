@@ -80,13 +80,6 @@ namespace bbe::targets::dfg::impl{
                 for(const ASTNode& c : nd.children()){
                     cmag.emplace(compile(br,c));
                 }
-                switch(fnid){
-                    case 25:
-                        cmag.emplace(br.getvar(IO_VAR));
-                        br.setvar(IO_VAR,&cmag);
-                        break;
-                    default:;
-                }
                 return &cmag;
             }
             case SETVAR: {

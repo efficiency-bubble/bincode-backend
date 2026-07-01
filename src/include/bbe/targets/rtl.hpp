@@ -9,7 +9,7 @@
 namespace bbe::targets::rtl::impl{
     using namespace std::literals;
     enum class Operation{
-        CALL,LDFN,LDI,ARG,IPACK,MKPACK,PACKATT,ADD,SUB,RET,JMP,JF,MOV,CLE,CEQ,PRI // TODO: Remove PRI
+        CALL,LDFN,LDI,ARG,IPACK,MKPACK,PACKATT,ADD,SUB,RET,JMP,JF,MOV,CLE,CEQ
     };
     struct Instruction{
         Operation opcode;

@@ -144,9 +144,6 @@ namespace bbe::impl{
                         }else goto error;
                         break;
                         break;
-                    case 25:
-                        ret = tdb.T_VOID;
-                        break;
                     case 50:
                     case 51:
                     case 60:

@@ -12,9 +12,6 @@ namespace bbe::inter::impl{
                 return uint32v(argv[0uz].get<uint32v>().value-argv[1uz].get<uint32v>().value);
             case 30: // mul32
                 return uint32v(argv[0uz].get<uint32v>().value*argv[1uz].get<uint32v>().value);
-            case 25: // pru32
-                std::cout << argv[0uz].get<uint32v>().value << std::flush;
-                return {};
             case 50: // eq32
                 return boolv(argv[0uz].get<uint32v>().value == argv[1uz].get<uint32v>().value);
             case 51: // le32
