@@ -72,7 +72,8 @@ namespace bbe::impl{
                 return !nchld;
             }
             inline void pop(std::uint32_t i);
-            inline void emplace(ASTNode&&);
+            template<typename ...A>
+            inline void emplace(A&&...);
             inline ASTNode* end();
             inline const ASTNode* end() const;
             inline ASTNode& back();
@@ -257,11 +258,12 @@ namespace bbe::impl{
         _data = reinterpret_cast<std::uintptr_t>(nmem);
         --nchld;
     }
-    inline void ASTChildren::emplace(ASTNode&& nnode){
+    template<typename ...A>
+    inline void ASTChildren::emplace(A&& ...args){
         ASTNode* nmem = std::allocator<ASTNode>::allocate(nchld+1);
         try{
             std::uninitialized_move_n(m(),nchld,nmem);
-            new(nmem+nchld) ASTNode(std::move(nnode));
+            new(nmem+nchld) ASTNode(std::forward<A>(args)...);
         }catch(...){
             std::allocator<ASTNode>::deallocate(nmem,nchld+1);
             throw;
