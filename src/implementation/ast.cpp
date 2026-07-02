@@ -9,9 +9,9 @@ namespace bbe::impl{
     static std::uint32_t nchld_of(NodeType t){
         switch(t){
             using enum NodeType;
-            case UINT32: case UINT64: case BOOL: case ARG: case GETVAR: case BREAK: case UINT32SYM: case FNSYM: case NTYPE:
+            case UINT32: case UINT64: case BOOL: case ARG: case GETVAR: case UINT32SYM: case FNSYM: case NTYPE:
                 return 0;
-            case SETVAR: case FOREVER: case PACKIND:
+            case SETVAR: case PACKIND:
                 return 1;
             case FORK:
                 return 3;
@@ -168,8 +168,6 @@ namespace bbe::impl{
                 }else goto error;
                 break;
             }
-            case FOREVER:
-                throw std::logic_error("Unimplemented: getting type of loop"s);
             case FNSYM: {
                 if(!p.functions().has_func(getp32())) goto error;
                 const FunctionSignature& sig = p.functions()[getp32()].signature();
@@ -178,9 +176,6 @@ namespace bbe::impl{
             }
             case NTYPE:
                 goto error;
-            case BREAK:
-                ret = tdb.T_VOID;
-                break;
         }
         return;
         error:

@@ -118,8 +118,6 @@ namespace bbe::targets::dfg::impl{
                 join->emplace(rhs);
                 return join;
             }
-            case FOREVER:
-                assert(false); // TODO
             case FNSYM:
                 return &_nodes.emplace_back(NodeType::FNSYM,nd.result_type(),nd.getp32());
             default:

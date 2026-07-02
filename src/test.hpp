@@ -56,14 +56,6 @@ ASTNode cmag(std::uint32_t magic,T&& ...children){
     }
     return x;
 }
-ASTNode loop(ASTNode&& arg){
-    ASTNode x{NodeType::FOREVER,1,uninitialize};
-    x.children()[0uz].initialize(std::move(arg));
-    return x;
-}
-ASTNode break_(){
-    return {NodeType::BREAK};
-}
 ASTNode fork(ASTNode&& cond,ASTNode&& tru,ASTNode&& fals){
     ASTNode x{NodeType::FORK,3,uninitialize};
     x.children()[0uz].initialize(std::move(cond));

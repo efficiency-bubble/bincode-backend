@@ -20,7 +20,7 @@ fn leb128v(ref invleb128 v){
     return std::string::to_string(v.value);
 };
 enum NodeType : u8{
-    UINT32,UINT64,PACK,COMMA,ARG=5,CALL_BUILTIN=9,SETVAR,GETVAR,BOOL=20,FORK,FOREVER=30,BREAK,UINT32SYM=100,FNSYM=200,
+    UINT32,UINT64,PACK,COMMA,ARG=5,CALL_BUILTIN=9,SETVAR,GETVAR,BOOL=20,FORK,UINT32SYM=100,FNSYM=200,
     NTYPE = 255
 };
 u32 VARIABLE = (1<<32-1);
@@ -35,8 +35,6 @@ fn nchld(NodeType t){
         return 0;
     }else if(t==NodeType::GETVAR){
         return 0;
-    }else if(t==NodeType::BREAK){
-        return 0;
     }else if(t==NodeType::UINT32SYM){
         return 0;
     }else if(t==NodeType::FNSYM){
@@ -46,8 +44,6 @@ fn nchld(NodeType t){
     }else if(t==NodeType::SETVAR){
         return 0;
     }else if(t==NodeType::CALL_BUILTIN){
-        return 1;
-    }else if(t==NodeType::FOREVER){
         return 1;
     }else if(t==NodeType::FORK){
         return 3;
