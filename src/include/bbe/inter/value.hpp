@@ -10,6 +10,9 @@ namespace bbe::inter::impl{
     struct uint32v{
         std::uint32_t value;
     };
+    struct sint32v{
+        std::int32_t value;
+    };
     struct boolv{
         bool value;
     };
@@ -24,7 +27,7 @@ namespace bbe::inter::impl{
                 return new T(v);
             }
         };
-        using val_t = cppp::heap_variant<uint32v,boolv,pack,fptr>;
+        using val_t = cppp::heap_variant<uint32v,sint32v,boolv,pack,fptr>;
         val_t _value;
         public:
             Value() = default;
@@ -81,6 +84,7 @@ namespace bbe::inter::impl{
 }
 namespace bbe::inter{
     BBE_EXPORT uint32v;
+    BBE_EXPORT sint32v;
     BBE_EXPORT boolv;
     BBE_EXPORT pack;
     BBE_EXPORT fptr;

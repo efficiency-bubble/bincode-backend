@@ -10,6 +10,8 @@ namespace bbe::inter::dfg::impl{
             using enum targets::dfg::NodeType;
             case UINT32:
                 return uint32v{nr->primitive()};
+            case SINT32:
+                return sint32v{std::bit_cast<std::int32_t>(nr->primitive())};
             case PACK: {
                 pack p;
                 for(const targets::dfg::DataNode* ref : nr->parents()){

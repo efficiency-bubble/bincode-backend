@@ -9,7 +9,7 @@ namespace bbe::impl{
     static std::uint32_t nchld_of(NodeType t){
         switch(t){
             using enum NodeType;
-            case UINT32: case UINT64: case BOOL: case ARG: case GETVAR: case UINT32SYM: case FNSYM: case NTYPE:
+            case UINT32: case UINT64: case SINT32: case BOOL: case ARG: case GETVAR: case UINT32SYM: case FNSYM: case NTYPE:
                 return 0;
             case SETVAR: case PACKIND:
                 return 1;
@@ -71,6 +71,9 @@ namespace bbe::impl{
                 break;
             case UINT64:
                 ret = tdb.T_UINT64;
+                break;
+            case SINT32:
+                ret = tdb.T_INT32;
                 break;
             case PACK: {
                 cppp::fixed_array<const TypeInfo*> a(children().size());

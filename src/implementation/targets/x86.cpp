@@ -153,7 +153,7 @@ namespace bbe::targets::x86::impl{
                 const DataValue* compile_node(const dfg::DataNode& dn){
                     switch(dn.operation()){
                         using enum dfg::NodeType;
-                        case UINT32: {
+                        case UINT32: case SINT32: {
                             DataValue& v = new_value(dn.return_type());
                             x::instructions::mov::rm_imm::for_width<x::width::W32>::encode(f.instructions(),0b01_b /* disp8 */,x::reg::BP,soff_to_disp8(allocate_dw(v)),dn.primitive());
                             return &v;

@@ -12,9 +12,10 @@ namespace bbe::targets::desmos::impl{
                     case ARG:
                         return u8"a_{rgv}"s;
                     case UINT32:
-                    case BOOL: {
+                    case BOOL:
                         return cppp::tou8(std::to_string(nd->primitive()));
-                    }
+                    case SINT32:
+                        return cppp::tou8(std::to_string(std::bit_cast<std::int32_t>(nd->primitive())));
                     case FORK: {
                         cppp::str cond{compile_node(out,nd->parents().front())};
                         cppp::str lhs{compile_node(out,nd->parents()[1uz])};

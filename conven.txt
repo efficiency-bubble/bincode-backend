@@ -10,6 +10,7 @@ Node type conventions (subject to change):
 11 = getvar(uint64($0))
 20 = bool($0)
 21 = (bool($0) ? node($1) : node($2))
+30 = sint32($0)
 100 = uint32(SYMTAB[$0]) # TODO: check symbol table to automatically determine value width
 101 = uint64(SYMTAB[$0])
 200 = FN[$0]

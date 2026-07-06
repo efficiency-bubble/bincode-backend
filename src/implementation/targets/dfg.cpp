@@ -11,6 +11,8 @@ namespace bbe::targets::dfg::impl{
             using enum bbe::NodeType;
             case UINT32:
                 return &_nodes.emplace_back(NodeType::UINT32,nd.result_type(),nd.getp32());
+            case SINT32:
+                return &_nodes.emplace_back(NodeType::SINT32,nd.result_type(),nd.getp32());
             case UINT64:
                 throw std::logic_error("dfg::compile(): Unsupported node type uint64"s);
             case PACK: {
