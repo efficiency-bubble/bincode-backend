@@ -6,6 +6,9 @@ namespace bbe::inter::impl{
             case v.index_of<uint32v>:
                 s.append(cppp::tou8(std::to_string(v.get<uint32v>().value)));
                 break;
+            case v.index_of<sint32v>:
+                s.append(cppp::tou8(std::to_string(v.get<sint32v>().value)));
+                break;
             case v.index_of<boolv>:
                 if(v.get<boolv>().value){
                     s.append(u8"true"s);
