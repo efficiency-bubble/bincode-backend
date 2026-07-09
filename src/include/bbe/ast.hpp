@@ -35,7 +35,7 @@ namespace bbe::impl{
             ASTNode* m(){
                 return reinterpret_cast<ASTNode*>(_data);
             }
-            explicit ASTChildren() : nchld(0){}
+            explicit ASTChildren() : _data(0), nchld(0){}
             ASTChildren(uninitialize_t){}
             inline ASTChildren(std::uint32_t,uninitialize_t);
             ASTChildren(ASTChildren&& other) : _data(other._data), nchld(std::exchange(other.nchld,0)){}
@@ -139,19 +139,19 @@ namespace bbe::impl{
                 _data = p;
             }
             ASTNode(uninitialize_t uninit) : ASTChildren(uninit){}
-            ASTNode(NodeType tp) : ASTChildren(), prim(0), ret(TypeDatabase::T_ERROR), _type(tp){}
-            ASTNode(NodeType tp,std::uint32_t nchld,uninitialize_t uninit) : ASTChildren(nchld,uninit), prim(0), ret(TypeDatabase::T_ERROR), _type(tp){}
-            ASTNode(NodeType tp,std::uint32_t nchld,null_initialize_t) : ASTNode(tp,nchld,uninitialize){
-                while(nchld--){
-                    children()[nchld].initialize();
-                }
-            }
+            ASTNode(NodeType tp) : ASTNode(tp,0){}
+            ASTNode(NodeType tp,std::uint32_t nchld,uninitialize_t uninit) : ASTNode(tp,0,nchld,uninit){}
+            ASTNode(NodeType tp,std::uint32_t nchld,null_initialize_t nulinit) : ASTNode(tp,0,nchld,nulinit){}
             ASTNode(NodeType tp,std::uint32_t prim) : ASTChildren(), prim(prim), ret(TypeDatabase::T_ERROR), _type(tp){}
             ASTNode(NodeType tp,std::uint32_t prim,std::uint32_t nchld,uninitialize_t uninit) : ASTChildren(nchld,uninit), prim(prim), ret(TypeDatabase::T_ERROR), _type(tp){}
             ASTNode(NodeType tp,std::uint32_t prim,std::uint32_t nchld,null_initialize_t) : ASTNode(tp,prim,nchld,uninitialize){
-                while(nchld--){
-                    children()[nchld].initialize();
-                }
+                // NOTE: GCC doesn't support for_each_n on member pointers but it could be a standard defect
+                // anyhow:
+                #if __cpp_lib_parallel_algorithm >= 202506L
+                // message is a string literal because #warning takes pp-tokens and the apostrophe creates an unterminated char literal
+                #warning "GCC updated! change this to use std::ranges::for_each_n, which should also support using a plain pointer-to-member (if it doesn't, file a bug)"
+                #endif
+                std::for_each_n(std::execution::unseq,m(),nchld,[](ASTNode& nd)static{nd.initialize();});
             }
             ASTNode(cppp::frozen_byte_view& buf) : ASTNode(uninitialize){
                 deserialize(buf);
@@ -166,12 +166,58 @@ namespace bbe::impl{
                 ret = TypeDatabase::T_ERROR;
                 _type = type;
             }
+            void initialize(NodeType type,std::uint32_t p,std::uint32_t nc,uninitialize_t uninit){
+                CPPP_ASSERT(nc);
+                nchld = nc;
+                ASTNode* buf = std::allocator<ASTNode>::allocate(nc);
+                _data = reinterpret_cast<std::uint64_t>(buf);
+                // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
+                std::uninitialized_fill_n(buf,nc,uninit);
+                prim = p;
+                _type = type;
+                ret = TypeDatabase::T_ERROR;
+            }
             void initialize(){
                 initialize(NodeType::NTYPE,0);
             }
             void initialize(ASTNode&& other){
                 _data = other._data;
                 nchld = std::exchange(other.nchld,0);
+                prim = other.prim;
+                ret = other.ret;
+                _type = other._type;
+            }
+            template<typename F>
+            void transform_initialize(const ASTNode& other,F&& f){
+                nchld = other.nchld;
+                if(nchld){
+                    ASTNode* buf = std::allocator<ASTNode>::allocate(nchld);
+                    // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
+                    std::uninitialized_fill_n(buf,nchld,uninitialize);
+                    #if __cpp_lib_parallel_algorithm >= 202506L
+                    #warning GCC updated! change this to use std::ranges::transform
+                    #endif
+                    // WG21, why is there no std::transform_n? :(
+                    ASTNode* p = buf;
+                    const ASTNode* q = other.m();
+                    ASTNode* const end = buf + nchld;
+                    while(p != end){
+                        try{
+                            f(*p,*q);
+                        }catch(...){
+                            while(p-- != buf){
+                                p->~ASTNode();
+                            }
+                            std::allocator<ASTNode>::deallocate(buf,nchld);
+                            throw;
+                        }
+                        ++p;
+                        ++q;
+                    }
+                    _data = reinterpret_cast<std::uint64_t>(buf);
+                }else{
+                    _data = other._data;
+                }
                 prim = other.prim;
                 ret = other.ret;
                 _type = other._type;
@@ -186,6 +232,8 @@ namespace bbe::impl{
     static_assert(sizeof(ASTNode)<=24,"Regression");
     #endif
     inline ASTChildren::ASTChildren(std::uint32_t n,uninitialize_t uninit) : _data(reinterpret_cast<std::uint64_t>(std::allocator<ASTNode>::allocate(n))), nchld(n){
+        CPPP_ASSERT(n);
+        // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
         std::uninitialized_fill_n(m(),n,uninit);
     }
     inline ASTChildren& ASTChildren::operator=(ASTChildren&& other){
@@ -196,13 +244,6 @@ namespace bbe::impl{
         }
         return *this;
     }
-    // inline ASTChildren& ASTChildren::operator=(const ASTChildren& other){
-    //     _die();
-    //     m = uninitialized_alloc32<ASTNode>(other.n);
-    //     std::uninitialized_copy_n(other.m,other.n,m);
-    //     n = std::exchange(other.n,0);
-    //     return *this;
-    // }
     inline ASTNode& ASTChildren::operator[](std::uint32_t ind){
         return m()[ind];
     }
@@ -248,7 +289,10 @@ namespace bbe::impl{
             [1 2 3 | 4 5] = m
             [1 2   | 4 5]  = nmem
             */
+           
+            // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
             std::uninitialized_move_n(m(),indx,nmem);
+            // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
             std::uninitialized_move_n(m()+indx+1,nchld-indx-1,nmem+indx);
         }catch(...){
             std::allocator<ASTNode>::deallocate(nmem,nchld-1);
@@ -262,6 +306,7 @@ namespace bbe::impl{
     inline void ASTChildren::emplace(A&& ...args){
         ASTNode* nmem = std::allocator<ASTNode>::allocate(nchld+1);
         try{
+            // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
             std::uninitialized_move_n(m(),nchld,nmem);
             new(nmem+nchld) ASTNode(std::forward<A>(args)...);
         }catch(...){
