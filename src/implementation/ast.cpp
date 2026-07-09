@@ -46,7 +46,11 @@ namespace bbe::impl{
     }
     void ASTNode::serialize(cppp::bytes& b,const FunctionDatabase::consolidation_map& fcmap) const{
         b.appendl<std::uint8_t>(std::to_underlying(_type));
-        cppp::muleb128_w(b,prim);
+        if(_type == NodeType::FNSYM){
+            cppp::muleb128_w(b,fcmap.at(prim));
+        }else{
+            cppp::muleb128_w(b,prim);
+        }
         std::uint32_t nc = nchld_of(_type);
         if(nc == VARIABLE){
             cppp::muleb128_w(b,nchld);
