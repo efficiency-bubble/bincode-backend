@@ -68,6 +68,12 @@ ASTNode setvar(std::uint32_t var,ASTNode&& val){
     x.children()[0uz].initialize(std::move(val));
     return x;
 }
+ASTNode havevar(std::uint32_t var,ASTNode&& val,ASTNode&& expr){
+    ASTNode x{NodeType::HAVEVAR,var,2,uninitialize};
+    x.children()[0uz].initialize(std::move(val));
+    x.children()[1uz].initialize(std::move(expr));
+    return x;
+}
 ASTNode getvar(std::uint32_t var){
     return {NodeType::GETVAR,var};
 }

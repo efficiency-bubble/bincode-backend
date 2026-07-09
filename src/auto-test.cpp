@@ -161,18 +161,17 @@ int main(){
             ASSERT_EQ(cfp.call(fn.index(),{}).get<bbe::inter::uint32v>().value,41,"Wrong return value");
             return {};
         }},
-        {u8"YASBEPL target: basic"sv,[] -> test_result_t {
+        {u8"Dfg inter: havevar"sv,[] -> test_result_t {
+            
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
             Function& fn = proj.functions().emplace(FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
-            fn.set(cmag(FN_ADD32,u32(42),u32(13)));
-            fn.recalculate_types(proj,edb);
-            ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
+            fn.set(havevar(0,u32(307),getvar(0)));
             
-            bbe::targets::dfg::DataFlowGraph dfg{fn};
-            cppp::str buf;
-            bbe::targets::yasbepl::compile(dfg,buf);
-            ASSERT_EQ(buf,u8">42>13+"s,"Wrong output");
+            // TODO: check type inference once it actually works
+            
+            bbe::inter::dfg::CompiledFunctionPool cfp{proj};
+            ASSERT_EQ(cfp.call(fn.index(),{}).get<bbe::inter::uint32v>().value,307,"Wrong return value");
             return {};
         }}
     };

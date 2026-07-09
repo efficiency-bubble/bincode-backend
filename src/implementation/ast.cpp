@@ -156,10 +156,15 @@ namespace bbe::impl{
                 }
                 break;
             case SETVAR:
+                // TODO
                 ret = tdb.T_VOID;
                 break;
             case GETVAR:
-                throw std::logic_error("Unimplemented: getting type of var read"s);
+                // TODO
+                goto error;
+            case HAVEVAR:
+                ret = children()[1uz].result_type();
+                break;
             case BOOL:
                 ret = tdb.T_BOOL;
                 break;

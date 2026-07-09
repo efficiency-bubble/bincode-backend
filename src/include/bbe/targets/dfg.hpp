@@ -11,7 +11,8 @@ namespace bbe::targets::dfg::impl{
     enum class NodeType : std::uint16_t{
         UINT32,UINT64,PACK,COMMA,PACKIND,ARG,CALL_BUILTIN=9,BOOL=20,FORK,SINT32=30,
         FNSYM=200,
-        STDOUT=400
+        STDOUT=400,
+        VOID=65535
     };
     class DataNode{
         NodeType op;
@@ -37,8 +38,8 @@ namespace bbe::targets::dfg::impl{
             const std::vector<const DataNode*>& parents() const{
                 return src;
             }
-            void emplace(const DataNode* nd){
-                src.emplace_back(nd);
+            void emplace(const DataNode& nd){
+                src.emplace_back(&nd);
             }
             type_id return_type() const{
                 return rtype;
@@ -53,8 +54,8 @@ namespace bbe::targets::dfg::impl{
             const std::unordered_map<std::uint32_t,const DataNode*>& local_vars() const{
                 return vars;
             }
-            void setvar(std::uint32_t x,const DataNode* n){
-                vars.insert_or_assign(x,n);
+            void setvar(std::uint32_t x,const DataNode& n){
+                vars.insert_or_assign(x,&n);
             }
             const DataNode* getvar(std::uint32_t x) const{
                 if(auto it=vars.find(x);it!=vars.end()){
@@ -69,7 +70,7 @@ namespace bbe::targets::dfg::impl{
         std::deque<DataNode> _nodes;
         CodeBranch main;
         const DataNode* _root;
-        const DataNode* compile(CodeBranch&,const ASTNode&);
+        const DataNode& compile(CodeBranch&,const ASTNode&);
         public:
             DataFlowGraph(const bbe::Function&);
             const std::deque<DataNode>& nodes() const{

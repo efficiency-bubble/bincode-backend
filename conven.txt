@@ -8,6 +8,7 @@ Node type conventions (subject to change):
 9 = callf(BUILTIN_FN[$0],node($1))
 10 = setvar(uint64($0),node($1))
 11 = getvar(uint64($0))
+12 = havevar(uint64($0),node($1),node($2)) # returns { let var$0 = $1 in $2 }
 20 = bool($0)
 21 = (bool($0) ? node($1) : node($2))
 30 = sint32($0)
