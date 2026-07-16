@@ -18,7 +18,7 @@ namespace bbe::impl{
             case PACK: case COMMA: case CALL_BUILTIN:
                 return VARIABLE;
             default:
-                std::unreachable();
+                cppp::unreachable();
         }
     }
     static bool has_extended_data(NodeType t){

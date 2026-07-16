@@ -126,11 +126,12 @@ namespace bbe::targets::dfg::impl{
             case FNSYM:
                 return _nodes.emplace_back(NodeType::FNSYM,nd.result_type(),nd.getp32());
             case IMPORT_STUB:
-                CPPP_ASSERT(false);
+                cppp::unreachable();
             case UINT32SYM:
             case NTYPE:
                 throw std::logic_error("DataFlowGraph::compile(): Unexpected node type "s+std::to_string(std::to_underlying(nd.type())));
         }
+        cppp::unreachable();
     }
     DataFlowGraph::DataFlowGraph(const bbe::Function& f) : _root((main.setvar(IO_VAR,_nodes.emplace_back(NodeType::STDOUT,TypeDatabase::T_VOID)),&compile(main,f.ast()))){}
 }

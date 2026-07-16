@@ -77,7 +77,7 @@ namespace bbe::targets::x86::impl{
                         case 2: rtos<x::width::W16>(b,r,soff); break;
                         case 4: rtos<x::width::W32>(b,r,soff); break;
                         case 8: rtos<x::width::W64>(b,r,soff); break;
-                        default: std::unreachable();
+                        default: cppp::unreachable();
                     }
                 }
                 template<x::width w=x::width::W32>
@@ -90,7 +90,7 @@ namespace bbe::targets::x86::impl{
                         case 2: stor<x::width::W16>(b,soff,r); break;
                         case 4: stor<x::width::W32>(b,soff,r); break;
                         case 8: stor<x::width::W64>(b,soff,r); break;
-                        default: std::unreachable();
+                        default: cppp::unreachable();
                     }
                 }
                 template<typename T>
