@@ -15,7 +15,7 @@ int main(){
     ErrorDatabase edb;
     
     const TypeInfo& ui32 = p.types()[TypeDatabase::T_UINT32];
-    Function& example_fn = p.functions().emplace(FunctionSignature{&ui32,&p.types().pack_of({&ui32,&ui32})});
+    Function& example_fn = p.functions().emplace(u8"example"s,FunctionSignature{&ui32,&p.types().pack_of({&ui32,&ui32})});
     example_fn.set(
         fork(
             cmag(FN_LEQ32,arg(0),u32(2)),
@@ -37,14 +37,14 @@ int main(){
         }
         return -1;
     }
-    bbe::targets::x86::Function fn{example_fn,p.types()};
+    bbe::targets::x86::Function fn{example_fn.cname(),example_fn,p.types()};
     for(const std::byte b : fn.instructions()){
         cppp::print<u8"{:02x} "_ts>(static_cast<std::uint8_t>(b));
     }
     std::println();
     bbe::formats::elf::Elf elf;
     bbe::targets::x86::Program prog;
-    prog.export_function(u8"example"s,0,std::move(fn));
+    prog.export_function(0,std::move(fn));
     elf.add_text(prog);
     {
         cppp::BinaryFile outf{u8"test/example.o"s,std::ios_base::out|std::ios_base::binary|std::ios_base::trunc};

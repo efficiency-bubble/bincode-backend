@@ -36,8 +36,11 @@ void test(const cppp::view<const TestCase> cases){
     }
     std::println("{}/{} passed\x1b[0m"sv,pass,cases.size());
 }
-cppp::str to_string(cppp::str v){
-    return v;
+cppp::str to_string(cppp::str&& v){
+    return std::move(v);
+}
+cppp::str to_string(cppp::sv v){
+    return cppp::str(v);
 }
 template<typename T> requires(std::is_enum_v<T>)
 cppp::str to_string(T v){
@@ -104,7 +107,7 @@ int main(){
         {u8"PEP serialization/deserialization"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            Function& fn = proj.functions().emplace(FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
+            Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
             fn.set(pind(pack(u32(42),u32(41)),1));
             fn.recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
@@ -119,6 +122,7 @@ int main(){
             bbe::ProjectEntitiesPool deser{reader};
             ASSERT_EQ(deser.functions().has_func(0),true,"Deserialization does not include func id 0");
             ASSERT_EQ(deser.functions()[0].ast() == fn.ast(),true,"Deserialized AST was changed");
+            ASSERT_EQ(deser.functions()[0].cname(),u8"test"sv,"Deserialized function cname was changed");
             ASSERT_EQ(deser.functions()[0].signature().parameter()->index(),TypeDatabase::T_VOID,"Deserialized function parameter type was changed");
             ASSERT_EQ(deser.functions()[0].signature().return_type()->index(),TypeDatabase::T_UINT32,"Deserialized function return type was changed");
             ASSERT_EQ(deser.functions()[0].signature().parameter(),&deser.types()[TypeDatabase::T_VOID],"Deserialized function parameter type address was changed");
@@ -128,7 +132,7 @@ int main(){
         {u8"Dfg inter: add values"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            bbe::Function& fn = proj.functions().emplace(FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
+            bbe::Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
             fn.set(cmag(FN_ADD32,u32(1),u32(41)));
             fn.recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
@@ -140,7 +144,7 @@ int main(){
         {u8"Dfg inter: equality comparison"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            Function& fn = proj.functions().emplace(FunctionSignature{&proj.types()[TypeDatabase::T_BOOL],&proj.types()[TypeDatabase::T_VOID]});
+            Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types()[TypeDatabase::T_BOOL],&proj.types()[TypeDatabase::T_VOID]});
             fn.set(cmag(FN_EQ32,u32(42),u32(42)));
             fn.recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
@@ -152,7 +156,7 @@ int main(){
         {u8"Dfg inter: pack indexing"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            Function& fn = proj.functions().emplace(FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
+            Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
             fn.set(pind(pack(u32(42),u32(41)),1));
             fn.recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
@@ -165,7 +169,7 @@ int main(){
             
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            Function& fn = proj.functions().emplace(FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
+            Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
             fn.set(havevar(0,u32(307),getvar(0)));
             
             // TODO: check type inference once it actually works

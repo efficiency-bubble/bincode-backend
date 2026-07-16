@@ -1,4 +1,4 @@
-COMPOPT := -std=c++26 -freflection -flto=7 -fuse-linker-plugin -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wno-maybe-uninitialized -Werror -m64 -I"src/include" -I$(cppinclude)
+COMPOPT := -std=c++26 -freflection -flto=7 -fuse-linker-plugin -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wno-maybe-uninitialized -Wnrvo -Werror -m64 -I"src/include" -I$(cppinclude)
 RELEASEOPT := -O3 -s -DNDEBUG -fcontract-evaluation-semantic=ignore
 DEBUGOPT := -O0 -g -fcontract-evaluation-semantic=enforce
 FINALOPT := $(COMPOPT) -L$(cpplibs) -ltbb

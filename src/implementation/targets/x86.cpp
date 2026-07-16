@@ -264,7 +264,7 @@ namespace bbe::targets::x86::impl{
                 }
         };
     }
-    Function::Function(const dfg::Function& f,const TypeDatabase& tdb){
+    Function::Function(cppp::sv cn,const dfg::Function& f,const TypeDatabase& tdb) : _cname(cn){
         FunctionCompiler compiler{*this,tdb};
         x::instructions::push::r64(b,x::reg::BP);
         x::instructions::mov::rm_r::for_width<x::width::W64>::encode(b,0b11_b,x::reg::BP,x::reg::SP);

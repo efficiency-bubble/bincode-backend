@@ -12,10 +12,14 @@ namespace bbe::targets::x86::impl{
         std::uint32_t isize;
     };
     class Function{
+        cppp::sv _cname;
         cppp::bytes b;
         std::vector<FunctionRelocation> rels;
         public:
-            Function(const dfg::Function& f,const TypeDatabase& tdb);
+            Function(cppp::sv cn,const dfg::Function& f,const TypeDatabase& tdb);
+            cppp::sv cname() const{
+                return _cname;
+            }
             void add_relocation(FunctionRelocation fr){
                 rels.emplace_back(fr);
             }
@@ -64,8 +68,8 @@ namespace bbe::targets::x86::impl{
             std::uint32_t get_index(func_id fid) const{
                 return function_order.at(fid);
             }
-            void export_function(cppp::str n,func_id fid,Function&& fn){
-                symtab.emplace_back(std::move(n),SymbolType::FUNCTION,fnv.size(),false);
+            void export_function(func_id fid,Function&& fn){
+                symtab.emplace_back(cppp::str(fn.cname()),SymbolType::FUNCTION,fnv.size(),false);
                 add_function(fid,std::move(fn));
             }
             const std::vector<SymbolInfo>& symbols() const{
