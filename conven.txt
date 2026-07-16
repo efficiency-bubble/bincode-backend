@@ -15,6 +15,7 @@ Node type conventions (subject to change):
 100 = uint32(SYMTAB[$0]) # TODO: check symbol table to automatically determine value width
 101 = uint64(SYMTAB[$0])
 200 = FN[$0]
+254 = (( extern stub )) # as a root node of a function, indicates that it is an imported function.
 
 Additional DFG node types:
 300 = proxy (id)

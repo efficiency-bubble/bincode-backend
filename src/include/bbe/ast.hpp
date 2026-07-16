@@ -19,6 +19,7 @@ namespace bbe::impl{
     class ASTNode;
     enum class NodeType : std::uint8_t{
         UINT32,UINT64,PACK,COMMA,PACKIND,ARG,CALL_BUILTIN=9,SETVAR,GETVAR,HAVEVAR,BOOL=20,FORK,SINT32=30,UINT32SYM=100,FNSYM=200,
+        EXTERN_STUB = 254,
         NTYPE = 255
     };
     // Public API: sequence for accessing children; implementation detail: also packs the 64-bit data field to save memory (otherwise it would be wasted on padding)
@@ -71,9 +72,11 @@ namespace bbe::impl{
             bool empty() const{
                 return !nchld;
             }
-            inline void pop(std::uint32_t i);
+            inline void erase(std::uint32_t i);
             template<typename ...A>
             inline void emplace(A&&...);
+            template<typename ...A>
+            inline void insert(std::uint32_t at,A&&...);
             inline ASTNode* end();
             inline const ASTNode* end() const;
             inline ASTNode& back();
@@ -272,7 +275,7 @@ namespace bbe::impl{
             std::allocator<ASTNode>::deallocate(m(),nchld);
         }
     }
-    inline void ASTChildren::pop(std::uint32_t indx){
+    inline void ASTChildren::erase(std::uint32_t indx){
         ASTNode* nmem = std::allocator<ASTNode>::allocate(nchld-1);
         try{
             /*
@@ -309,6 +312,22 @@ namespace bbe::impl{
             // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
             std::uninitialized_move_n(m(),nchld,nmem);
             new(nmem+nchld) ASTNode(std::forward<A>(args)...);
+        }catch(...){
+            std::allocator<ASTNode>::deallocate(nmem,nchld+1);
+            throw;
+        }
+        _die();
+        _data = reinterpret_cast<std::uintptr_t>(nmem);
+        ++nchld;
+    }
+    template<typename ...A>
+    inline void ASTChildren::insert(std::uint32_t at,A&& ...args){
+        ASTNode* nmem = std::allocator<ASTNode>::allocate(nchld+1);
+        try{
+            // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
+            std::uninitialized_move_n(m(),at,nmem);
+            new(nmem+at) ASTNode(std::forward<A>(args)...);
+            std::uninitialized_move_n(m()+at,nchld-at,nmem+at+1);
         }catch(...){
             std::allocator<ASTNode>::deallocate(nmem,nchld+1);
             throw;

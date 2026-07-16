@@ -3,10 +3,13 @@
 #include<cstdio>
 extern "C" {
     std::uint32_t example(std::uint32_t i,std::uint32_t j);
+    std::uint32_t multiply_adjust(std::uint32_t i,std::uint32_t j){
+        return i * j + i;
+    }
 }
 std::uint32_t correct_behavior(std::uint32_t i,std::uint32_t j){
     if(i <= 2){
-        return j * j + 1;
+        return multiply_adjust(j,j) + 1;
     }else{
         return correct_behavior(i-1,j) + correct_behavior(i-2,j);
     }
@@ -23,7 +26,7 @@ int main(){
             ++all;
             if(result != correct){
                 if(fail < MAX_ERRORS){
-                    printf("FAIL: Code erroneously says that fib %" PRIu32 " / %" PRIu32 " is %" PRIu32 " (should be %" PRIu32 ") \n",i,begin,result,correct);
+                    printf("FAIL: Code erroneously says that test %" PRIu32 " / %" PRIu32 " is %" PRIu32 " (should be %" PRIu32 ") \n",i,begin,result,correct);
                 }
                 ++fail;
             }

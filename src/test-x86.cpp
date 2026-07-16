@@ -16,13 +16,14 @@ int main(){
     
     const TypeInfo& ui32 = p.types()[TypeDatabase::T_UINT32];
     Function& example_fn = p.functions().emplace(u8"example"s,FunctionSignature{&ui32,&p.types().pack_of({&ui32,&ui32})});
+    p.functions().emplace(u8"multiply_adjust"s,FunctionSignature{&ui32,&p.types().pack_of({&ui32,&ui32})});
     example_fn.set(
         fork(
             cmag(FN_LEQ32,arg(0),u32(2)),
-            cmag(FN_ADD32,u32(1),cmag(FN_MUL32,arg(1),arg(1))),
+            cmag(FN_ADD32,u32(1),cmag(FN_CALL,fn(1),pack(arg(1),arg(1)))),
             cmag(FN_ADD32,
-                cmag(0,fn(0),pack(cmag(FN_SUB32,arg(0),u32(1)),arg(1))),
-                cmag(0,fn(0),pack(cmag(FN_SUB32,arg(0),u32(2)),arg(1)))
+                cmag(FN_CALL,fn(0),pack(cmag(FN_SUB32,arg(0),u32(1)),arg(1))),
+                cmag(FN_CALL,fn(0),pack(cmag(FN_SUB32,arg(0),u32(2)),arg(1)))
             )
         )
     );
@@ -45,6 +46,7 @@ int main(){
     bbe::formats::elf::Elf elf;
     bbe::targets::x86::Program prog;
     prog.export_function(0,std::move(fn));
+    prog.import_function(1,u8"multiply_adjust"sv);
     elf.add_text(prog);
     {
         cppp::BinaryFile outf{u8"test/example.o"s,std::ios_base::out|std::ios_base::binary|std::ios_base::trunc};

@@ -166,7 +166,6 @@ int main(){
             return {};
         }},
         {u8"Dfg inter: havevar"sv,[] -> test_result_t {
-            
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
             Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});

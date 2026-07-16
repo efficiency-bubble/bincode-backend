@@ -17,6 +17,8 @@ namespace bbe::targets::x86::impl{
         std::vector<FunctionRelocation> rels;
         public:
             Function(cppp::sv cn,const dfg::Function& f,const TypeDatabase& tdb);
+            // stub constructor
+            Function(cppp::sv cn) : _cname(cn){}
             cppp::sv cname() const{
                 return _cname;
             }
@@ -67,6 +69,10 @@ namespace bbe::targets::x86::impl{
             }
             std::uint32_t get_index(func_id fid) const{
                 return function_order.at(fid);
+            }
+            void import_function(func_id fid,cppp::sv cname){
+                cppp::sv long_lived_cname_view = symtab.emplace_back(cppp::str(cname),SymbolType::FUNCTION,0,true).name();
+                add_function(fid,long_lived_cname_view);
             }
             void export_function(func_id fid,Function&& fn){
                 symtab.emplace_back(cppp::str(fn.cname()),SymbolType::FUNCTION,fnv.size(),false);
