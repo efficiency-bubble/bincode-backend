@@ -188,7 +188,7 @@ namespace bbe::impl{
             }
             case NTYPE:
                 goto error;
-            case EXTERN_STUB:
+            case IMPORT_STUB:
                 CPPP_ASSERT(false);
         }
         return;

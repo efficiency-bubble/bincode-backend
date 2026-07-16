@@ -19,7 +19,7 @@ namespace bbe::impl{
     class ASTNode;
     enum class NodeType : std::uint8_t{
         UINT32,UINT64,PACK,COMMA,PACKIND,ARG,CALL_BUILTIN=9,SETVAR,GETVAR,HAVEVAR,BOOL=20,FORK,SINT32=30,UINT32SYM=100,FNSYM=200,
-        EXTERN_STUB = 254,
+        IMPORT_STUB = 254,
         NTYPE = 255
     };
     // Public API: sequence for accessing children; implementation detail: also packs the 64-bit data field to save memory (otherwise it would be wasted on padding)
