@@ -14,7 +14,7 @@ namespace bbe::impl{
         const I _index;
         public:
             Entity(I k) : _index(k){}
-            // probably should let this be copyable or movable, considering we expect pointers to us
+            // probably shouldn't let this be copyable or movable, considering we expect pointers to us
             Entity(const Entity&) = delete;
             Entity(Entity&&) = delete;
             using id_type = I;
