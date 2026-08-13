@@ -211,7 +211,7 @@ namespace bbe::impl{
     inline void TypeInfo::serialize(cppp::bytes& dst,const TypeDatabase::consolidation_map& cmap) const{
         cppp::muleb128_w<std::uint64_t>(dst,_size);
         cppp::muleb128_w<std::uint64_t>(dst,align);
-        cppp::muleb128_w(dst,static_cast<std::uint8_t>(_type));
+        dst.appendl(static_cast<std::uint8_t>(_type));
         switch(_type){
             case TypeCategory::PACK:
                 pack_contents().serialize(dst,cmap);
@@ -225,7 +225,7 @@ namespace bbe::impl{
     inline void TypeInfo::deserialize(cppp::frozen_byte_view& buf,TypeDatabase& tdb){
         _size = cppp::muleb128_r<std::uint64_t>(buf);
         align = cppp::muleb128_r<std::uint64_t>(buf);
-        switch(_type = static_cast<TypeCategory>(cppp::muleb128_r<std::uint8_t>(buf))){
+        switch(_type = static_cast<TypeCategory>(cppp::read<std::uint8_t>(buf))){
             case TypeCategory::PACK:
                 data = &tdb.inject_pack({buf,tdb},*this);
                 break;
