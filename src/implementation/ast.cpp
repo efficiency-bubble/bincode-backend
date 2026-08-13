@@ -38,7 +38,7 @@ namespace bbe::impl{
             }
         }else{
             if(has_extended_data(_type)){
-                _data = cppp::read<std::uint64_t>(buf);
+                _data = cppp::muleb128_r<std::uint64_t>(buf);
             }else{
                 _data = 0; // don't leave it uninitialized, to be compare friendly
             }
@@ -59,7 +59,7 @@ namespace bbe::impl{
         }
         if(has_extended_data(_type)){
             CPPP_ASSERT(nchld == 0);
-            b.appendl<std::uint64_t>(_data);
+            cppp::muleb128_w<std::uint64_t>(b,_data);
         }
         for(const auto& c : *this){
             c.serialize(b,fcmap);
