@@ -20,13 +20,15 @@ int main(){
     example_fn.set(
         fork(
             cmag(FN_LEQ32,arg(0),u32(2)),
-            cmag(FN_ADD32,u32(1),cmag(FN_CALL,fn(1),pack(arg(1),arg(1)))),
-            cmag(FN_ADD32,
-                cmag(FN_CALL,fn(0),pack(cmag(FN_SUB32,arg(0),u32(1)),arg(1))),
-                cmag(FN_CALL,fn(0),pack(cmag(FN_SUB32,arg(0),u32(2)),arg(1)))
-            )
+            cmag(FN_ADD,u32(1),cmag(FN_CALL,fn(1),pack(arg(1),arg(1)))),
+            havevar(0,cmag(FN_CALL,fn(0),pack(cmag(FN_SUB,arg(0),u32(1)),arg(1))),
+            cmag(FN_ADD,
+                getvar(0),
+                cmag(FN_CALL,fn(0),pack(cmag(FN_SUB,arg(0),u32(2)),arg(1)))
+            ))
         )
     );
+    example_fn.recalculate_types(p,edb);
     example_fn.recalculate_types(p,edb);
     if(!edb.empty()){
         cppp::println<u8"There are errors:"_ts>();

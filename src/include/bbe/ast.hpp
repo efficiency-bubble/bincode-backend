@@ -17,6 +17,7 @@
 #include<new>
 namespace bbe::impl{
     class ASTNode;
+    class VariableDecls;
     enum class NodeType : std::uint8_t{
         UINT32,UINT64,PACK,COMMA,PACKIND,ARG,CALL_BUILTIN=9,SETVAR,GETVAR,HAVEVAR,BOOL=20,FORK,SINT32=30,UINT32SYM=100,FNSYM=200,
         IMPORT_STUB = 254,
@@ -90,6 +91,20 @@ namespace bbe::impl{
     };
     class ProjectEntitiesPool;
     struct null_initialize_t{} constexpr inline null_initialize;
+    using var_id = std::uint32_t;
+    class VariableDecls{
+        std::unordered_map<var_id,const ASTNode*> defs;
+        public:
+            void set(var_id id,const ASTNode& np){
+                defs.insert_or_assign(id,&np);
+            }
+            const ASTNode* query(var_id i) const{
+                if(auto it=defs.find(i);it!=defs.end()){
+                    return it->second;
+                }
+                return nullptr;
+            }
+    };
     /*
     Nodes have invalid state when constructed with uninitialize_t, or as a children of a node constructed with children + uninitialize_t
     In this state, you cannot:
@@ -97,7 +112,7 @@ namespace bbe::impl{
     - Assign to it
     - Assign it to something else or move-construct something else with it
     - Destroy it
-    You are ONLY permitted to initialize its state with initialize() or deserialize().
+    You are ONLY permitted to initialize its state with initialize(), transform_initialize() or deserialize().
     
     Note that resolution of CWG2264 may allow move-assignment and move-construction from an invalid node to work. In this case, a moved-from invalid node is now partially invalid such that it is also valid to destroy or query the children count of (a query which will return 0).
     */
@@ -127,12 +142,12 @@ namespace bbe::impl{
             type_id result_type() const{
                 return ret;
             }
-            void recalculate_result_type(const ProjectEntitiesPool&,ErrorDatabase&,FunctionSignature);
-            void recursively_recalculate_result_type(const ProjectEntitiesPool& p,ErrorDatabase& e,FunctionSignature sig){
+            void recalculate_result_type(const ProjectEntitiesPool&,VariableDecls&,ErrorDatabase&,FunctionSignature);
+            void recursively_recalculate_result_type(const ProjectEntitiesPool& p,VariableDecls& vd,ErrorDatabase& e,FunctionSignature sig){
                 for(auto& c : children()){
-                    c.recursively_recalculate_result_type(p,e,sig);
+                    c.recursively_recalculate_result_type(p,vd,e,sig);
                 }
-                recalculate_result_type(p,e,sig);
+                recalculate_result_type(p,vd,e,sig);
             }
             void setp32(std::uint32_t p){
                 prim = p;
@@ -168,6 +183,7 @@ namespace bbe::impl{
                 prim = p;
                 ret = TypeDatabase::T_ERROR;
                 _type = type;
+                _data = 0;
             }
             void initialize(NodeType type,std::uint32_t p,std::uint32_t nc,uninitialize_t uninit){
                 CPPP_ASSERT(nc);
@@ -340,6 +356,7 @@ namespace bbe::impl{
 namespace bbe{
     BBE_EXPORT NodeType;
     BBE_EXPORT ASTNode;
+    BBE_EXPORT VariableDecls;
     BBE_EXPORT null_initialize_t;
     BBE_EXPORT null_initialize;
 }

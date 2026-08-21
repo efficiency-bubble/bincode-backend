@@ -3,7 +3,6 @@
 #include<bbe/bbe.hpp>
 #include<bbe/inter/dfg.hpp>
 #include<cppp/format.hpp>
-#include<bbe/targets/yasbepl.hpp>
 #include<cppp/stringify-enum.hpp>
 #include"test.hpp"
 #include<expected>
@@ -96,9 +95,10 @@ int main(){
         }},
         {u8"AST type inference"sv,[] -> test_result_t {
             ProjectEntitiesPool proj;
+            VariableDecls vdb;
             ErrorDatabase edb;
             auto an = u32(1024);
-            an.recursively_recalculate_result_type(proj,edb,{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
+            an.recursively_recalculate_result_type(proj,vdb,edb,{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
             
             ASSERT_EQ(an.result_type(),proj.types().T_UINT32,"Wrong type for uint32 literal");
@@ -133,7 +133,7 @@ int main(){
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
             bbe::Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
-            fn.set(cmag(FN_ADD32,u32(1),u32(41)));
+            fn.set(cmag(FN_ADD,u32(1),u32(41)));
             fn.recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
             
@@ -169,12 +169,28 @@ int main(){
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
             Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
-            fn.set(havevar(0,u32(307),getvar(0)));
+            fn.set(havevar(0,u32(307),cmag(FN_ADD,u32(2),getvar(0))));
             
-            // TODO: check type inference once it actually works
+            // TODO: only recalc once after we fix the dependency issue
+            fn.recalculate_types(proj,edb);
+            edb.clear();
+            fn.recalculate_types(proj,edb);
+            ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
             
             bbe::inter::dfg::CompiledFunctionPool cfp{proj};
-            ASSERT_EQ(cfp.call(fn.index(),{}).get<bbe::inter::uint32v>().value,307,"Wrong return value");
+            ASSERT_EQ(cfp.call(fn.index(),{}).get<bbe::inter::uint32v>().value,309,"Wrong return value");
+            return {};
+        }},
+        {u8"Dfg inter: comma"sv,[] -> test_result_t {
+            bbe::ProjectEntitiesPool proj;
+            bbe::ErrorDatabase edb;
+            bbe::Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
+            fn.set(comma(0,cmag(FN_PRU32,u32(0)),cmag(FN_PRU32,u32(1))));
+            fn.recalculate_types(proj,edb);
+            ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
+            
+            bbe::inter::dfg::CompiledFunctionPool cfp{proj};
+            ASSERT_EQ(cfp.call(fn.index(),{}).empty(),true,"Non-empty return value");
             return {};
         }}
     };

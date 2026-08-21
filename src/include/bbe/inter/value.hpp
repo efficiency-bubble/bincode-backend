@@ -75,6 +75,9 @@ namespace bbe::inter::impl{
             const val_t& value() const{
                 return _value;
             }
+            bool empty() const{
+                return _value.empty();
+            }
             ~Value() = default;
     };
     struct pack{

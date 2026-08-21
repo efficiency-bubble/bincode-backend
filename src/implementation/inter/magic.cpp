@@ -15,9 +15,12 @@ namespace bbe::inter::impl{
             case 50: // eq32
                 return boolv(argv[0uz].get<uint32v>().value == argv[1uz].get<uint32v>().value);
             case 51: // le32
-            return boolv(argv[0uz].get<uint32v>().value <= argv[1uz].get<uint32v>().value);
+                return boolv(argv[0uz].get<uint32v>().value <= argv[1uz].get<uint32v>().value);
             case 60: // negbool
                 return boolv(!argv.front().get<boolv>().value);
+            case 100: // printu32
+                std::cout << argv[0uz].get<uint32v>().value << std::endl;
+                return {};
             default:
                 throw std::logic_error(std::format("inter::cmag(): Unknown magic function {}"sv,magic));
         }

@@ -6,7 +6,19 @@
 #include<string>
 namespace bbe::targets::dfg::impl{
     using namespace std::literals;
-    const DataNode& DataFlowGraph::compile(CodeBranch& br,const ASTNode& nd){
+    static const DataNode* se_merge(std::deque<DataNode>& nodes,const DataNode* lse,const DataNode* rse){
+        if(lse && rse){
+            DataNode& seq = nodes.emplace_back(NodeType::SEQU,TypeDatabase::T_ERROR);
+            seq.emplace(*lse);
+            seq.emplace(*rse);
+            return &seq;
+        }else if(lse){
+            return lse;
+        }else{
+            return rse;
+        }
+    }
+    Operation DataFlowGraph::compile(CodeBranch& br,const ASTNode& nd){
         switch(nd.type()){
             using enum bbe::NodeType;
             case UINT32:
@@ -16,33 +28,49 @@ namespace bbe::targets::dfg::impl{
             case UINT64:
                 throw std::logic_error("dfg::compile(): Unsupported node type uint64"s);
             case PACK: {
-                //TODO: customizable ordering (currently only sequential)
                 DataNode& pack = _nodes.emplace_back(NodeType::PACK,nd.result_type());
+                const DataNode* se = nullptr;
                 for(const ASTNode& c : nd.children()){
-                    pack.emplace(compile(br,c));
+                    Operation op{compile(br,c)};
+                    if(const DataNode* ese = op.side_effects()){
+                        if(se) throw std::logic_error("Side effects are indeterminately ordered");
+                        se = ese;
+                    }
+                    pack.emplace(op.value());
                 }
-                return pack;
+                return {pack,se};
             }
             case COMMA: {
                 //TODO: customizable ordering (currently only sequential)
                 const DataNode* result;
+                DataNode* se = nullptr;
                 std::uint32_t i = nd.getp32();
                 for(const ASTNode& c : nd.children()){
-                    const DataNode& n = compile(br,c);
+                    Operation op{compile(br,c)};
                     if(!(i--)){
-                        result = &n;
+                        result = &op.value();
+                    }
+                    if(op.side_effects()){
+                        if(!se) se = &_nodes.emplace_back(NodeType::SEQU,TypeDatabase::T_ERROR);
+                        se->emplace(op.value());
                     }
                 }
                 // GCC please fix https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80922 so I don't have to -Wno-maybe-uninitialized
-                return *result;
+                return {*result,se};
             }
-            case PACKIND:
-                return _nodes.emplace_back(NodeType::PACKIND,nd.result_type(),nd.getp32(),std::vector{&compile(br,nd.children().front())});
+            case PACKIND: {
+                Operation op{compile(br,nd.children().front())};
+                return {_nodes.emplace_back(NodeType::PACKIND,nd.result_type(),nd.getp32(),std::vector{&op.value()}),op.side_effects()};
+            }
             case ARG:
                 return _nodes.emplace_back(NodeType::ARG,nd.result_type());
             case CALL_BUILTIN: {
                 std::uint32_t fnid = nd.getp32();
+                bool side_effects = false;
                 switch(fnid){
+                    case 0:
+                        side_effects = true;
+                        break;
                     case 10:
                         switch(nd.result_type()){
                             case TypeDatabase::T_UINT32:
@@ -76,32 +104,45 @@ namespace bbe::targets::dfg::impl{
                             default: throw std::logic_error("DataFlowGraph::compile(): Don't know what kind of multiplication results in type "s+std::to_string(nd.result_type()));
                         }
                         break;
+                    case 100:
+                        side_effects = true;
+                        break;
                     default:;
                 }
                 DataNode& cmag = _nodes.emplace_back(NodeType::CALL_BUILTIN,nd.result_type(),fnid);
+                const DataNode* se = nullptr;
                 for(const ASTNode& c : nd.children()){
-                    cmag.emplace(compile(br,c));
+                    Operation op{compile(br,c)};
+                    cmag.emplace(op.value());
+                    if(const DataNode* ese = op.side_effects()){
+                        if(se) throw std::logic_error("Side effects are indeterminately ordered");
+                        se = ese;
+                    }
                 }
-                return cmag;
+                return {cmag,se_merge(_nodes,side_effects?&cmag:nullptr,se)};
             }
-            case SETVAR:
-                br.setvar(nd.getp32(),compile(br,nd.children().front()));
-                return _nodes.emplace_back(NodeType::VOID,TypeDatabase::T_VOID);
+            case SETVAR: {
+                Operation op{compile(br,nd.children().front())};
+                br.setvar(nd.getp32(),op.value());
+                return {_nodes.emplace_back(NodeType::VOID,TypeDatabase::T_VOID),op.side_effects()};
+            }
             case GETVAR:
                 return *br.getvar(nd.getp32());
             case HAVEVAR: {
                 CodeBranch local_scope{br};
-                local_scope.setvar(nd.getp32(),compile(br,nd.children()[0uz]));
-                return compile(local_scope,nd.children()[1uz]);
+                Operation vop{compile(br,nd.children()[0uz])};
+                local_scope.setvar(nd.getp32(),vop.value());
+                Operation eop{compile(local_scope,nd.children()[1uz])};
+                return {eop.value(),se_merge(_nodes,vop.side_effects(),eop.side_effects())};
             }
             case BOOL: // bool
                 return _nodes.emplace_back(NodeType::BOOL,nd.result_type(),nd.getp32());
             case FORK: {
-                const DataNode& condition = compile(br,nd.children().front());
+                Operation condition{compile(br,nd.children().front())};
                 CodeBranch lcb{br};
                 CodeBranch rcb{br};
-                const DataNode& lhs = compile(lcb,nd.children()[1uz]);
-                const DataNode& rhs = compile(rcb,nd.children()[2uz]);
+                Operation lhs{compile(lcb,nd.children()[1uz])};
+                Operation rhs{compile(rcb,nd.children()[2uz])};
                 
                 std::unordered_set<std::uint32_t> overrides;
                 for(const auto& lv : lcb.local_vars()){
@@ -112,16 +153,32 @@ namespace bbe::targets::dfg::impl{
                 }
                 for(std::uint32_t v : overrides){
                     DataNode& fork = _nodes.emplace_back(NodeType::FORK,br.getvar(v)->return_type());
-                    fork.emplace(condition);
+                    fork.emplace(condition.value());
                     fork.emplace(*lcb.getvar(v));
                     fork.emplace(*rcb.getvar(v));
                     br.setvar(v,fork);
                 }
                 DataNode& join = _nodes.emplace_back(NodeType::FORK,nd.result_type());
-                join.emplace(condition);
-                join.emplace(lhs);
-                join.emplace(rhs);
-                return join;
+                join.emplace(condition.value());
+                join.emplace(lhs.value());
+                join.emplace(rhs.value());
+                if(condition.side_effects() || lhs.side_effects() || rhs.side_effects()){
+                    DataNode& sejoin = _nodes.emplace_back(NodeType::FORK,TypeDatabase::T_VOID);
+                    sejoin.emplace(condition.value());
+                    if(const DataNode* lp = se_merge(_nodes,condition.side_effects(),lhs.side_effects())){
+                        sejoin.emplace(*lp);
+                    }else{
+                        sejoin.emplace(_nodes.emplace_back(NodeType::DUMMY,TypeDatabase::T_VOID));
+                    }
+                    if(const DataNode* rp = se_merge(_nodes,condition.side_effects(),rhs.side_effects())){
+                        sejoin.emplace(*rp);
+                    }else{
+                        sejoin.emplace(_nodes.emplace_back(NodeType::DUMMY,TypeDatabase::T_VOID));
+                    }
+                    return {join,&sejoin};
+                }else{
+                    return join;
+                }
             }
             case FNSYM:
                 return _nodes.emplace_back(NodeType::FNSYM,nd.result_type(),nd.getp32());
@@ -133,5 +190,5 @@ namespace bbe::targets::dfg::impl{
         }
         cppp::unreachable();
     }
-    DataFlowGraph::DataFlowGraph(const bbe::Function& f) : _root((main.setvar(IO_VAR,_nodes.emplace_back(NodeType::STDOUT,TypeDatabase::T_VOID)),&compile(main,f.ast()))){}
+    DataFlowGraph::DataFlowGraph(const bbe::Function& f) : _root(compile(main,f.ast())){}
 }

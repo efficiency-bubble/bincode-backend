@@ -12,14 +12,13 @@ namespace bbe::impl{
     class Function : public Entity<func_id>{
         cppp::str _cname;
         FunctionSignature sig;
+        VariableDecls vd;
         ASTNode root;
         public:
             Function(func_id id,uninitialize_t uninit) : Entity(id), sig(uninit), root(uninit){}
             Function(func_id id,FunctionSignature s) : Entity(id), sig(std::move(s)), root(NodeType::NTYPE){}
             Function(func_id id,cppp::sv cn,FunctionSignature s) : Entity(id), _cname(cn), sig(std::move(s)), root(NodeType::NTYPE){}
             Function(func_id id,cppp::str&& cn,FunctionSignature s) : Entity(id), _cname(std::move(cn)), sig(std::move(s)), root(NodeType::NTYPE){}
-            Function(func_id id,cppp::sv cn,ASTNode&& r,FunctionSignature s) : Entity(id), _cname(cn), sig(std::move(s)), root(std::move(r)){}
-            Function(func_id id,cppp::str&& cn,ASTNode&& r,FunctionSignature s) : Entity(id), _cname(std::move(cn)), sig(std::move(s)), root(std::move(r)){}
             void deserialize(cppp::frozen_byte_view& buf,const TypeDatabase& tdb){
                 sig.deserialize(buf,tdb);
                 std::uint64_t cns = cppp::muleb128_r<std::uint64_t>(buf);
@@ -35,7 +34,7 @@ namespace bbe::impl{
                 root.serialize(dst,fcmap);
             }
             void recalculate_types(ProjectEntitiesPool& p,ErrorDatabase& e){
-                root.recursively_recalculate_result_type(p,e,sig);
+                root.recursively_recalculate_result_type(p,vd,e,sig);
             }
             void set_cname(cppp::str cn){
                 _cname = std::move(cn);

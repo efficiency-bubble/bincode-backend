@@ -66,7 +66,7 @@ namespace bbe::impl{
             c.serialize(b,fcmap);
         }
     }
-    void ASTNode::recalculate_result_type(const ProjectEntitiesPool& p,ErrorDatabase& errors,FunctionSignature sig){
+    void ASTNode::recalculate_result_type(const ProjectEntitiesPool& p,VariableDecls& vd,ErrorDatabase& errors,FunctionSignature sig){
         errors.clear(this);
         const auto& tdb = p.types();
         switch(_type){
@@ -92,7 +92,7 @@ namespace bbe::impl{
                 break;
             }
             case COMMA:
-                if(std::uint32_t ind=getp32();ind < children().size()){
+                if(std::uint32_t ind=prim;ind < children().size()){
                     ret = children()[ind].result_type();
                 }else{
                     errors.add(this,u8"Comma indexing out of bounds"s);
@@ -102,11 +102,11 @@ namespace bbe::impl{
             case PACKIND:
                 if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
                     if(const TypeInfo& t = tdb[pt];t.type() == TypeCategory::PACK){
-                        if(getp32() >= t.pack_contents().types().size()){
+                        if(prim >= t.pack_contents().types().size()){
                             errors.add(this,u8"Pack indexing out of bounds"s);
                             goto error;
                         }
-                        ret = t.pack_contents().types()[getp32()]->index();
+                        ret = t.pack_contents().types()[prim]->index();
                     }else{
                         errors.add(this,u8"Cannot index non-pack"s);
                         goto error;
@@ -117,7 +117,7 @@ namespace bbe::impl{
                 ret = optindex(sig.parameter());
                 break;
             case CALL_BUILTIN:
-                switch(getp32()){
+                switch(prim){
                     case 0:
                         if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
                             if(const TypeInfo& t = tdb[pt];t.type() == TypeCategory::FUNCTION_POINTER){
@@ -157,7 +157,10 @@ namespace bbe::impl{
                     case 60:
                         ret = tdb.T_BOOL;
                         break;
-                    default: throw std::logic_error("AST type inference: unknown magic "s+std::to_string(getp32()));
+                    case 100:
+                        ret = tdb.T_VOID;
+                        break;
+                    default: throw std::logic_error("AST type inference: unknown magic "s+std::to_string(prim));
                 }
                 break;
             case SETVAR:
@@ -165,9 +168,12 @@ namespace bbe::impl{
                 ret = tdb.T_VOID;
                 break;
             case GETVAR:
-                // TODO
-                goto error;
+                if(const ASTNode* p=vd.query(prim)){
+                    ret = p->children().front().result_type();
+                }else goto error;
+                break;
             case HAVEVAR:
+                vd.set(prim,*this);
                 ret = children()[1uz].result_type();
                 break;
             case BOOL:
@@ -182,8 +188,8 @@ namespace bbe::impl{
                 break;
             }
             case FNSYM: {
-                if(!p.functions().has_func(getp32())) goto error;
-                const FunctionSignature& sig = p.functions()[getp32()].signature();
+                if(!p.functions().has_func(prim)) goto error;
+                const FunctionSignature& sig = p.functions()[prim].signature();
                 ret = tdb.function_of(sig).index();
                 break;
             }

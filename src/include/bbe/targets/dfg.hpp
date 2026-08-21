@@ -11,7 +11,9 @@ namespace bbe::targets::dfg::impl{
     enum class NodeType : std::uint16_t{
         UINT32,UINT64,PACK,COMMA,PACKIND,ARG,CALL_BUILTIN=9,BOOL=20,FORK,SINT32=30,
         FNSYM=200,
-        STDOUT=400,
+        SEQU=310,
+        DUMMY=400,
+        
         VOID=65535
     };
     class DataNode{
@@ -65,21 +67,31 @@ namespace bbe::targets::dfg::impl{
                 return nullptr;
             }
     };
+    struct has_side_effects_t{} constexpr inline has_side_effects;
+    class Operation{
+        const DataNode* nd;
+        const DataNode* side_effect;
+        public:
+            Operation(const DataNode& nd,const DataNode* se=nullptr) : nd(&nd), side_effect(se){}
+            Operation(const DataNode& nd,has_side_effects_t) : Operation(nd,&nd){}
+            const DataNode& value() const{
+                return *nd;
+            }
+            const DataNode* side_effects() const{
+                return side_effect;
+            }
+    };
     class DataFlowGraph{
-        constexpr static std::uint32_t IO_VAR = std::numeric_limits<std::uint32_t>::max();
         std::deque<DataNode> _nodes;
         CodeBranch main;
-        const DataNode* _root;
-        const DataNode& compile(CodeBranch&,const ASTNode&);
+        Operation _root;
+        Operation compile(CodeBranch&,const ASTNode&);
         public:
             DataFlowGraph(const bbe::Function&);
             const std::deque<DataNode>& nodes() const{
                 return _nodes;
             }
-            const DataNode* stdout_result() const{
-                return main.getvar(IO_VAR);
-            }
-            const DataNode* root() const{
+            const Operation& root() const{
                 return _root;
             }
     };
@@ -101,5 +113,6 @@ namespace bbe::targets::dfg{
     BBE_EXPORT DataNode;
     BBE_EXPORT DataFlowGraph;
     BBE_EXPORT Function;
+    BBE_EXPORT Operation;
 }
 

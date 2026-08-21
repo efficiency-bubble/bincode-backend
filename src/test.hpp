@@ -4,10 +4,10 @@
 using namespace bbe;
 
 constexpr static std::uint32_t FN_CALL = 0;
-constexpr static std::uint32_t FN_ADD32 = 10;
-constexpr static std::uint32_t FN_SUB32 = 20;
-constexpr static std::uint32_t FN_MUL32 = 30;
-constexpr static std::uint32_t FN_PRU32 = 25;
+constexpr static std::uint32_t FN_ADD = 10;
+constexpr static std::uint32_t FN_SUB = 20;
+constexpr static std::uint32_t FN_MUL = 30;
+constexpr static std::uint32_t FN_PRU32 = 100;
 constexpr static std::uint32_t FN_EQ32 = 50;
 constexpr static std::uint32_t FN_LEQ32 = 51;
 constexpr static std::uint32_t FN_BNOT = 60;
@@ -92,9 +92,9 @@ ASTNode fibonacci(){
     return fork(
         cmag(FN_LEQ32,arg(),u32(2)),
         u32(1),
-        cmag(FN_ADD32,
-            cmag(0,fn(0),cmag(FN_SUB32,arg(),u32(1))),
-            cmag(0,fn(0),cmag(FN_SUB32,arg(),u32(2)))
+        cmag(FN_ADD,
+            cmag(0,fn(0),cmag(FN_SUB,arg(),u32(1))),
+            cmag(0,fn(0),cmag(FN_SUB,arg(),u32(2)))
         )
     );
 }
