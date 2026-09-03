@@ -142,6 +142,12 @@ namespace bbe::impl{
             type_id result_type() const{
                 return ret;
             }
+            void recursively_trace_types(LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper& swp){
+                if(ret != TypeDatabase::T_ERROR) swp.trace(ret);
+                for(auto& c : children()){
+                    c.recursively_trace_types(swp);
+                }
+            }
             void recalculate_result_type(const ProjectEntitiesPool&,VariableDecls&,ErrorDatabase&,FunctionSignature);
             void recursively_recalculate_result_type(const ProjectEntitiesPool& p,VariableDecls& vd,ErrorDatabase& e,FunctionSignature sig){
                 for(auto& c : children()){

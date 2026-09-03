@@ -1,13 +1,13 @@
+#include<cppp/stringify-enum.hpp>
 #include<cppp/object-view.hpp>
+#include<cppp/format.hpp>
 #include<cppp/string.hpp> // test names
 #include<bbe/bbe.hpp>
 #include<bbe/inter/dfg.hpp>
-#include<cppp/format.hpp>
-#include<cppp/stringify-enum.hpp>
-#include"test.hpp"
 #include<expected>
 #include<chrono>
 #include<print>
+#include"test.hpp"
 using namespace std::literals;
 using test_result_t = std::expected<void,cppp::str>;
 struct TestCase{
@@ -191,6 +191,22 @@ int main(){
             
             bbe::inter::dfg::CompiledFunctionPool cfp{proj};
             ASSERT_EQ(cfp.call(fn.index(),{}).empty(),true,"Non-empty return value");
+            return {};
+        }},
+        {u8"Type database garbage collection"sv,[] -> test_result_t {
+            bbe::ProjectEntitiesPool proj;
+            std::size_t n_builtins = proj.types().size();
+            const bbe::TypeInfo& ui32 = proj.types()[TypeDatabase::T_UINT32];
+            bbe::Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types().pack_of({&ui32,&ui32}),&proj.types()[TypeDatabase::T_VOID]});
+            
+            ASSERT_EQ(proj.types().size(),n_builtins + 1,"Wrong type count pre-collect");
+            proj.garbage_collect();
+            ASSERT_EQ(proj.types().size(),n_builtins + 1,"Wrong type count post-nop-collect");
+            proj.functions().erase(fn.index());
+            proj.garbage_collect();
+            ASSERT_EQ(proj.types().size(),n_builtins,"Wrong type count post-collect");
+            ASSERT_EQ(ui32.type(),bbe::TypeCategory::UNSIGNED_INTEGRAL,"ui32 ref was invalidated: wrong type");
+            ASSERT_EQ(ui32.size(),4,"ui32 ref was invalidated: wrong size");
             return {};
         }}
     };

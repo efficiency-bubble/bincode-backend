@@ -3,7 +3,6 @@
 #include"type.hpp"
 namespace bbe::impl{
     struct SCM{
-        TypeDatabase::consolidation_map tcmap;
         FunctionDatabase::consolidation_map fcmap;
     };
     class ProjectEntitiesPool{
@@ -12,10 +11,14 @@ namespace bbe::impl{
         public:
             ProjectEntitiesPool() = default;
             ProjectEntitiesPool(cppp::frozen_byte_view& b) : td(b), fd(b,td){}
+            void garbage_collect(){
+                LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper swp{td.sweep()};
+                fd.trace_types(swp);
+            }
             SCM serialize(cppp::bytes& dst) const{
-                SCM scm{.tcmap{td.make_consolidation_map()},.fcmap{fd.make_consolidation_map()}};
-                td.serialize(dst,scm.tcmap);
-                fd.serialize(dst,scm.tcmap,scm.fcmap);
+                SCM scm{.fcmap{fd.make_consolidation_map()}};
+                td.serialize(dst);
+                fd.serialize(dst,scm.fcmap);
                 return scm;
             }
             const TypeDatabase& types() const{

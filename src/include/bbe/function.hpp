@@ -1,6 +1,6 @@
 #pragma once
 #include"serialization.hpp"
-#include"entity_pool.hpp"
+#include"hashed_entity_pool.hpp"
 #include"idfwd.hpp"
 #include"type.hpp"
 #include"ast.hpp"
@@ -9,16 +9,16 @@
 namespace bbe::impl{
     class ProjectEntitiesPool;
     class ErrorDatabase;
-    class Function : public Entity<func_id>{
+    class Function : public HashedEntity<func_id>{
         cppp::str _cname;
         FunctionSignature sig;
         VariableDecls vd;
         ASTNode root;
         public:
-            Function(func_id id,uninitialize_t uninit) : Entity(id), sig(uninit), root(uninit){}
-            Function(func_id id,FunctionSignature s) : Entity(id), sig(std::move(s)), root(NodeType::NTYPE){}
-            Function(func_id id,cppp::sv cn,FunctionSignature s) : Entity(id), _cname(cn), sig(std::move(s)), root(NodeType::NTYPE){}
-            Function(func_id id,cppp::str&& cn,FunctionSignature s) : Entity(id), _cname(std::move(cn)), sig(std::move(s)), root(NodeType::NTYPE){}
+            Function(func_id id,uninitialize_t uninit) : HashedEntity(id), sig(uninit), root(uninit){}
+            Function(func_id id,FunctionSignature s) : HashedEntity(id), sig(std::move(s)), root(NodeType::NTYPE){}
+            Function(func_id id,cppp::sv cn,FunctionSignature s) : HashedEntity(id), _cname(cn), sig(std::move(s)), root(NodeType::NTYPE){}
+            Function(func_id id,cppp::str&& cn,FunctionSignature s) : HashedEntity(id), _cname(std::move(cn)), sig(std::move(s)), root(NodeType::NTYPE){}
             void deserialize(cppp::frozen_byte_view& buf,const TypeDatabase& tdb){
                 sig.deserialize(buf,tdb);
                 std::uint64_t cns = cppp::muleb128_r<std::uint64_t>(buf);
@@ -26,12 +26,16 @@ namespace bbe::impl{
                 _cname.assign(cnbuf,cns);
                 root.deserialize(buf);
             }
-            // can't use EntityPool<Function>::consolidation_map yet, since we're not a complete type. sad.
-            void serialize(cppp::bytes& dst,const TypeDatabase::consolidation_map& tcmap,const std::unordered_map<type_id,type_id>& fcmap) const{
-                sig.serialize(dst,tcmap);
+            // can't use HashedEntityPool<Function>::consolidation_map yet, since we're not a complete type. sad.
+            void serialize(cppp::bytes& dst,const std::unordered_map<type_id,type_id>& fcmap) const{
+                sig.serialize(dst);
                 cppp::muleb128_w<std::uint64_t>(dst,_cname.size());
                 dst.append(std::as_bytes(std::span{_cname}));
                 root.serialize(dst,fcmap);
+            }
+            void trace_types(LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper& swp){
+                sig.trace_types(swp);
+                root.recursively_trace_types(swp);
             }
             void recalculate_types(ProjectEntitiesPool& p,ErrorDatabase& e){
                 root.recursively_recalculate_result_type(p,vd,e,sig);
@@ -65,7 +69,7 @@ namespace bbe::impl{
             }
     };
     class FunctionDatabase{
-        using pool_type = EntityPool<Function>;
+        using pool_type = HashedEntityPool<Function>;
         pool_type funcs;
         public:
             FunctionDatabase() = default;
@@ -74,12 +78,17 @@ namespace bbe::impl{
                     funcs[i].deserialize(buf,tdb);
                 }
             }
+            void trace_types(LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper& swp){
+                for(auto& f : funcs){
+                    f.trace_types(swp);
+                }
+            }
             using consolidation_map = pool_type::consolidation_map;
             consolidation_map make_consolidation_map() const{
                 return funcs.make_consolidation_map();
             }
-            void serialize(cppp::bytes& dst,const TypeDatabase::consolidation_map& tcmap,const consolidation_map& fcmap) const{
-                funcs.serialize(dst,tcmap,fcmap);
+            void serialize(cppp::bytes& dst,const consolidation_map& fcmap) const{
+                funcs.serialize(dst,fcmap);
             }
             template<typename ...A>
             Function& emplace(A&& ...a){

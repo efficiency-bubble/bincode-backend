@@ -1,5 +1,7 @@
 #pragma once
 #include"commons.hpp"
+#include"serialization.hpp"
+#include"uninit.hpp"
 #include"entity_pool.hpp"
 #include"idfwd.hpp"
 #include<cppp/object-view.hpp>
@@ -7,6 +9,7 @@
 #include<cppp/array.hpp>
 #include<cppp/int.hpp>
 #include<unordered_map>
+#include<unordered_set>
 #include<functional>
 #include<algorithm>
 #include<execution>
@@ -26,10 +29,15 @@ namespace bbe::impl{
         TypeCategory _type;
         friend TypeDatabase;
         public:
-            TypeInfo(type_id id,TypeCategory t,std::uint64_t sz,std::uint64_t al) : Entity(id), _size(sz), align(al), _type(t){}
+            TypeInfo(type_id id,TypeCategory t,std::uint64_t sz,std::uint64_t al) : Entity(id), _size(sz), align(al), data(nullptr), _type(t){}
             TypeInfo(type_id id,uninitialize_t) : Entity(id){}
-            // can't use EntityPool<TypeInfo>::consolidation_map yet, since we're not a complete type. sad.
-            inline void serialize(cppp::bytes& dst,const std::unordered_map<type_id,type_id>& tcmap) const;
+            void initialize(TypeCategory t,std::uint64_t sz,std::uint64_t al){
+                _size = sz;
+                align = al;
+                data = nullptr;
+                _type = t;
+            }
+            inline void serialize(cppp::bytes& dst) const;
             inline void deserialize(cppp::frozen_byte_view& buf,TypeDatabase&);
             std::uint64_t size() const{
                 return _size;
@@ -50,6 +58,7 @@ namespace bbe::impl{
                 return *static_cast<const FunctionSignature*>(data);
             }
     };
+    static_assert(std::move_constructible<TypeInfo>);
     inline type_id optindex(const TypeInfo* p){
         return p?p->index():std::numeric_limits<type_id>::max();
     }
@@ -59,10 +68,15 @@ namespace bbe::impl{
         public:
             type_pack(cppp::fixed_array<const TypeInfo*>&& a) : arr(a){}
             inline type_pack(cppp::frozen_byte_view&,const TypeDatabase&);
-            void serialize(cppp::bytes& dst,const EntityPool<TypeInfo>::consolidation_map& cmap) const{
+            void serialize(cppp::bytes& dst) const{
                 cppp::muleb128_w<std::uint64_t>(dst,arr.size());
                 for(const TypeInfo* p : arr){
-                    cppp::muleb128_w<type_id>(dst,cmap.at(p->index()));
+                    cppp::muleb128_w<type_id>(dst,p->index());
+                }
+            }
+            void trace_types(LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper& swp){
+                for(auto& t : arr){
+                    swp.trace(t);
                 }
             }
             const cppp::fixed_array<const TypeInfo*>& types() const{
@@ -92,9 +106,13 @@ namespace bbe::impl{
                 deserialize(buf,tdb);
             }
             inline void deserialize(cppp::frozen_byte_view&,const TypeDatabase&);
-            void serialize(cppp::bytes& dst,const EntityPool<TypeInfo>::consolidation_map& cmap) const{
-                cppp::muleb128_w<type_id>(dst,cmap.at(ret->index()));
-                cppp::muleb128_w<type_id>(dst,cmap.at(par->index()));
+            void serialize(cppp::bytes& dst) const{
+                cppp::muleb128_w<type_id>(dst,ret->index());
+                cppp::muleb128_w<type_id>(dst,par->index());
+            }
+            void trace_types(LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper& swp){
+                swp.trace(ret);
+                swp.trace(par);
             }
             void set_return(const TypeInfo* t){
                 ret = t;
@@ -118,8 +136,7 @@ namespace bbe::impl{
         }
     };
     class TypeDatabase{
-        using pool_type = EntityPool<TypeInfo>;
-        mutable pool_type infos;
+        mutable EntityPool<TypeInfo> infos;
         mutable std::unordered_map<type_pack,const TypeInfo*,type_hash> packs;
         mutable std::unordered_map<FunctionSignature,const TypeInfo*,fsig_hash> functions;
         
@@ -134,7 +151,6 @@ namespace bbe::impl{
         }
         constexpr static type_id T_INTRINSIC_END = 6;
         public:
-            using consolidation_map = pool_type::consolidation_map;
             constexpr static type_id T_VOID = 0;
             constexpr static type_id T_UINT32 = 1;
             constexpr static type_id T_INT32 = 2;
@@ -153,36 +169,61 @@ namespace bbe::impl{
             }
             TypeDatabase(cppp::frozen_byte_view& buf) : infos(T_INTRINSIC_END,buf){
                 using namespace cppp::literals;
-                infos.emplace_at(T_VOID,TypeCategory::VOID,0_u64,0_u64);
-                infos.emplace_at(T_UINT32,TypeCategory::UNSIGNED_INTEGRAL,4_u64,4_u64);
-                infos.emplace_at(T_INT32,TypeCategory::SIGNED_INTEGRAL,4_u64,4_u64);
-                infos.emplace_at(T_UINT64,TypeCategory::UNSIGNED_INTEGRAL,8_u64,8_u64);
-                infos.emplace_at(T_INT64,TypeCategory::SIGNED_INTEGRAL,8_u64,8_u64);
-                infos.emplace_at(T_BOOL,TypeCategory::SIGNED_INTEGRAL,1_u64,1_u64);
+                infos[T_VOID].initialize(TypeCategory::VOID,0_u64,0_u64);
+                infos[T_UINT32].initialize(TypeCategory::UNSIGNED_INTEGRAL,4_u64,4_u64);
+                infos[T_INT32].initialize(TypeCategory::SIGNED_INTEGRAL,4_u64,4_u64);
+                infos[T_UINT64].initialize(TypeCategory::UNSIGNED_INTEGRAL,8_u64,8_u64);
+                infos[T_INT64].initialize(TypeCategory::SIGNED_INTEGRAL,8_u64,8_u64);
+                infos[T_BOOL].initialize(TypeCategory::SIGNED_INTEGRAL,1_u64,1_u64);
                 for(type_id i=T_INTRINSIC_END;i<infos.size();++i){
                     infos[i].deserialize(buf,*this);
                 }
             }
-            consolidation_map make_consolidation_map() const{
-                consolidation_map cmap;
+            LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper sweep(){
+                LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper swp{infos.sweep()};
                 for(type_id i=0;i<T_INTRINSIC_END;++i){
-                    cmap.try_emplace(i,i);
+                    swp.trace(i);
                 }
-                type_id i = T_INTRINSIC_END;
-                for(const TypeInfo& ti : infos){
-                    if(ti.index() >= T_INTRINSIC_END){
-                        cmap.try_emplace(ti.index(),i++);
+                return swp;
+            }
+            void rebuild_caches() const{
+                // TODO: make this more efficient
+                std::unordered_set<const type_pack*> unused_packs;
+                std::unordered_set<const FunctionSignature*> unused_fns;
+                for(const auto& pk : packs | std::views::keys){
+                    unused_packs.emplace(&pk);
+                }
+                for(const auto& fn : functions | std::views::keys){
+                    unused_fns.emplace(&fn);
+                }
+                for(const auto& t : infos){
+                    switch(t.type()){
+                        case TypeCategory::PACK:
+                            unused_packs.erase(&t.pack_contents());
+                            break;
+                        case TypeCategory::FUNCTION_POINTER:
+                            unused_fns.erase(&t.function_signature());
+                            break;
+                        default:;
                     }
                 }
-                return cmap;
+                for(const type_pack* up : unused_packs){
+                    packs.erase(*up);
+                }
+                for(const FunctionSignature* uf : unused_fns){
+                    functions.erase(*uf);
+                }
             }
-            void serialize(cppp::bytes& dst,const consolidation_map& tcmap) const{
+            void serialize(cppp::bytes& dst) const{
                 cppp::muleb128_w<type_id>(dst,infos.size() - T_INTRINSIC_END);
                 for(const TypeInfo& ent : infos){
                     if(ent.index() >= T_INTRINSIC_END){
-                        ent.serialize(dst,tcmap);
+                        ent.serialize(dst);
                     }
                 }
+            }
+            std::size_t size() const{
+                return infos.size();
             }
             const TypeInfo& pack_of(cppp::fixed_array<const TypeInfo*>&&) const;
             const TypeInfo& function_of(FunctionSignature sig) const;
@@ -208,16 +249,16 @@ namespace bbe::impl{
         ret = &tdb[cppp::muleb128_r<type_id>(buf)];
         par = &tdb[cppp::muleb128_r<type_id>(buf)];
     }
-    inline void TypeInfo::serialize(cppp::bytes& dst,const TypeDatabase::consolidation_map& cmap) const{
+    inline void TypeInfo::serialize(cppp::bytes& dst) const{
         cppp::muleb128_w<std::uint64_t>(dst,_size);
         cppp::muleb128_w<std::uint64_t>(dst,align);
         dst.appendl(static_cast<std::uint8_t>(_type));
         switch(_type){
             case TypeCategory::PACK:
-                pack_contents().serialize(dst,cmap);
+                pack_contents().serialize(dst);
                 break;
             case TypeCategory::FUNCTION_POINTER:
-                function_signature().serialize(dst,cmap);
+                function_signature().serialize(dst);
                 break;
             default:;
         }
