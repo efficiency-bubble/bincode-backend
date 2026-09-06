@@ -97,7 +97,7 @@ namespace bbe::impl{
             // Only for the peace of mind. Pointers are trivially-destructible so this is a no-op.
             std::destroy_at(storage + i);
         }
-        // ilast is the last block index, but it needs only be correct if length % n != 0, so simply always using full_block_count() + 1 is fine. It is an argument because it can probably be stolen from nearby iteration code, to save having t recalculate it.
+        // ilast is the last block index, but it needs only be correct if length % n != 0, so simply always using full_block_count() + 1 is fine. It is an argument because it can probably be stolen from nearby iteration code, to save having to recalculate it.
         void destroy_last_block(id_type ilast){
             if(id_type last_block_population = length % n){
                 std::destroy_n(storage[ilast],last_block_population);
