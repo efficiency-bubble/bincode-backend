@@ -13,9 +13,6 @@ namespace bbe::impl{
         mutable I _index;
         template<typename E,E::id_type>
         friend class LinearMovingGarbageCollectedPool;
-        bool marked() const{
-            return (_index & 1) != 0;
-        }
         // GC marking isn't *really* a mutating operation, is it?
         void mark(I other) const{
             _index = static_cast<I>((other << 1) | 1);
@@ -24,6 +21,9 @@ namespace bbe::impl{
             _index &= ~static_cast<I>(1);
         }
         public:
+            bool marked() const{
+                return (_index & 1) != 0;
+            }
             Entity(I k) : _index(k << 1){}
             Entity(const Entity&) = delete;
             Entity(Entity&&) = default;
@@ -138,6 +138,9 @@ namespace bbe::impl{
                     }
                 }
                 public:
+                    const E& query(id_type oldid) const{
+                        return (*pool)[oldid];
+                    }
                     void trace(id_type& id){
                         E& entity = (*pool)[id];
                         if(!entity.marked()){
@@ -241,4 +244,7 @@ namespace bbe::impl{
                 destroy();
             }
     };
+}
+namespace bbe{
+    BBE_EXPORT LinearMovingGarbageCollectedPool;
 }
