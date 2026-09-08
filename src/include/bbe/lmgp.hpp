@@ -14,16 +14,13 @@ namespace bbe::impl{
         template<typename E,E::id_type>
         friend class LinearMovingGarbageCollectedPool;
         // GC marking isn't *really* a mutating operation, is it?
-        void mark(I other) const{
-            _index = static_cast<I>((other << 1) | 1);
+        void invert_mark_and_set_id(I other) const{
+            _index = static_cast<I>(static_cast<I>(other << 1) | static_cast<I>(static_cast<I>(~_index) & static_cast<I>(1)));
         }
-        void unmark() const{
-            _index &= ~static_cast<I>(1);
+        bool mark_parity() const{
+            return (_index & 1) != 0;
         }
         public:
-            bool marked() const{
-                return (_index & 1) != 0;
-            }
             Entity(I k) : _index(k << 1){}
             Entity(const Entity&) = delete;
             Entity(Entity&&) = default;
@@ -39,6 +36,7 @@ namespace bbe::impl{
         using id_type = E::id_type;
         E** storage;
         id_type length;
+        bool parity;
         id_type full_block_count() const{
             return length / n;
         }
@@ -116,15 +114,16 @@ namespace bbe::impl{
             }
         }
         public:
-            LinearMovingGarbageCollectedPool() : storage(nullptr), length(0uz){}
+            LinearMovingGarbageCollectedPool() : storage(nullptr), length(0uz), parity(false){}
             LinearMovingGarbageCollectedPool(const LinearMovingGarbageCollectedPool&) = delete;
-            LinearMovingGarbageCollectedPool(LinearMovingGarbageCollectedPool&& other) : storage(std::exchange(other.storage,nullptr)), length(other.length){}
+            LinearMovingGarbageCollectedPool(LinearMovingGarbageCollectedPool&& other) : storage(std::exchange(other.storage,nullptr)), length(other.length), parity(other.parity){}
             LinearMovingGarbageCollectedPool& operator=(const LinearMovingGarbageCollectedPool&) = delete;
             LinearMovingGarbageCollectedPool& operator=(LinearMovingGarbageCollectedPool&& other){
                 if(this != &other){
                     destroy();
                     storage = std::exchange(other.storage,nullptr);
                     length = other.length;
+                    parity = other.parity;
                 }
                 return *this;
             }
@@ -132,43 +131,43 @@ namespace bbe::impl{
                 LinearMovingGarbageCollectedPool* pool;
                 id_type counter;
                 friend LinearMovingGarbageCollectedPool;
-                Sweeper(LinearMovingGarbageCollectedPool& gcp) : pool(&gcp), counter(0){
-                    for(auto& el : gcp){
-                        el.unmark();
-                    }
-                }
+                Sweeper(LinearMovingGarbageCollectedPool& gcp) : pool(&gcp), counter(0){}
                 public:
                     const E& query(id_type oldid) const{
                         return (*pool)[oldid];
                     }
+                    bool is_marked(const E& entity) const{
+                        return entity.mark_parity() != pool->parity;
+                    }
                     void trace(id_type& id){
                         E& entity = (*pool)[id];
-                        if(!entity.marked()){
-                            entity.mark(counter++);
+                        if(!is_marked(entity)){
+                            entity.invert_mark_and_set_id(counter++);
                         }
                         id = entity.index();
                     }
                     void trace(E*& ptr){
-                        if(!ptr->marked()){
-                            ptr->mark(counter++);
+                        if(!is_marked(*ptr)){
+                            ptr->invert_mark_and_set_id(counter++);
                         }
                         ptr = &(*pool)[ptr->index()];
                     }
                     void trace(const E*& ptr){
-                        if(!ptr->marked()){
-                            ptr->mark(counter++);
+                        if(!is_marked(*ptr)){
+                            ptr->invert_mark_and_set_id(counter++);
                         }
                         ptr = &(*pool)[ptr->index()];
                     }
                     ~Sweeper(){
                         id_type i = 0;
                         for(auto& el : *pool){
-                            while(el.marked() && i != el.index()){
+                            while(is_marked(el) && i != el.index()){
                                 std::ranges::swap(el,(*pool)[el.index()]);
                             }
                             ++i;
                         }
                         pool->erase_after(counter);
+                        pool->parity = !pool->parity;
                     }
             };
             template<typename ...A>
