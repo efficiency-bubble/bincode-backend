@@ -152,6 +152,9 @@ namespace bbe::impl{
         const FunctionSignature& inject_sig(FunctionSignature sig,const TypeInfo& inf) const{
             return functions.try_emplace(sig,&inf).first->first;
         }
+        const TypeInfo& inject_ptr(const TypeInfo& under,const TypeInfo& inf) const{
+            return *pointers.try_emplace(&under,&inf).first->first;
+        }
         constexpr static type_id T_INTRINSIC_END = 6;
         void trace_type(const TypeInfo*& t,LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper& swp) const{
             swp.trace(t);
@@ -249,7 +252,8 @@ namespace bbe::impl{
                 return infos.size();
             }
             const TypeInfo& pack_of(cppp::fixed_array<const TypeInfo*>&&) const;
-            const TypeInfo& function_of(FunctionSignature sig) const;
+            const TypeInfo& function_of(FunctionSignature) const;
+            const TypeInfo& pointer_to(const TypeInfo&) const;
             template<typename ...A>
             const TypeInfo& emplace(A&& ...a){
                 return infos.emplace(std::forward<A>(a)...);

@@ -9,7 +9,7 @@
 #include<deque>
 namespace bbe::targets::dfg::impl{
     enum class NodeType : std::uint16_t{
-        UINT32,UINT64,PACK,COMMA,PACKIND,ARG,CALL_BUILTIN=9,BOOL=20,FORK,SINT32=30,
+        UINT32,UINT64,PACK,PACKIND=4,ARG,DEREF,ADDROF,CALL_BUILTIN=9,BOOL=20,FORK,SINT32=30,
         FNSYM=200,
         SEQU=310,
         DUMMY=400,

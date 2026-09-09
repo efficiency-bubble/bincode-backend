@@ -1,5 +1,6 @@
 #include<assembly/instruction.hpp>
 #include<bbe/targets/x86.hpp>
+#include<cppp/assert.hpp>
 #include<unordered_map>
 #include<cppp/int.hpp>
 #include<vector>
@@ -123,6 +124,11 @@ namespace bbe::targets::x86::impl{
                 rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(rv)));
                 return rv;
             }
+            template<x::width w>
+            void ldbyte(std::uint32_t doffs,std::uint32_t soffs){
+                x::instructions::mov::r_rm::for_width<w>::encode(f.instructions(),x::reg::A,0b01_b /* disp8 */,x::reg::C,soff_to_disp8(soffs));
+                rtos<w>(f.instructions(),x::reg::A,soff_to_disp8(doffs));
+            }
             static std::byte arg_reg(std::uint32_t ind){
                 switch(ind){
                     case 0: return x::reg::DI;
@@ -175,6 +181,32 @@ namespace bbe::targets::x86::impl{
                             return *compile_node(*dn.parents().front()).pack_contents()[dn.primitive()];
                         case ARG:
                             return arg_values.front();
+                        case DEREF: {
+                            stor<x::width::W64>(f.instructions(),soff_to_disp8(compile_node(*dn.parents().front()).stack()),x::reg::C);
+                            DataValue& rv = new_value(dn);
+                            std::uint32_t src = 0;
+                            const std::uint32_t bound = static_cast<std::uint32_t>(tdb[dn.return_type()].size());
+                            std::uint32_t dst = sp;
+                            sp += bound;
+                            while(src + 8 <= bound){
+                                ldbyte<x::width::W64>(dst,src);
+                                dst += 8;
+                                src += 8;
+                            }
+                            while(src < bound){
+                                ldbyte<x::width::W8>(dst,src);
+                                ++dst;
+                                ++src;
+                            }
+                            rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(rv)));
+                            return rv;
+                        }
+                        case ADDROF: {
+                            DataValue& addr = new_value(dn);
+                            x::instructions::lea::for_width<x::width::W64>::encode(f.instructions(),x::reg::A,0b01_b /* disp8 */,x::reg::BP,soff_to_disp8(compile_node(*dn.parents().front()).stack()));
+                            rtos<x::width::W64>(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(addr)));
+                            return addr;
+                        }
                         case CALL_BUILTIN: {
                             switch(dn.primitive()){
                                 case 0: {
@@ -281,10 +313,12 @@ namespace bbe::targets::x86::impl{
                             }
                             [[fallthrough]];
                         case DUMMY:
+                        case VOID:
                             return no_value(dn);
-                        default:
+                        case UINT64:
                             throw std::logic_error("x86 compile: unknown op "s+std::to_string(std::to_underlying(dn.operation())));
                     }
+                    cppp::unreachable();
                 }
                 std::uint32_t stack_size() const{
                     return sp;

@@ -11,7 +11,7 @@ namespace bbe::impl{
             using enum NodeType;
             case UINT32: case UINT64: case SINT32: case BOOL: case ARG: case GETVAR: case UINT32SYM: case FNSYM: case NTYPE: case IMPORT_STUB:
                 return 0;
-            case SETVAR: case PACKIND:
+            case SETVAR: case PACKIND: case DEREF: case ADDROF:
                 return 1;
             case HAVEVAR:
                 return 2;
@@ -20,7 +20,7 @@ namespace bbe::impl{
             case PACK: case COMMA: case CALL_BUILTIN:
                 return VARIABLE;
         }
-        std::unreachable();
+        cppp::unreachable();
     }
     static bool has_extended_data(NodeType t){
         return t == NodeType::UINT64;
@@ -115,6 +115,21 @@ namespace bbe::impl{
                 break;
             case ARG:
                 ret = optindex(sig.parameter());
+                break;
+            case DEREF:
+                if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
+                    if(tdb[pt].type() == TypeCategory::POINTER){
+                        ret = tdb[pt].pointee().index();
+                    }else{
+                        errors.add(this,u8"Cannot dereference non-pointer"s);
+                        goto error;
+                    }
+                }else goto error;
+                break;
+            case ADDROF:
+                if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
+                    ret = tdb.pointer_to(tdb[pt]).index();
+                }else goto error;
                 break;
             case CALL_BUILTIN:
                 switch(prim){

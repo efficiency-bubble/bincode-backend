@@ -208,6 +208,18 @@ int main(){
             ASSERT_EQ(ui32.type(),bbe::TypeCategory::UNSIGNED_INTEGRAL,"ui32 ref was invalidated: wrong type");
             ASSERT_EQ(ui32.size(),4,"ui32 ref was invalidated: wrong size");
             return {};
+        }},
+        {u8"Dfg inter: pointers"sv,[] -> test_result_t {
+            bbe::ProjectEntitiesPool proj;
+            bbe::ErrorDatabase edb;
+            bbe::Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types()[TypeDatabase::T_VOID],&proj.types()[TypeDatabase::T_UINT32]});
+            fn.set(deref(addrof(u32(5))));
+            fn.recalculate_types(proj,edb);
+            ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
+            
+            bbe::inter::dfg::CompiledFunctionPool cfp{proj};
+            ASSERT_EQ(cfp.call(fn.index(),{}).get<bbe::inter::uint32v>().value,5,"Wrong return value");
+            return {};
         }}
     };
     test(test_cases);

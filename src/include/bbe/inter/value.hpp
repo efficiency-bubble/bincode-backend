@@ -7,8 +7,12 @@
 #include<vector>
 namespace bbe::inter::impl{
     using namespace bbe::impl;
+    class Value;
     struct uint32v{
         std::uint32_t value;
+    };
+    struct uint64v{
+        std::uint64_t value;
     };
     struct sint32v{
         std::int32_t value;
@@ -19,6 +23,9 @@ namespace bbe::inter::impl{
     struct fptr{
         func_id id;
     };
+    struct dptr{
+        Value* pv;
+    };
     struct pack;
     class Value{
         struct copy_construct{
@@ -27,7 +34,7 @@ namespace bbe::inter::impl{
                 return new T(v);
             }
         };
-        using val_t = cppp::heap_variant<uint32v,sint32v,boolv,pack,fptr>;
+        using val_t = cppp::heap_variant<uint32v,uint64v,sint32v,boolv,pack,fptr,dptr>;
         val_t _value;
         public:
             Value() = default;
@@ -91,6 +98,7 @@ namespace bbe::inter{
     BBE_EXPORT boolv;
     BBE_EXPORT pack;
     BBE_EXPORT fptr;
+    BBE_EXPORT dptr;
     BBE_EXPORT Value;
     BBE_EXPORT stringify;
 }

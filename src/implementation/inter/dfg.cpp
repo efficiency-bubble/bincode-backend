@@ -1,11 +1,12 @@
 #include<bbe/inter/dfg.hpp>
 #include<bbe/inter/magic.hpp>
+#include<cppp/assert.hpp>
 #include<stdexcept>
 #include<ranges>
 #include<string>
 #include<print>
 namespace bbe::inter::dfg::impl{
-    static Value dedup_eval(const CompiledFunctionPool& pool,const targets::dfg::DataNode& nr,const Value& arg,std::unordered_map<const targets::dfg::DataNode*,Value>& cache);
+    static Value& dedup_eval(const CompiledFunctionPool& pool,const targets::dfg::DataNode& nr,const Value& arg,std::unordered_map<const targets::dfg::DataNode*,Value>& cache);
     static Value eval(const CompiledFunctionPool& pool,const targets::dfg::DataNode& nr,const Value& arg,std::unordered_map<const targets::dfg::DataNode*,Value>& cache){
         switch(nr.operation()){
             using enum targets::dfg::NodeType;
@@ -24,6 +25,10 @@ namespace bbe::inter::dfg::impl{
                 return dedup_eval(pool,*nr.parents().front(),arg,cache).get<pack>().values[nr.primitive()];
             case ARG:
                 return arg;
+            case DEREF:
+                return *dedup_eval(pool,*nr.parents()[0uz],arg,cache).get<dptr>().pv;
+            case ADDROF:
+                return dptr{.pv=&dedup_eval(pool,*nr.parents()[0uz],arg,cache)};
             case CALL_BUILTIN: {
                 if(nr.primitive() == 0){ // call function
                     return pool.call(dedup_eval(pool,*nr.parents()[0uz],arg,cache).get<fptr>().id,dedup_eval(pool,*nr.parents()[1uz],arg,cache));
@@ -54,10 +59,13 @@ namespace bbe::inter::dfg::impl{
                 [[fallthrough]];
             case DUMMY:
                 return {};
-            default: throw std::logic_error("bbe::inter::dfg::eval(): Unknown node type "s+std::to_string(std::to_underlying(nr.operation())));
+            case UINT64:
+            case VOID:
+                throw std::logic_error("bbe::inter::dfg::eval(): Unknown node type "s+std::to_string(std::to_underlying(nr.operation())));
         }
+        cppp::unreachable();
     }
-    static Value dedup_eval(const CompiledFunctionPool& pool,const targets::dfg::DataNode& nr,const Value& arg,std::unordered_map<const targets::dfg::DataNode*,Value>& cache){
+    static Value& dedup_eval(const CompiledFunctionPool& pool,const targets::dfg::DataNode& nr,const Value& arg,std::unordered_map<const targets::dfg::DataNode*,Value>& cache){
         if(auto it=cache.find(&nr);it!=cache.end()){
             return it->second;
         }

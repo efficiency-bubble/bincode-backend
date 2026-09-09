@@ -1,4 +1,5 @@
 #include<bbe/targets/dfg.hpp>
+#include<cppp/assert.hpp>
 #include<unordered_set>
 #include<stdexcept>
 #include<cassert>
@@ -64,6 +65,14 @@ namespace bbe::targets::dfg::impl{
             }
             case ARG:
                 return _nodes.emplace_back(NodeType::ARG,nd.result_type());
+            case DEREF: {
+                Operation op{compile(br,nd.children().front())};
+                return {_nodes.emplace_back(NodeType::DEREF,nd.result_type(),std::vector{&op.value()}),op.side_effects()};
+            }
+            case ADDROF: {
+                Operation op{compile(br,nd.children().front())};
+                return {_nodes.emplace_back(NodeType::ADDROF,nd.result_type(),std::vector{&op.value()}),op.side_effects()};
+            }
             case CALL_BUILTIN: {
                 std::uint32_t fnid = nd.getp32();
                 bool side_effects = false;

@@ -27,4 +27,14 @@ namespace bbe::impl{
             return nt;
         }
     }
+    const TypeInfo& TypeDatabase::pointer_to(const TypeInfo& pointed) const{
+        using namespace cppp::literals;
+        if(auto it=pointers.find(&pointed);it!=pointers.end()){
+            return *it->second;
+        }else{
+            TypeInfo& nt = infos.emplace(TypeCategory::POINTER,8_u64,8_u64);
+            nt.data = &inject_ptr(pointed,nt);
+            return nt;
+        }
+    }
 }

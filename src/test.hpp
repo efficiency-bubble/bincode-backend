@@ -45,6 +45,16 @@ ASTNode pind(ASTNode&& arg,std::uint32_t ind){
     x.children()[0uz].initialize(std::move(arg));
     return x;
 }
+ASTNode addrof(ASTNode&& arg){
+    ASTNode x{NodeType::ADDROF,1,uninitialize};
+    x.children()[0uz].initialize(std::move(arg));
+    return x;
+}
+ASTNode deref(ASTNode&& arg){
+    ASTNode x{NodeType::DEREF,1,uninitialize};
+    x.children()[0uz].initialize(std::move(arg));
+    return x;
+}
 ASTNode arg(std::uint32_t ind){
     return pind(arg(),ind);
 }
