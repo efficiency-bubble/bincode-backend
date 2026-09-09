@@ -13,7 +13,7 @@ namespace bbe::impl{
                 align = std::max(align,i->alignment());
             }
             TypeInfo& nt = infos.emplace(TypeCategory::PACK,size,align);
-            nt.data = &packs.try_emplace(std::move(key),&nt).first->first;
+            nt.data = &inject_pack(std::move(key),nt);
             return nt;
         }
     }
@@ -23,7 +23,7 @@ namespace bbe::impl{
             return *it->second;
         }else{
             TypeInfo& nt = infos.emplace(TypeCategory::FUNCTION_POINTER,8_u64,8_u64);
-            nt.data = &functions.try_emplace(sig,&nt).first->first;
+            nt.data = &inject_sig(sig,nt);
             return nt;
         }
     }

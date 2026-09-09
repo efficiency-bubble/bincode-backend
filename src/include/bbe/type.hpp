@@ -17,7 +17,7 @@
 #include<bit>
 namespace bbe::impl{
     enum class TypeCategory : std::uint8_t{
-        VOID,SIGNED_INTEGRAL,UNSIGNED_INTEGRAL,PACK,FUNCTION_POINTER
+        VOID,SIGNED_INTEGRAL,UNSIGNED_INTEGRAL,PACK,FUNCTION_POINTER,POINTER
     };
     class type_pack;
     class FunctionSignature;
@@ -57,14 +57,17 @@ namespace bbe::impl{
             const FunctionSignature& function_signature() const{
                 return *static_cast<const FunctionSignature*>(data);
             }
+            const TypeInfo& pointee() const{
+                return *static_cast<const TypeInfo*>(data);
+            }
     };
-    static_assert(std::move_constructible<TypeInfo>);
     inline type_id optindex(const TypeInfo* p){
         return p?p->index():std::numeric_limits<type_id>::max();
     }
     class type_pack{
         cppp::fixed_array<const TypeInfo*> arr;
         using view_t = cppp::view<const TypeInfo*>;
+        friend class TypeDatabase;
         public:
             type_pack(cppp::fixed_array<const TypeInfo*>&& a) : arr(a){}
             inline type_pack(cppp::frozen_byte_view&,const TypeDatabase&);
@@ -72,11 +75,6 @@ namespace bbe::impl{
                 cppp::muleb128_w<std::uint64_t>(dst,arr.size());
                 for(const TypeInfo* p : arr){
                     cppp::muleb128_w<type_id>(dst,p->index());
-                }
-            }
-            void trace_types(LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper& swp){
-                for(auto& t : arr){
-                    swp.trace(t);
                 }
             }
             const cppp::fixed_array<const TypeInfo*>& types() const{
@@ -99,6 +97,7 @@ namespace bbe::impl{
     class FunctionSignature{
         const TypeInfo* ret;
         const TypeInfo* par;
+        friend TypeDatabase;
         public:
             FunctionSignature(uninitialize_t){}
             FunctionSignature(const TypeInfo* r,const TypeInfo* a) : ret(r), par(a){}
@@ -135,21 +134,62 @@ namespace bbe::impl{
             return optindex(fs.return_type()) ^ std::rotl(optindex(fs.parameter()),7);
         }
     };
+    
     class TypeDatabase{
         mutable EntityPool<TypeInfo> infos;
-        mutable std::unordered_map<type_pack,const TypeInfo*,type_hash> packs;
-        mutable std::unordered_map<FunctionSignature,const TypeInfo*,fsig_hash> functions;
+        // TODO: get rid of compound type lookup caches
+        using packs_t = std::unordered_map<type_pack,const TypeInfo*,type_hash>;
+        mutable packs_t packs;
+        using funcs_t = std::unordered_map<FunctionSignature,const TypeInfo*,fsig_hash>;
+        mutable funcs_t functions;
+        using ptrs_t = std::unordered_map<const TypeInfo*,const TypeInfo*>;
+        mutable ptrs_t pointers;
         
         friend TypeInfo;
-        // these are non-const even though `packs` and `functions` are mutable, since they touch the cache manually
-        // and thus is able to change visible behavior (namely, break it)
-        const type_pack& inject_pack(type_pack&& pack,const TypeInfo& inf){
+        const type_pack& inject_pack(type_pack&& pack,const TypeInfo& inf) const{
             return packs.try_emplace(std::move(pack),&inf).first->first;
         }
-        const FunctionSignature& inject_sig(FunctionSignature sig,const TypeInfo& inf){
+        const FunctionSignature& inject_sig(FunctionSignature sig,const TypeInfo& inf) const{
             return functions.try_emplace(sig,&inf).first->first;
         }
         constexpr static type_id T_INTRINSIC_END = 6;
+        void trace_type(const TypeInfo*& t,LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper& swp) const{
+            swp.trace(t);
+            switch(t->type()){
+                case TypeCategory::PACK:
+                    trace_pack(packs.find(t->pack_contents()),swp);
+                    break;
+                case TypeCategory::FUNCTION_POINTER:
+                    trace_fp(functions.find(t->function_signature()),swp);
+                    break;
+                case TypeCategory::POINTER:
+                    trace_ptr(pointers.find(&t->pointee()),swp);
+                    break;
+                default:;
+            }
+        }
+        void trace_pack(packs_t::const_iterator it,LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper& swp) const{
+            packs_t::node_type node{packs.extract(it)};
+            swp.trace(node.mapped());
+            for(const TypeInfo*& t : node.key().arr){
+                trace_type(t,swp);
+            }
+            packs.insert(std::move(node));
+        }
+        void trace_fp(funcs_t::const_iterator it,LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper& swp) const{
+            funcs_t::node_type node{functions.extract(it)};
+            swp.trace(node.mapped());
+            trace_type(node.key().ret,swp);
+            trace_type(node.key().par,swp);
+            functions.insert(std::move(node));
+        }
+        void trace_ptr(ptrs_t::const_iterator it,LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper& swp) const{
+            ptrs_t::node_type node{pointers.extract(it)};
+            swp.trace(node.mapped());
+            trace_type(node.key(),swp);
+            trace_type(node.key(),swp);
+            pointers.insert(std::move(node));
+        }
         public:
             constexpr static type_id T_VOID = 0;
             constexpr static type_id T_UINT32 = 1;
@@ -186,32 +226,15 @@ namespace bbe::impl{
                 }
                 return swp;
             }
-            void rebuild_caches() const{
-                // TODO: make this more efficient
-                std::unordered_set<const type_pack*> unused_packs;
-                std::unordered_set<const FunctionSignature*> unused_fns;
-                for(const auto& pk : packs | std::views::keys){
-                    unused_packs.emplace(&pk);
+            void trace_compounds(LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper&& swp) const{
+                for(auto begin=packs.cbegin(),end=packs.cend();begin != end;){
+                    trace_pack(begin++,swp);
                 }
-                for(const auto& fn : functions | std::views::keys){
-                    unused_fns.emplace(&fn);
+                for(auto begin=functions.cbegin(),end=functions.cend();begin != end;){
+                    trace_fp(begin++,swp);
                 }
-                for(const auto& t : infos){
-                    switch(t.type()){
-                        case TypeCategory::PACK:
-                            unused_packs.erase(&t.pack_contents());
-                            break;
-                        case TypeCategory::FUNCTION_POINTER:
-                            unused_fns.erase(&t.function_signature());
-                            break;
-                        default:;
-                    }
-                }
-                for(const type_pack* up : unused_packs){
-                    packs.erase(*up);
-                }
-                for(const FunctionSignature* uf : unused_fns){
-                    functions.erase(*uf);
+                for(auto begin=pointers.cbegin(),end=pointers.cend();begin != end;){
+                    trace_ptr(begin++,swp);
                 }
             }
             void serialize(cppp::bytes& dst) const{
@@ -260,6 +283,9 @@ namespace bbe::impl{
             case TypeCategory::FUNCTION_POINTER:
                 function_signature().serialize(dst);
                 break;
+            case TypeCategory::POINTER:
+                cppp::muleb128_w<type_id>(dst,pointee().index());
+                break;
             default:;
         }
     }
@@ -272,6 +298,9 @@ namespace bbe::impl{
                 break;
             case TypeCategory::FUNCTION_POINTER:
                 data = &tdb.inject_sig({buf,tdb},*this);
+                break;
+            case TypeCategory::POINTER:
+                data = &tdb[cppp::muleb128_r<type_id>(buf)];
                 break;
             default:;
         }
