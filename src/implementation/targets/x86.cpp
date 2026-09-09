@@ -63,6 +63,12 @@ namespace bbe::targets::x86::impl{
                 v.set_stack(sp);
                 return sp;
             }
+            std::uint32_t allocate_b(DataValue& v){
+                return allocate_stack(1,v);
+            }
+            std::uint32_t allocate_w(DataValue& v){
+                return allocate_stack(2,v);
+            }
             std::uint32_t allocate_dw(DataValue& v){
                 return allocate_stack(4,v);
             }
@@ -71,7 +77,7 @@ namespace bbe::targets::x86::impl{
             }
             static x::displacement<x::width::W8> soff_to_disp8(std::uint32_t off){
                 CPPP_ASSERT(off != NSOFF);
-                if(off > 0xFF) throw std::logic_error("x86 compile: soff_to_disp8: stack offset too large");
+                if(off > 128) throw std::logic_error("x86 compile: soff_to_disp8: stack offset too large");
                 return {static_cast<std::int8_t>(-static_cast<std::int32_t>(off))};
             }
             template<x::width w=x::width::W32>
@@ -124,9 +130,13 @@ namespace bbe::targets::x86::impl{
                 rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(rv)));
                 return rv;
             }
+            static x::displacement<x::width::W8> aoff_to_disp8(std::uint32_t off){
+                if(off > 127) throw std::logic_error("x86 compile: aoff_to_disp8: offset too large");
+                return {static_cast<std::int8_t>(off)};
+            }
             template<x::width w>
             void ldbyte(std::uint32_t doffs,std::uint32_t soffs){
-                x::instructions::mov::r_rm::for_width<w>::encode(f.instructions(),x::reg::A,0b01_b /* disp8 */,x::reg::C,soff_to_disp8(soffs));
+                x::instructions::mov::r_rm::for_width<w>::encode(f.instructions(),x::reg::A,0b01_b /* disp8 */,x::reg::C,aoff_to_disp8(soffs));
                 rtos<w>(f.instructions(),x::reg::A,soff_to_disp8(doffs));
             }
             static std::byte arg_reg(std::uint32_t ind){
@@ -184,27 +194,32 @@ namespace bbe::targets::x86::impl{
                         case DEREF: {
                             stor<x::width::W64>(f.instructions(),soff_to_disp8(compile_node(*dn.parents().front()).stack()),x::reg::C);
                             DataValue& rv = new_value(dn);
-                            std::uint32_t src = 0;
                             const std::uint32_t bound = static_cast<std::uint32_t>(tdb[dn.return_type()].size());
-                            std::uint32_t dst = sp;
-                            sp += bound;
-                            while(src + 8 <= bound){
-                                ldbyte<x::width::W64>(dst,src);
-                                dst += 8;
-                                src += 8;
+                            switch(bound){
+                                case 1:
+                                    x::instructions::mov::r_rm::for_width<x::width::W8>::encode(f.instructions(),x::reg::A,0b00_b /* [reg] */,x::reg::C);
+                                    rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_b(rv)));
+                                    break;
+                                case 2:
+                                    x::instructions::mov::r_rm::for_width<x::width::W16>::encode(f.instructions(),x::reg::A,0b00_b /* [reg] */,x::reg::C);
+                                    rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_w(rv)));
+                                    break;
+                                case 4:
+                                    x::instructions::mov::r_rm::for_width<x::width::W32>::encode(f.instructions(),x::reg::A,0b00_b /* [reg] */,x::reg::C);
+                                    rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(rv)));
+                                    break;
+                                case 8:
+                                    x::instructions::mov::r_rm::for_width<x::width::W64>::encode(f.instructions(),x::reg::A,0b00_b /* [reg] */,x::reg::C);
+                                    rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_qw(rv)));
+                                    break;
+                                default: throw std::logic_error("x86 compile: unsupported object size for deref to reg");
                             }
-                            while(src < bound){
-                                ldbyte<x::width::W8>(dst,src);
-                                ++dst;
-                                ++src;
-                            }
-                            rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(rv)));
                             return rv;
                         }
                         case ADDROF: {
                             DataValue& addr = new_value(dn);
                             x::instructions::lea::for_width<x::width::W64>::encode(f.instructions(),x::reg::A,0b01_b /* disp8 */,x::reg::BP,soff_to_disp8(compile_node(*dn.parents().front()).stack()));
-                            rtos<x::width::W64>(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(addr)));
+                            rtos<x::width::W64>(f.instructions(),x::reg::A,soff_to_disp8(allocate_qw(addr)));
                             return addr;
                         }
                         case CALL_BUILTIN: {
