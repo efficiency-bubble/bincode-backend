@@ -121,7 +121,7 @@ namespace bbe::impl{
             T& emplace(A&& ...a){
                 return obj.emplace(fl.allocate(),std::forward<A>(a)...).first->e;
             }
-            template<typename ...A  >
+            template<typename ...A>
             T& emplace_at(id_type at,A&& ...a){
                 return obj.emplace(at,std::forward<A>(a)...).first->e;
             }
