@@ -1,7 +1,7 @@
 #pragma once
 #include"../function.hpp"
 #include"../type.hpp"
-#include<cppp/variant.hpp>
+#include<cppp/heap-variant.hpp>
 #include<unordered_map>
 #include<cstdint>
 #include<vector>

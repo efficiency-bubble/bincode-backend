@@ -1,7 +1,7 @@
 #pragma once
 #include"../commons.hpp"
 #include"../idfwd.hpp"
-#include<cppp/variant.hpp>
+#include<cppp/heap-variant.hpp>
 #include<cppp/string.hpp> // value stringification
 #include<cassert>
 #include<vector>
