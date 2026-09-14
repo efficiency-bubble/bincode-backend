@@ -1,7 +1,6 @@
 #include<bbe/inter/value.hpp>
 namespace bbe::inter::impl{
     void stringify(const Value& v,cppp::str& s){
-        using namespace std::literals;
         switch(v.tell()){
             case v.index_of<uint32v>:
                 s.append(cppp::tou8(std::to_string(v.get<uint32v>().value)));
@@ -32,7 +31,7 @@ namespace bbe::inter::impl{
                 s.append(u8"fn"s);
                 s.append(cppp::tou8(std::to_string(v.get<fptr>().id)));
                 break;
-            case cppp::heap_variant<>::none:
+            case cppp::type_heap_variant<>::none:
                 s.append(u8"{void}"s);
                 break;
             default:

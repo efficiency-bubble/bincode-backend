@@ -6,6 +6,7 @@
 #include<vector>
 #include<span>
 namespace bbe::formats::elf::impl{
+    using namespace std::literals;
     using namespace cppp::literals;
     class Nametable{
         cppp::bytes buf;

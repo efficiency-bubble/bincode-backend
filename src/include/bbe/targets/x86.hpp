@@ -5,6 +5,8 @@
 #include"dfg.hpp"
 #include"../project_entity_pool.hpp"
 namespace bbe::targets::x86::impl{
+    using namespace std::literals;
+    using namespace cppp::literals;
     struct FunctionRelocation{
         std::uint32_t offset;
         func_id fni;

@@ -2,6 +2,8 @@
 #include<bbe/bbe.hpp>
 #include<cppp/string.hpp>
 using namespace bbe;
+using namespace std::literals;
+using namespace cppp::literals;
 
 constexpr static std::uint32_t FN_CALL = 0;
 constexpr static std::uint32_t FN_ADD = 10;
@@ -87,7 +89,6 @@ ASTNode havevar(std::uint32_t var,ASTNode&& val,ASTNode&& expr){
 ASTNode getvar(std::uint32_t var){
     return {NodeType::GETVAR,var};
 }
-using namespace std::literals;
 std::unordered_map<std::uint32_t,cppp::sv> EXPLAIN{
     {0,u8"uint32"sv},
     {2,u8"pack"sv},

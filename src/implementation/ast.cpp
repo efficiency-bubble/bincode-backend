@@ -4,7 +4,6 @@
 #include<cppp/assert.hpp>
 namespace bbe::impl{
     constexpr static std::uint32_t VARIABLE = std::numeric_limits<std::uint32_t>::max();
-    using namespace cppp::literals;
     
     static std::uint32_t nchld_of(NodeType t){
         switch(t){

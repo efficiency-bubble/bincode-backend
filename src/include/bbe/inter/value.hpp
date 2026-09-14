@@ -1,7 +1,7 @@
 #pragma once
 #include"../commons.hpp"
 #include"../idfwd.hpp"
-#include<cppp/heap-variant.hpp>
+#include<cppp/type-variant.hpp>
 #include<cppp/string.hpp> // value stringification
 #include<cassert>
 #include<vector>
@@ -34,7 +34,7 @@ namespace bbe::inter::impl{
                 return new T(v);
             }
         };
-        using val_t = cppp::heap_variant<uint32v,uint64v,sint32v,boolv,pack,fptr,dptr>;
+        using val_t = cppp::type_heap_variant<uint32v,uint64v,sint32v,boolv,pack,fptr,dptr>;
         val_t _value;
         public:
             Value() = default;

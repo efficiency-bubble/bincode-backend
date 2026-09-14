@@ -98,8 +98,9 @@ namespace bbe::impl{
         // ilast is the last block index, but it needs only be correct if length % n != 0, so simply always using full_block_count() + 1 is fine. It is an argument because it can probably be stolen from nearby iteration code, to save having to recalculate it.
         void destroy_last_block(id_type ilast){
             if(id_type last_block_population = length % n){
+                BBE_DEBUG(u8"Deleting last block"sv,ilast);
                 std::destroy_n(storage[ilast],last_block_population);
-                std::allocator<E>().deallocate(storage[ilast],last_block_population);
+                std::allocator<E>().deallocate(storage[ilast],n);
                 std::destroy_at(storage + ilast);
             }
         }
@@ -131,34 +132,37 @@ namespace bbe::impl{
                 LinearMovingGarbageCollectedPool* pool;
                 id_type counter;
                 friend LinearMovingGarbageCollectedPool;
-                Sweeper(LinearMovingGarbageCollectedPool& gcp) : pool(&gcp), counter(0){}
+                Sweeper(LinearMovingGarbageCollectedPool& gcp) : pool(&gcp), counter(0){
+                    BBE_DEBUG(u8"GC round started"sv);
+                }
                 public:
-                    const E& query(id_type oldid) const{
-                        return (*pool)[oldid];
-                    }
                     bool is_marked(const E& entity) const{
                         return entity.mark_parity() != pool->parity;
                     }
                     void trace(id_type& id){
                         E& entity = (*pool)[id];
                         if(!is_marked(entity)){
+                            BBE_DEBUG(u8"Tracing object #"sv,counter);
                             entity.invert_mark_and_set_id(counter++);
                         }
                         id = entity.index();
                     }
                     void trace(E*& ptr){
                         if(!is_marked(*ptr)){
+                            BBE_DEBUG(u8"Tracing object #"sv,counter);
                             ptr->invert_mark_and_set_id(counter++);
                         }
                         ptr = &(*pool)[ptr->index()];
                     }
                     void trace(const E*& ptr){
                         if(!is_marked(*ptr)){
+                            BBE_DEBUG(u8"Tracing object #"sv,counter);
                             ptr->invert_mark_and_set_id(counter++);
                         }
                         ptr = &(*pool)[ptr->index()];
                     }
                     ~Sweeper(){
+                        BBE_DEBUG(u8"Consolidating GC pool"sv);
                         id_type i = 0;
                         for(auto& el : *pool){
                             while(is_marked(el) && i != el.index()){
@@ -166,6 +170,7 @@ namespace bbe::impl{
                             }
                             ++i;
                         }
+                        BBE_DEBUG(u8"Deleting unused blocks"sv);
                         pool->erase_after(counter);
                         pool->parity = !pool->parity;
                     }
@@ -201,18 +206,35 @@ namespace bbe::impl{
                 return {*this};
             }
             void erase_after(id_type i){
+                BBE_DEBUG(u8"Truncating memory"sv);
                 id_type old_capacity = block_capacity();
                 id_type block = i / n;
-                if(id_type start_index = i % n){
-                    std::ranges::destroy(storage[block] + start_index,storage[block] + n);
-                    ++block;
+                id_type start_index = i % n;
+                BBE_DEBUG(u8"Starting capacity:"sv,old_capacity);
+                BBE_DEBUG(u8"Truncating after"sv,block,u8":"sv,start_index);
+                if(block == old_capacity - 1uz){
+                    id_type end_index = length % n;
+                    BBE_DEBUG(u8"Deleting last block from"sv,start_index,u8"to"sv,end_index);
+                    std::ranges::destroy(storage[block] + start_index, storage[block] + end_index);
+                    if(!start_index){
+                        std::allocator<E>().deallocate(storage[block],n);
+                        std::destroy_at(storage + block);
+                    }
+                }else{
+                    if(start_index){
+                        BBE_DEBUG(u8"Partially deleting block"sv,block,u8"("sv,start_index,u8":"sv,n,u8")"sv);
+                        std::ranges::destroy(storage[block] + start_index,storage[block] + n);
+                        ++block;
+                    }
+                    BBE_DEBUG(u8"Deleting full blocks ("sv,block,u8":"sv,full_block_count(),u8")"sv);
+                    for(const id_type fbc = full_block_count();block < fbc;++block){
+                        destroy_block(block);
+                    }
+                    destroy_last_block(block);
                 }
-                for(const id_type fbc = full_block_count();block < fbc;++block){
-                    destroy_block(block);
-                }
-                destroy_last_block(block);
                 length = i;
                 if(block_capacity() < old_capacity){
+                    BBE_DEBUG(u8"Shrinking pointer array"sv);
                     storage = cppp::shrink(storage,(length + n - 1) / n,old_capacity,block_capacity());
                 }
             }

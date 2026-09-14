@@ -6,7 +6,6 @@
 #include<ranges>
 #include<string>
 namespace bbe::targets::dfg::impl{
-    using namespace std::literals;
     static const DataNode* se_merge(std::deque<DataNode>& nodes,const DataNode* lse,const DataNode* rse){
         if(lse && rse){
             DataNode& seq = nodes.emplace_back(NodeType::SEQU,TypeDatabase::T_ERROR);

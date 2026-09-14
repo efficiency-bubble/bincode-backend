@@ -3,7 +3,6 @@
 #include<elf.h>
 namespace bbe::formats::elf::impl{
     void Elf::add_text(const targets::x86::Program& prog){
-        using namespace std::literals;
         std::vector<std::uint64_t> entoffs;
         cppp::bytes& progbuf = section_data.emplace_back();
         for(const auto& func : prog.functions()){

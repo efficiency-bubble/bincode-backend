@@ -1,13 +1,14 @@
 #pragma once
 #include"../function.hpp"
 #include"../type.hpp"
-#include<cppp/heap-variant.hpp>
 #include<unordered_map>
 #include<cstdint>
 #include<vector>
 #include<tuple>
 #include<deque>
 namespace bbe::targets::dfg::impl{
+    using namespace std::literals;
+    using namespace cppp::literals;
     enum class NodeType : std::uint16_t{
         UINT32,UINT64,PACK,PACKIND=4,ARG,DEREF,ADDROF,CALL_BUILTIN=9,BOOL=20,FORK,SINT32=30,
         FNSYM=200,

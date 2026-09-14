@@ -6,8 +6,6 @@
 #include<vector>
 namespace bbe::targets::x86::impl{
     namespace x = ::x86;
-    using namespace std::literals;
-    using namespace cppp::literals;
     constexpr static std::uint32_t NSOFF = std::numeric_limits<std::uint32_t>::max();
     namespace{
         class DataValue{

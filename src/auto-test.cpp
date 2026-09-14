@@ -8,7 +8,6 @@
 #include<chrono>
 #include<print>
 #include"test.hpp"
-using namespace std::literals;
 using test_result_t = std::expected<void,cppp::str>;
 struct TestCase{
     cppp::sv name;
@@ -49,7 +48,6 @@ template<std::integral T>
 cppp::str to_string(T v){
     return cppp::tou8(std::to_string(v));
 }
-using namespace cppp::literals;
 cppp::str to_string(const void* p){
     return cppp::format<u8"{:p}"_ts>(p);
 }
