@@ -142,7 +142,7 @@ namespace bbe::impl{
             type_id result_type() const{
                 return ret;
             }
-            void recursively_trace_types(LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper& swp){
+            void recursively_trace_types(TypeSweeper& swp){
                 if(ret != TypeDatabase::T_ERROR) swp.trace(ret);
                 for(auto& c : children()){
                     c.recursively_trace_types(swp);

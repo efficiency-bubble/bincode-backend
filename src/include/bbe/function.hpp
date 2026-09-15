@@ -33,7 +33,7 @@ namespace bbe::impl{
                 dst.append(std::as_bytes(std::span{_cname}));
                 root.serialize(dst,fcmap);
             }
-            void trace_types(LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper& swp){
+            void trace_types(TypeSweeper& swp){
                 sig.trace_types(swp);
                 root.recursively_trace_types(swp);
             }
@@ -78,7 +78,7 @@ namespace bbe::impl{
                     funcs[i].deserialize(buf,tdb);
                 }
             }
-            void trace_types(LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper& swp){
+            void trace_types(TypeSweeper& swp){
                 for(auto& f : funcs){
                     f.trace_types(swp);
                 }

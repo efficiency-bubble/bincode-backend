@@ -52,12 +52,15 @@ namespace bbe::impl{
         FUNCTION_POINTER BBE_ANNOTATE(FunctionSignature),
         POINTER BBE_ANNOTATE(const TypeInfo*)
     };
+    class TypeSweeper;
     class TypeInfo : public Entity<type_id>{
         std::uint64_t _size;
         std::uint64_t align;
         type_hash _hash;
         cppp::heap_variant<TypeCategory> data;
         friend TypeDatabase;
+        friend TypeSweeper;
+        inline void trace_data(TypeSweeper& swp);
         public:
             TypeInfo(type_id id,type_hash hash,cppp::heap_variant<TypeCategory>&& d,std::uint64_t sz,std::uint64_t al) : Entity(id), _size(sz), align(al), _hash(hash), data(std::move(d)){}
             inline TypeInfo(type_id,type_pack&&);
@@ -97,6 +100,40 @@ namespace bbe::impl{
                 return *data.get<TypeCategory::POINTER>();
             }
     };
+    class TypeSweeper{
+        LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper swp;
+        public:
+            TypeSweeper(LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper&& s) : swp(std::move(s)){}
+            bool is_marked(const TypeInfo& inf) const{
+                return swp.is_marked(inf);
+            }
+            const TypeInfo& new_location(const TypeInfo& i) const{
+                return swp.new_location(i);
+            }
+            void trace(type_id& tid){
+                bool unmarked = !swp.is_marked(swp.associated_pool()[tid]);
+                swp.trace(tid);
+                if(unmarked){
+                    swp.associated_pool()[tid].trace_data(*this);
+                }
+            }
+            void trace(TypeInfo*& p){
+                bool unmarked = !swp.is_marked(*p);
+                swp.trace(p);
+                if(unmarked){
+                    p->trace_data(*this);
+                }
+            }
+            void trace(const TypeInfo*& p){
+                TypeInfo* oldp = const_cast<TypeInfo*>(p);
+                bool unmarked = !swp.is_marked(*p);
+                swp.trace(p); // trace first to mark ourselves, so we don't infinitely recurse
+                if(unmarked){
+                    oldp->trace_data(*this);
+                }
+                
+            }
+    };
     inline type_id optindex(const TypeInfo* p){
         return p?p->index():std::numeric_limits<type_id>::max();
     }
@@ -114,6 +151,11 @@ namespace bbe::impl{
                     h.combine(arr[i]->hash());
                 }
                 return h;
+            }
+            void trace_types(TypeSweeper& swp){
+                for(const TypeInfo*& p : arr){
+                    swp.trace(p);
+                }
             }
             void serialize(cppp::bytes& dst) const{
                 cppp::muleb128_w<std::uint64_t>(dst,arr.size());
@@ -139,7 +181,7 @@ namespace bbe::impl{
                 deserialize(buf,tdb);
             }
             inline void deserialize(cppp::frozen_byte_view&,const TypeDatabase&);
-            void trace_types(LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper& swp){
+            void trace_types(TypeSweeper& swp){
                 swp.trace(ret);
                 swp.trace(par);
             }
@@ -253,15 +295,24 @@ namespace bbe::impl{
                     infos[i].deserialize(buf,*this);
                 }
             }
-            LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper sweep(){
+            TypeSweeper sweep(){
                 LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper swp{infos.sweep()};
                 for(type_id i=0;i<T_INTRINSIC_END;++i){
                     swp.trace(i);
                 }
                 return swp;
             }
-            void trace_compounds(LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper&&) const{
-                // TODO
+            void finalize_gc(const TypeSweeper&& swp){
+                compounds_t::const_iterator it = compounds.begin();
+                const compounds_t::const_iterator done = compounds.end();
+                while(it != done){
+                    if(swp.is_marked(*it->inf)){
+                        it->inf = &swp.new_location(*it->inf);
+                        ++it;
+                    }else{
+                        it = compounds.erase(it);
+                    }
+                }
             }
             void serialize(cppp::bytes& dst) const{
                 cppp::muleb128_w<type_id>(dst,infos.size() - T_INTRINSIC_END);
@@ -298,6 +349,20 @@ namespace bbe::impl{
     inline void FunctionSignature::deserialize(cppp::frozen_byte_view& buf,const TypeDatabase& tdb){
         ret = &tdb[cppp::muleb128_r<type_id>(buf)];
         par = &tdb[cppp::muleb128_r<type_id>(buf)];
+    }
+    inline void TypeInfo::trace_data(TypeSweeper& swp){
+        switch(data.tag()){
+            case TypeCategory::FUNCTION_POINTER:
+                data.get<TypeCategory::FUNCTION_POINTER>().trace_types(swp);
+                break;
+            case TypeCategory::PACK:
+                data.get<TypeCategory::PACK>().trace_types(swp);
+                break;
+            case TypeCategory::POINTER:
+                swp.trace(data.get<TypeCategory::POINTER>());
+                break;
+            default:;
+        }
     }
     inline void TypeInfo::serialize(cppp::bytes& dst) const{
         cppp::muleb128_w<std::uint64_t>(dst,_size);

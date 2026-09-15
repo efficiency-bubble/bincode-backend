@@ -195,13 +195,13 @@ int main(){
             bbe::ProjectEntitiesPool proj;
             std::size_t n_builtins = proj.types().size();
             const bbe::TypeInfo& ui32 = proj.types()[TypeDatabase::T_UINT32];
-            bbe::Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types().pack_of({&ui32,&ui32}),&proj.types()[TypeDatabase::T_VOID]});
+            bbe::Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types().pack_of({&proj.types().pack_of({&ui32,&ui32}),&ui32}),&proj.types()[TypeDatabase::T_VOID]});
             
-            ASSERT_EQ(proj.types().size(),n_builtins + 1,"Wrong type count pre-collect");
-            proj.garbage_collect();
-            ASSERT_EQ(proj.types().size(),n_builtins + 1,"Wrong type count post-nop-collect");
+            ASSERT_EQ(proj.types().size(),n_builtins + 2,"Wrong type count pre-collect");
+            proj.end_gc(proj.begin_gc());
+            ASSERT_EQ(proj.types().size(),n_builtins + 2,"Wrong type count post-nop-collect");
             proj.functions().erase(fn.index());
-            proj.garbage_collect();
+            proj.end_gc(proj.begin_gc());
             ASSERT_EQ(proj.types().size(),n_builtins,"Wrong type count post-collect");
             ASSERT_EQ(ui32.type(),bbe::TypeCategory::UNSIGNED_INTEGRAL,"ui32 ref was invalidated: wrong type");
             ASSERT_EQ(ui32.size(),4,"ui32 ref was invalidated: wrong size");

@@ -53,6 +53,9 @@ namespace bbe::impl{
             _iterator(pool_type& p,id_type b,id_type i) : storage(&p), block(b), item(i){}
             public:
                 constexpr _iterator() noexcept : storage(nullptr), block(0), item(0){}
+                operator _iterator<true>() const requires(!_const){
+                    return {*storage,block,item};
+                }
                 using value_type = std::conditional_t<_const,const E,E>;
                 value_type& operator*() const{
                     return storage->storage[block][item];
@@ -135,33 +138,8 @@ namespace bbe::impl{
                 Sweeper(LinearMovingGarbageCollectedPool& gcp) : pool(&gcp), counter(0){
                     BBE_DEBUG(u8"GC round started"sv);
                 }
-                public:
-                    bool is_marked(const E& entity) const{
-                        return entity.mark_parity() != pool->parity;
-                    }
-                    void trace(id_type& id){
-                        E& entity = (*pool)[id];
-                        if(!is_marked(entity)){
-                            BBE_DEBUG(u8"Tracing object #"sv,counter);
-                            entity.invert_mark_and_set_id(counter++);
-                        }
-                        id = entity.index();
-                    }
-                    void trace(E*& ptr){
-                        if(!is_marked(*ptr)){
-                            BBE_DEBUG(u8"Tracing object #"sv,counter);
-                            ptr->invert_mark_and_set_id(counter++);
-                        }
-                        ptr = &(*pool)[ptr->index()];
-                    }
-                    void trace(const E*& ptr){
-                        if(!is_marked(*ptr)){
-                            BBE_DEBUG(u8"Tracing object #"sv,counter);
-                            ptr->invert_mark_and_set_id(counter++);
-                        }
-                        ptr = &(*pool)[ptr->index()];
-                    }
-                    ~Sweeper(){
+                void _destroy(){
+                    if(pool){
                         BBE_DEBUG(u8"Consolidating GC pool"sv);
                         id_type i = 0;
                         for(auto& el : *pool){
@@ -173,6 +151,58 @@ namespace bbe::impl{
                         BBE_DEBUG(u8"Deleting unused blocks"sv);
                         pool->erase_after(counter);
                         pool->parity = !pool->parity;
+                    }
+                }
+                public:
+                    Sweeper(const Sweeper&) = delete;
+                    Sweeper(Sweeper&& other) : pool(std::exchange(other.pool,nullptr)), counter(other.counter){}
+                    Sweeper& operator=(const Sweeper&) = delete;
+                    Sweeper& operator=(Sweeper&& other){
+                        if(this != &other){
+                            _destroy();
+                            pool = std::exchange(other.pool,nullptr);
+                        }
+                        return *this;
+                    }
+                    const LinearMovingGarbageCollectedPool& associated_pool() const{
+                        return *pool;
+                    }
+                    LinearMovingGarbageCollectedPool& associated_pool(){
+                        return *pool;
+                    }
+                    bool is_marked(const E& entity) const{
+                        return entity.mark_parity() != pool->parity;
+                    }
+                    const E& new_location(const E& v) const{
+                        return (*pool)[v.index()];
+                    }
+                    E& new_location(E& v) const{
+                        return (*pool)[v.index()];
+                    }
+                    void trace(id_type& id){
+                        E& entity = (*pool)[id];
+                        if(!is_marked(entity)){
+                            BBE_DEBUG(u8"Tracing object #"sv,counter,u8"with oldid"sv,id);
+                            entity.invert_mark_and_set_id(counter++);
+                        }
+                        id = entity.index();
+                    }
+                    void trace(E*& ptr){
+                        if(!is_marked(*ptr)){
+                            BBE_DEBUG(u8"Tracing object #"sv,counter,u8"with oldid"sv,ptr->index());
+                            ptr->invert_mark_and_set_id(counter++);
+                        }
+                        ptr = &new_location(*ptr);
+                    }
+                    void trace(const E*& ptr){
+                        if(!is_marked(*ptr)){
+                            BBE_DEBUG(u8"Tracing object #"sv,counter,u8"with oldid"sv,ptr->index());
+                            ptr->invert_mark_and_set_id(counter++);
+                        }
+                        ptr = &new_location(*ptr);
+                    }
+                    ~Sweeper(){
+                        _destroy();
                     }
             };
             template<typename ...A>

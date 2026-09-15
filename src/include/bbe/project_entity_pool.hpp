@@ -11,10 +11,13 @@ namespace bbe::impl{
         public:
             ProjectEntitiesPool() = default;
             ProjectEntitiesPool(cppp::frozen_byte_view& b) : td(b), fd(b,td){}
-            LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper garbage_collect(){
-                LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper swp{td.sweep()};
+            TypeSweeper begin_gc(){
+                TypeSweeper swp{td.sweep()};
                 fd.trace_types(swp);
                 return swp;
+            }
+            void end_gc(TypeSweeper&& swp){
+                td.finalize_gc(std::move(swp));
             }
             SCM serialize(cppp::bytes& dst) const{
                 SCM scm{.fcmap{fd.make_consolidation_map()}};
