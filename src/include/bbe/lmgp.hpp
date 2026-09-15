@@ -296,6 +296,3 @@ namespace bbe::impl{
             }
     };
 }
-namespace bbe{
-    BBE_EXPORT LinearMovingGarbageCollectedPool;
-}

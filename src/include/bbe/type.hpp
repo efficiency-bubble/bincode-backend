@@ -219,39 +219,56 @@ namespace bbe::impl{
     }
     inline TypeInfo::TypeInfo(type_id id,FunctionSignature sig) : Entity(id), _size(8_u64), align(8_u64), _hash(sig.hash()), data(cppp::in_place_etor<TypeCategory::FUNCTION_POINTER>,sig){}
     inline TypeInfo::TypeInfo(type_id id,const TypeInfo* pe) : Entity(id), _size(8_u64), align(8_u64), _hash(~pe->hash().value()), data(cppp::in_place_etor<TypeCategory::POINTER>,pe){}
+    class MutableTypeKey{
+        mutable const TypeInfo* inf;
+        public:
+            MutableTypeKey(const TypeInfo& i) : inf(&i){}
+            const TypeInfo& operator*() const{
+                return *inf;
+            }
+            const TypeInfo* operator->() const{
+                return inf;
+            }
+            const TypeInfo* get() const{
+                return inf;
+            }
+            void update(const TypeSweeper& swp) const{
+                inf = &swp.new_location(*inf);
+            }
+            friend bool operator==(MutableTypeKey lhs,MutableTypeKey rhs){
+                return lhs.inf == rhs.inf;
+            }
+    };
     class TypeDatabase{
         std::uint64_t hashcode = 0;
         mutable EntityPool<TypeInfo> infos;
-        struct TypeReference{
-            mutable const TypeInfo* inf;
-        };
         struct eq_tr{
-            bool operator()(TypeReference tr,TypeReference tr2) const{
-                return tr.inf == tr2.inf;
+            bool operator()(MutableTypeKey tr,MutableTypeKey tr2) const{
+                return tr == tr2;
             }
-            bool operator()(TypeReference tr,const type_pack& pk) const{
-                return tr.inf->type() == TypeCategory::PACK && tr.inf->pack_contents() == pk;
+            bool operator()(MutableTypeKey tr,const type_pack& pk) const{
+                return tr->type() == TypeCategory::PACK && tr->pack_contents() == pk;
             }
-            bool operator()(const type_pack& pk,TypeReference tr) const{
-                return tr.inf->type() == TypeCategory::PACK && tr.inf->pack_contents() == pk;
+            bool operator()(const type_pack& pk,MutableTypeKey tr) const{
+                return tr->type() == TypeCategory::PACK && tr->pack_contents() == pk;
             }
-            bool operator()(TypeReference tr,FunctionSignature sg) const{
-                return tr.inf->type() == TypeCategory::FUNCTION_POINTER && tr.inf->function_signature() == sg;
+            bool operator()(MutableTypeKey tr,FunctionSignature sg) const{
+                return tr->type() == TypeCategory::FUNCTION_POINTER && tr->function_signature() == sg;
             }
-            bool operator()(FunctionSignature sg,TypeReference tr) const{
-                return tr.inf->type() == TypeCategory::FUNCTION_POINTER && tr.inf->function_signature() == sg;
+            bool operator()(FunctionSignature sg,MutableTypeKey tr) const{
+                return tr->type() == TypeCategory::FUNCTION_POINTER && tr->function_signature() == sg;
             }
-            bool operator()(TypeReference tr,const TypeInfo* p) const{
-                return tr.inf->type() == TypeCategory::POINTER && &tr.inf->pointee() == p;
+            bool operator()(MutableTypeKey tr,const TypeInfo* p) const{
+                return tr->type() == TypeCategory::POINTER && &tr->pointee() == p;
             }
-            bool operator()(const TypeInfo* p,TypeReference tr) const{
-                return tr.inf->type() == TypeCategory::POINTER && &tr.inf->pointee() == p;
+            bool operator()(const TypeInfo* p,MutableTypeKey tr) const{
+                return tr->type() == TypeCategory::POINTER && &tr->pointee() == p;
             }
             using is_transparent = void;
         };
         struct hash_tr{
-            constexpr std::size_t operator()(TypeReference r) const noexcept{
-                return static_cast<std::size_t>(r.inf->hash().value());
+            constexpr std::size_t operator()(MutableTypeKey r) const noexcept{
+                return static_cast<std::size_t>(r->hash().value());
             }
             constexpr std::size_t operator()(const type_pack& pk) const noexcept{
                 return static_cast<std::size_t>(pk.hash().value());
@@ -264,7 +281,7 @@ namespace bbe::impl{
             }
             using is_transparent = void;
         };
-        using compounds_t = std::unordered_set<TypeReference,hash_tr,eq_tr>;
+        using compounds_t = std::unordered_set<MutableTypeKey,hash_tr,eq_tr>;
         mutable compounds_t compounds;
         friend TypeInfo;
         constexpr static type_id T_INTRINSIC_END = 6;
@@ -306,8 +323,8 @@ namespace bbe::impl{
                 compounds_t::const_iterator it = compounds.begin();
                 const compounds_t::const_iterator done = compounds.end();
                 while(it != done){
-                    if(swp.is_marked(*it->inf)){
-                        it->inf = &swp.new_location(*it->inf);
+                    if(swp.is_marked(**it)){
+                        it->update(swp);
                         ++it;
                     }else{
                         it = compounds.erase(it);
@@ -397,7 +414,7 @@ namespace bbe::impl{
                 break;
             default: goto simple;
         }
-        tdb.compounds.emplace(this);
+        tdb.compounds.emplace(*this);
         simple:
     }
 }
@@ -406,5 +423,7 @@ namespace bbe{
     BBE_EXPORT type_pack;
     BBE_EXPORT TypeCategory;
     BBE_EXPORT TypeInfo;
+    BBE_EXPORT TypeSweeper;
     BBE_EXPORT TypeDatabase;
+    BBE_EXPORT MutableTypeKey;
 }
