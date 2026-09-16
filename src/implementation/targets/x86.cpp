@@ -155,6 +155,7 @@ namespace bbe::targets::x86::impl{
                     arg_values.emplace_back(argt);
                     if(argt.type() == TypeCategory::VOID) return; // nothing here
                     else if(argt.type() == TypeCategory::PACK){
+                        arg_values.reserve(1uz+argt.pack_contents().types().size());
                         for(std::uint32_t i=0;i<argt.pack_contents().types().size();++i){
                             const TypeInfo& arg_i_t = *argt.pack_contents().types()[i];
                             if(arg_i_t.type() == TypeCategory::VOID) continue;

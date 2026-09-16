@@ -40,7 +40,7 @@ namespace bbe::impl{
             explicit ASTChildren() : _data(0), nchld(0){}
             ASTChildren(uninitialize_t){}
             inline ASTChildren(std::uint32_t,uninitialize_t);
-            ASTChildren(ASTChildren&& other) : _data(other._data), nchld(std::exchange(other.nchld,0)){}
+            ASTChildren(ASTChildren&& other) noexcept : _data(other._data), nchld(std::exchange(other.nchld,0)){}
             ASTChildren(const ASTChildren& other) = delete
             #ifndef __INTELLISENSE__ // vscode intellisense/EDG doesn't support delete("reason") yet
             ("Too expensive")
@@ -298,46 +298,46 @@ namespace bbe::impl{
         }
     }
     inline void ASTChildren::erase(std::uint32_t indx){
-        ASTNode* nmem = std::allocator<ASTNode>::allocate(nchld-1);
-        try{
-            /*
-            indx = 2
-            ~~~~~v
-            [1 2 3 4 5] = m
-            [       ]  = nmem
-            
-            uninitialized_move_n(m, 2, nmem)
-            [1 2 3 4 5] = m
-            [1 2    ]  = nmem
-            
-            uninitialized_move_n(m + 2 + 1, 5 - 2 - 1, nmem+indx)
-            [1 2 3 | 4 5] = m
-            [1 2   | 4 5]  = nmem
-            */
-           
-            // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
-            std::uninitialized_move_n(m(),indx,nmem);
-            // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
-            std::uninitialized_move_n(m()+indx+1,nchld-indx-1,nmem+indx);
-        }catch(...){
-            std::allocator<ASTNode>::deallocate(nmem,nchld-1);
-            throw;
+        CPPP_ASSERT(indx < nchld);
+        ASTNode* nmem;
+        if(nchld > 1){
+            nmem = std::allocator<ASTNode>::allocate(nchld - 1);
+        }else{
+            nmem = nullptr;
         }
+        --nchld;
+        /*
+        indx = 2
+        ~~~~~v
+        [1 2 3 4 5] = m
+        [       ]  = nmem
+        
+        uninitialized_move_n(m, 2, nmem)
+        [1 2 3 4 5] = m
+        [1 2    ]  = nmem
+        
+        uninitialized_move_n(m + 2 + 1, 5 - 2 - 1, nmem+indx)
+        [1 2 3 | 4 5] = m
+        [1 2   | 4 5]  = nmem
+        */
+        // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
+        std::uninitialized_move_n(m(),indx,nmem);
+        // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
+        std::uninitialized_move_n(m()+indx+1,nchld-indx,nmem+indx);
         _die();
         _data = reinterpret_cast<std::uintptr_t>(nmem);
-        --nchld;
     }
     template<typename ...A>
     inline void ASTChildren::emplace(A&& ...args){
         ASTNode* nmem = std::allocator<ASTNode>::allocate(nchld+1);
         try{
             // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
-            std::uninitialized_move_n(m(),nchld,nmem);
             new(nmem+nchld) ASTNode(std::forward<A>(args)...);
         }catch(...){
             std::allocator<ASTNode>::deallocate(nmem,nchld+1);
             throw;
         }
+        std::uninitialized_move_n(m(),nchld,nmem);
         _die();
         _data = reinterpret_cast<std::uintptr_t>(nmem);
         ++nchld;
@@ -347,13 +347,13 @@ namespace bbe::impl{
         ASTNode* nmem = std::allocator<ASTNode>::allocate(nchld+1);
         try{
             // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
-            std::uninitialized_move_n(m(),at,nmem);
             new(nmem+at) ASTNode(std::forward<A>(args)...);
-            std::uninitialized_move_n(m()+at,nchld-at,nmem+at+1);
         }catch(...){
             std::allocator<ASTNode>::deallocate(nmem,nchld+1);
             throw;
         }
+        std::uninitialized_move_n(m(),at,nmem);
+        std::uninitialized_move_n(m()+at,nchld-at,nmem+at+1);
         _die();
         _data = reinterpret_cast<std::uintptr_t>(nmem);
         ++nchld;
