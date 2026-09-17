@@ -101,11 +101,11 @@ namespace bbe::impl{
             case PACKIND:
                 if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
                     if(const TypeInfo& t = tdb[pt];t.type() == TypeCategory::PACK){
-                        if(prim >= t.pack_contents().types().size()){
+                        if(prim >= t.pack_contents().size()){
                             errors.add(this,u8"Pack indexing out of bounds"s);
                             goto error;
                         }
-                        ret = t.pack_contents().types()[prim]->index();
+                        ret = t.pack_contents()[prim].index();
                     }else{
                         errors.add(this,u8"Cannot index non-pack"s);
                         goto error;

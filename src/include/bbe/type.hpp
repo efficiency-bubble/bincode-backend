@@ -139,7 +139,9 @@ namespace bbe::impl{
         using view_t = cppp::view<const TypeInfo*>;
         friend class TypeDatabase;
         public:
-            type_pack(cppp::fixed_array<const TypeInfo*>&& a) : arr(std::move(a)){}
+            type_pack(cppp::fixed_array<const TypeInfo*>&& a) : arr(std::move(a)){
+                CPPP_ASSERT(!std::ranges::contains(arr,nullptr));
+            }
             inline type_pack(cppp::frozen_byte_view&,const TypeDatabase&);
             type_hash hash() const{
                 if(arr.empty()) return {std::numeric_limits<std::uint64_t>::max()};
@@ -160,8 +162,42 @@ namespace bbe::impl{
                     cppp::muleb128_w<type_id>(dst,p->index());
                 }
             }
-            const cppp::fixed_array<const TypeInfo*>& types() const{
-                return arr;
+            class const_iterator{
+                const TypeInfo* const* p;
+                friend type_pack;
+                const_iterator(const TypeInfo* const* p) : p(p){}
+                public:
+                    using value_type = TypeInfo;
+                    const TypeInfo& operator*() const{
+                        return **p;
+                    }
+                    const TypeInfo* operator->() const{
+                        return *p;
+                    }
+                    const_iterator& operator++(){
+                        ++p;
+                        return *this;
+                    }
+                    const_iterator operator++(int){
+                        const_iterator dup{*this};
+                        ++*this;
+                        return dup;
+                    }
+                    friend bool operator==(const_iterator lhs,const_iterator rhs){
+                        return lhs.p == rhs.p;
+                    }
+            };
+            const_iterator begin() const{
+                return arr.begin();
+            }
+            const_iterator end() const{
+                return arr.end();
+            }
+            const TypeInfo& operator[](std::size_t ind) const{
+                return *arr[ind];
+            }
+            std::size_t size() const{
+                return arr.size();
             }
             bool operator==(const type_pack& other) const{
                 return std::ranges::equal(arr,other.arr);
@@ -209,9 +245,9 @@ namespace bbe::impl{
     };
     // sahd, size align hash data
     inline TypeInfo::TypeInfo(type_id id,type_pack&& pk) : Entity(id), _size(0_u64), align(1_u64), _hash(pk.hash()), data(cppp::in_place_etor<TypeCategory::PACK>,std::move(pk)){
-        for(const TypeInfo* i : pack_contents().types()){
-            _size += i->size();
-            align = std::max(align,i->alignment());
+        for(const TypeInfo& i : pack_contents()){
+            _size += i.size();
+            align = std::max(align,i.alignment());
         }
     }
     inline TypeInfo::TypeInfo(type_id id,FunctionSignature sig) : Entity(id), _size(8_u64), align(8_u64), _hash(sig.hash()), data(cppp::in_place_etor<TypeCategory::FUNCTION_POINTER>,sig){}
@@ -349,10 +385,6 @@ namespace bbe::impl{
             const TypeInfo& operator[](type_id i) const{
                 CPPP_ASSERT(i != T_ERROR);
                 return infos[i];
-            }
-            const TypeInfo* getopt(type_id i) const{
-                if(i == T_ERROR) return nullptr;
-                return &infos[i];
             }
     };
     inline type_pack::type_pack(cppp::frozen_byte_view& buf,const TypeDatabase& tdb) : arr(cppp::muleb128_r<std::uint64_t>(buf)){
