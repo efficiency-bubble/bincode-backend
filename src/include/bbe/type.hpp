@@ -142,7 +142,7 @@ namespace bbe::impl{
         using view_t = cppp::view<const TypeInfo*>;
         friend class TypeDatabase;
         public:
-            type_pack(cppp::fixed_array<const TypeInfo*>&& a) : arr(a){}
+            type_pack(cppp::fixed_array<const TypeInfo*>&& a) : arr(std::move(a)){}
             inline type_pack(cppp::frozen_byte_view&,const TypeDatabase&);
             type_hash hash() const{
                 if(arr.empty()) return {std::numeric_limits<std::uint64_t>::max()};
