@@ -113,7 +113,7 @@ namespace bbe::impl{
                 }else goto error;
                 break;
             case ARG:
-                ret = optindex(sig.parameter());
+                ret = sig.parameter().index();
                 break;
             case DEREF:
                 if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
@@ -136,10 +136,10 @@ namespace bbe::impl{
                         if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
                             if(const TypeInfo& t = tdb[pt];t.type() == TypeCategory::FUNCTION_POINTER){
                                 type_id at = children()[1uz].result_type();
-                                if(at != tdb.T_ERROR && optindex(t.function_signature().parameter()) != at){
+                                if(at != tdb.T_ERROR && t.function_signature().parameter().index() != at){
                                     errors.add(this,u8"Argument and parameter type mismatch"s);
                                 }
-                                ret = optindex(t.function_signature().return_type());
+                                ret = t.function_signature().return_type().index();
                             }else{
                                 errors.add(this,u8"Cannot call non-function"s);
                                 goto error;

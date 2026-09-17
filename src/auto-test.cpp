@@ -96,7 +96,7 @@ int main(){
             VariableDecls vdb;
             ErrorDatabase edb;
             auto an = u32(1024);
-            an.recursively_recalculate_result_type(proj,vdb,edb,{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
+            an.recursively_recalculate_result_type(proj,vdb,edb,{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
             
             ASSERT_EQ(an.result_type(),proj.types().T_UINT32,"Wrong type for uint32 literal");
@@ -105,7 +105,7 @@ int main(){
         {u8"PEP serialization/deserialization"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
+            Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
             fn.set(pind(pack(u32(42),u32(41)),1));
             fn.recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
@@ -121,16 +121,16 @@ int main(){
             ASSERT_EQ(deser.functions().has_func(0),true,"Deserialization does not include func id 0");
             ASSERT_EQ(deser.functions()[0].ast() == fn.ast(),true,"Deserialized AST was changed");
             ASSERT_EQ(deser.functions()[0].cname(),u8"test"sv,"Deserialized function cname was changed");
-            ASSERT_EQ(deser.functions()[0].signature().parameter()->index(),TypeDatabase::T_VOID,"Deserialized function parameter type was changed");
-            ASSERT_EQ(deser.functions()[0].signature().return_type()->index(),TypeDatabase::T_UINT32,"Deserialized function return type was changed");
-            ASSERT_EQ(deser.functions()[0].signature().parameter(),&deser.types()[TypeDatabase::T_VOID],"Deserialized function parameter type address was changed");
-            ASSERT_EQ(deser.functions()[0].signature().return_type(),&deser.types()[TypeDatabase::T_UINT32],"Deserialized function return type was changed");
+            ASSERT_EQ(deser.functions()[0].signature().parameter().index(),TypeDatabase::T_VOID,"Deserialized function parameter type was changed");
+            ASSERT_EQ(deser.functions()[0].signature().return_type().index(),TypeDatabase::T_UINT32,"Deserialized function return type was changed");
+            ASSERT_EQ(&deser.functions()[0].signature().parameter(),&deser.types()[TypeDatabase::T_VOID],"Deserialized function parameter type address was changed");
+            ASSERT_EQ(&deser.functions()[0].signature().return_type(),&deser.types()[TypeDatabase::T_UINT32],"Deserialized function return type address was changed");
             return {};
         }},
         {u8"Dfg inter: add values"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            bbe::Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
+            bbe::Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
             fn.set(cmag(FN_ADD,u32(1),u32(41)));
             fn.recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
@@ -142,7 +142,7 @@ int main(){
         {u8"Dfg inter: equality comparison"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types()[TypeDatabase::T_BOOL],&proj.types()[TypeDatabase::T_VOID]});
+            Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{proj.types()[TypeDatabase::T_BOOL],proj.types()[TypeDatabase::T_VOID]});
             fn.set(cmag(FN_EQ32,u32(42),u32(42)));
             fn.recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
@@ -154,7 +154,7 @@ int main(){
         {u8"Dfg inter: pack indexing"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
+            Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
             fn.set(pind(pack(u32(42),u32(41)),1));
             fn.recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
@@ -166,7 +166,7 @@ int main(){
         {u8"Dfg inter: havevar"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
+            Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
             fn.set(havevar(0,u32(307),cmag(FN_ADD,u32(2),getvar(0))));
             
             // TODO: only recalc once after we fix the dependency issue
@@ -182,7 +182,7 @@ int main(){
         {u8"Dfg inter: comma"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            bbe::Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types()[TypeDatabase::T_UINT32],&proj.types()[TypeDatabase::T_VOID]});
+            bbe::Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
             fn.set(comma(0,cmag(FN_PRU32,u32(0)),cmag(FN_PRU32,u32(1))));
             fn.recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
@@ -195,7 +195,7 @@ int main(){
             bbe::ProjectEntitiesPool proj;
             std::size_t n_builtins = proj.types().size();
             const bbe::TypeInfo& ui32 = proj.types()[TypeDatabase::T_UINT32];
-            bbe::Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types().pack_of({&proj.types().pack_of({&ui32,&ui32}),&ui32}),&proj.types()[TypeDatabase::T_VOID]});
+            bbe::Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{proj.types().pack_of({&proj.types().pack_of({&ui32,&ui32}),&ui32}),proj.types()[TypeDatabase::T_VOID]});
             
             ASSERT_EQ(proj.types().size(),n_builtins + 2,"Wrong type count pre-collect");
             proj.end_gc(proj.begin_gc());
@@ -210,7 +210,7 @@ int main(){
         {u8"Dfg inter: pointers"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
-            bbe::Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{&proj.types()[TypeDatabase::T_VOID],&proj.types()[TypeDatabase::T_UINT32]});
+            bbe::Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{proj.types()[TypeDatabase::T_VOID],proj.types()[TypeDatabase::T_UINT32]});
             fn.set(deref(addrof(u32(5))));
             fn.recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");

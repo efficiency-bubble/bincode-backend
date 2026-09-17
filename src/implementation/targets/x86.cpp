@@ -345,7 +345,7 @@ namespace bbe::targets::x86::impl{
         x::instructions::mov::rm_r::for_width<x::width::W64>::encode(b,0b11_b,x::reg::BP,x::reg::SP);
         std::size_t enter = b.size();
         enter += x::instructions::sub::rm_imm::for_width<x::width::W64>::encode(b,0b11_b,x::reg::SP,x::skip_immediate).offset_of_first<x::ComponentType::IMMEDIATE>;
-        compiler.load_args(*f.signature().parameter());
+        compiler.load_args(f.signature().parameter());
         if(const targets::dfg::DataNode* se=f.dfg().root().side_effects()){
             compiler.compile_node(*se);
         }

@@ -15,8 +15,8 @@ int main(){
     ErrorDatabase edb;
     
     const TypeInfo& ui32 = p.types()[TypeDatabase::T_UINT32];
-    Function& example_fn = p.functions().emplace(u8"example"s,FunctionSignature{&ui32,&p.types().pack_of({&ui32,&ui32})});
-    p.functions().emplace(u8"multiply_adjust"s,FunctionSignature{&ui32,&p.types().pack_of({&ui32,&ui32})});
+    Function& example_fn = p.functions().emplace(u8"example"s,FunctionSignature{ui32,p.types().pack_of({&ui32,&ui32})});
+    p.functions().emplace(u8"multiply_adjust"s,FunctionSignature{ui32,p.types().pack_of({&ui32,&ui32})});
     example_fn.set(
         fork(
             cmag(FN_LEQ32,arg(0),u32(2)),

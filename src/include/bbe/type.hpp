@@ -134,9 +134,6 @@ namespace bbe::impl{
                 
             }
     };
-    inline type_id optindex(const TypeInfo* p){
-        return p?p->index():std::numeric_limits<type_id>::max();
-    }
     class type_pack{
         cppp::fixed_array<const TypeInfo*> arr;
         using view_t = cppp::view<const TypeInfo*>;
@@ -176,7 +173,7 @@ namespace bbe::impl{
         friend TypeDatabase;
         public:
             FunctionSignature(uninitialize_t){}
-            FunctionSignature(const TypeInfo* r,const TypeInfo* a) : ret(r), par(a){}
+            FunctionSignature(const TypeInfo& r,const TypeInfo& a) : ret(&r), par(&a){}
             FunctionSignature(cppp::frozen_byte_view& buf,const TypeDatabase& tdb) : FunctionSignature(uninitialize){
                 deserialize(buf,tdb);
             }
@@ -194,17 +191,17 @@ namespace bbe::impl{
                 h.combine(par->hash());
                 return h;
             }
-            void set_return(const TypeInfo* t){
-                ret = t;
+            void set_return(const TypeInfo& t){
+                ret = &t;
             }
-            const TypeInfo* return_type() const{
-                return ret;
+            const TypeInfo& return_type() const{
+                return *ret;
             }
-            void set_param(const TypeInfo* t){
-                par = t;
+            void set_param(const TypeInfo& t){
+                par = &t;
             }
-            const TypeInfo* parameter() const{
-                return par;
+            const TypeInfo& parameter() const{
+                return *par;
             }
             bool operator==(const FunctionSignature& other) const{
                 return ret == other.ret && par == other.par;
