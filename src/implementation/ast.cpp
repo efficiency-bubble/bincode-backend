@@ -3,24 +3,6 @@
 #include<bbe/serialization.hpp>
 #include<cppp/assert.hpp>
 namespace bbe::impl{
-    constexpr static std::uint32_t VARIABLE = std::numeric_limits<std::uint32_t>::max();
-    
-    static std::uint32_t nchld_of(NodeType t){
-        switch(t){
-            using enum NodeType;
-            case UINT32: case UINT64: case SINT32: case BOOL: case ARG: case GETVAR: case UINT32SYM: case FNSYM: case NTYPE: case IMPORT_STUB:
-                return 0;
-            case SETVAR: case PACKIND: case DEREF: case ADDROF:
-                return 1;
-            case HAVEVAR:
-                return 2;
-            case FORK:
-                return 3;
-            case PACK: case COMMA: case CALL_BUILTIN:
-                return VARIABLE;
-        }
-        cppp::unreachable();
-    }
     static bool has_extended_data(NodeType t){
         return t == NodeType::UINT64;
     }

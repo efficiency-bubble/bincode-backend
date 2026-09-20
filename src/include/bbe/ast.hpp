@@ -23,6 +23,24 @@ namespace bbe::impl{
         IMPORT_STUB = 254,
         NTYPE = 255
     };
+    constexpr inline std::uint32_t VARIABLE = std::numeric_limits<std::uint32_t>::max();
+    
+    inline std::uint32_t nchld_of(NodeType t){
+        switch(t){
+            using enum NodeType;
+            case UINT32: case UINT64: case SINT32: case BOOL: case ARG: case GETVAR: case UINT32SYM: case FNSYM: case NTYPE: case IMPORT_STUB:
+                return 0;
+            case SETVAR: case PACKIND: case DEREF: case ADDROF:
+                return 1;
+            case HAVEVAR:
+                return 2;
+            case FORK:
+                return 3;
+            case PACK: case COMMA: case CALL_BUILTIN:
+                return VARIABLE;
+        }
+        cppp::unreachable();
+    }
     // Public API: sequence for accessing children; implementation detail: also packs the 64-bit data field to save memory (otherwise it would be wasted on padding)
     static_assert(sizeof(std::uintptr_t)==sizeof(std::uint64_t),"Non-64-bit systems unsupported");
     
@@ -365,4 +383,6 @@ namespace bbe{
     BBE_EXPORT VariableDecls;
     BBE_EXPORT null_initialize_t;
     BBE_EXPORT null_initialize;
+    BBE_EXPORT VARIABLE;
+    BBE_EXPORT nchld_of;
 }

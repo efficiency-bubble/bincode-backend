@@ -174,6 +174,13 @@ namespace bbe::impl{
                     const TypeInfo* operator->() const{
                         return *p;
                     }
+                    const_iterator& operator+=(std::ptrdiff_t off){
+                        p += off;
+                        return *this;
+                    }
+                    const_iterator operator+(std::ptrdiff_t off){
+                        return auto(*this) += off;
+                    }
                     const_iterator& operator++(){
                         ++p;
                         return *this;
@@ -192,6 +199,9 @@ namespace bbe::impl{
             }
             const_iterator end() const{
                 return arr.end();
+            }
+            const cppp::fixed_array<const TypeInfo*>& array() const{
+                return arr;
             }
             const TypeInfo& operator[](std::size_t ind) const{
                 return *arr[ind];
