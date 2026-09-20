@@ -349,12 +349,12 @@ namespace bbe::impl{
     inline void ASTChildren::emplace(A&& ...args){
         ASTNode* nmem = std::allocator<ASTNode>::allocate(nchld+1);
         try{
-            // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
             new(nmem+nchld) ASTNode(std::forward<A>(args)...);
         }catch(...){
             std::allocator<ASTNode>::deallocate(nmem,nchld+1);
             throw;
         }
+        // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
         std::uninitialized_move_n(m(),nchld,nmem);
         _die();
         _data = reinterpret_cast<std::uintptr_t>(nmem);
@@ -364,12 +364,12 @@ namespace bbe::impl{
     inline void ASTChildren::insert(std::uint32_t at,A&& ...args){
         ASTNode* nmem = std::allocator<ASTNode>::allocate(nchld+1);
         try{
-            // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
             new(nmem+at) ASTNode(std::forward<A>(args)...);
         }catch(...){
             std::allocator<ASTNode>::deallocate(nmem,nchld+1);
             throw;
         }
+        // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
         std::uninitialized_move_n(m(),at,nmem);
         std::uninitialized_move_n(m()+at,nchld-at,nmem+at+1);
         _die();
