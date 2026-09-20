@@ -280,11 +280,10 @@ namespace bbe::impl{
         std::uninitialized_fill_n(m(),n,uninit);
     }
     inline ASTChildren& ASTChildren::operator=(ASTChildren&& other){
-        if(this!=&other){
-            _die();
-            _data = other._data;
-            nchld = std::exchange(other.nchld,0);
-        }
+        std::uint32_t tmp_nc = std::exchange(other.nchld,0_u32);
+        _die();
+        _data = other._data;
+        nchld = tmp_nc;
         return *this;
     }
     inline ASTNode& ASTChildren::operator[](std::uint32_t ind){

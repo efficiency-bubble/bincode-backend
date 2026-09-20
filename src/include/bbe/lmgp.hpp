@@ -123,12 +123,11 @@ namespace bbe::impl{
             LinearMovingGarbageCollectedPool(LinearMovingGarbageCollectedPool&& other) : storage(std::exchange(other.storage,nullptr)), length(other.length), parity(other.parity){}
             LinearMovingGarbageCollectedPool& operator=(const LinearMovingGarbageCollectedPool&) = delete;
             LinearMovingGarbageCollectedPool& operator=(LinearMovingGarbageCollectedPool&& other){
-                if(this != &other){
-                    destroy();
-                    storage = std::exchange(other.storage,nullptr);
-                    length = other.length;
-                    parity = other.parity;
-                }
+                E** tmp = std::exchange(other.storage,nullptr);
+                destroy();
+                length = other.length;
+                parity = other.parity;
+                storage = tmp;
                 return *this;
             }
             class Sweeper{
@@ -158,10 +157,9 @@ namespace bbe::impl{
                     Sweeper(Sweeper&& other) : pool(std::exchange(other.pool,nullptr)), counter(other.counter){}
                     Sweeper& operator=(const Sweeper&) = delete;
                     Sweeper& operator=(Sweeper&& other){
-                        if(this != &other){
-                            _destroy();
-                            pool = std::exchange(other.pool,nullptr);
-                        }
+                        LinearMovingGarbageCollectedPool* tmp = std::exchange(other.pool,nullptr);
+                        _destroy();
+                        pool = tmp;
                         return *this;
                     }
                     const LinearMovingGarbageCollectedPool& associated_pool() const{
