@@ -134,9 +134,14 @@ namespace bbe::impl{
                         if(type_id lt = children()[0uz].result_type();lt != tdb.T_ERROR){
                             if(type_id rt = children()[1uz].result_type();rt != tdb.T_ERROR){
                                 if(lt == rt){
-                                    if(TypeCategory cat = tdb[lt].type();cat == TypeCategory::UNSIGNED_INTEGRAL || cat == TypeCategory::SIGNED_INTEGRAL){
-                                        ret = lt;
-                                    }else{
+                                    switch(lt){
+                                        case TypeDatabase::T_INT32:
+                                        case TypeDatabase::T_UINT32:
+                                        case TypeDatabase::T_INT64:
+                                        case TypeDatabase::T_UINT64:
+                                            ret = lt;
+                                            break;
+                                        default:
                                         errors.add(this,u8"Non-arithmetic type passed to arithmetic"s);
                                         goto error;
                                     }

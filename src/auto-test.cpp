@@ -203,7 +203,6 @@ int main(){
             proj.functions().erase(fn.index());
             proj.end_gc(proj.begin_gc());
             ASSERT_EQ(proj.types().size(),n_builtins,"Wrong type count post-collect");
-            ASSERT_EQ(ui32.type(),bbe::TypeCategory::UNSIGNED_INTEGRAL,"ui32 ref was invalidated: wrong type");
             ASSERT_EQ(ui32.size(),4,"ui32 ref was invalidated: wrong size");
             return {};
         }},

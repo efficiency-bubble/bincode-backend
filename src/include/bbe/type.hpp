@@ -45,9 +45,7 @@ namespace bbe::impl{
     class TypeDatabase;
     class TypeInfo;
     enum class TypeCategory : std::uint8_t{
-        VOID,
-        SIGNED_INTEGRAL,
-        UNSIGNED_INTEGRAL,
+        DTYPE,
         PACK BBE_ANNOTATE(type_pack),
         FUNCTION_POINTER BBE_ANNOTATE(FunctionSignature),
         POINTER BBE_ANNOTATE(const TypeInfo*)
@@ -337,20 +335,20 @@ namespace bbe::impl{
             constexpr static type_id T_BOOL = 5;
             constexpr static type_id T_ERROR = std::numeric_limits<type_id>::max();
             TypeDatabase(){
-                emplace(hashcode++,cppp::in_place_etor<TypeCategory::VOID>,0_u64,0_u64);
-                emplace(hashcode++,cppp::in_place_etor<TypeCategory::UNSIGNED_INTEGRAL>,4_u64,4_u64);
-                emplace(hashcode++,cppp::in_place_etor<TypeCategory::SIGNED_INTEGRAL>,4_u64,4_u64);
-                emplace(hashcode++,cppp::in_place_etor<TypeCategory::UNSIGNED_INTEGRAL>,8_u64,8_u64);
-                emplace(hashcode++,cppp::in_place_etor<TypeCategory::SIGNED_INTEGRAL>,8_u64,8_u64);
-                emplace(hashcode++,cppp::in_place_etor<TypeCategory::SIGNED_INTEGRAL>,1_u64,1_u64);
+                emplace(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,0_u64,0_u64);
+                emplace(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,4_u64,4_u64);
+                emplace(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,4_u64,4_u64);
+                emplace(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,8_u64,8_u64);
+                emplace(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,8_u64,8_u64);
+                emplace(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,1_u64,1_u64);
             }
             TypeDatabase(cppp::frozen_byte_view& buf) : infos(T_INTRINSIC_END,buf){
-                infos[T_VOID].initialize(hashcode++,cppp::in_place_etor<TypeCategory::VOID>,0_u64,0_u64);
-                infos[T_UINT32].initialize(hashcode++,cppp::in_place_etor<TypeCategory::UNSIGNED_INTEGRAL>,4_u64,4_u64);
-                infos[T_INT32].initialize(hashcode++,cppp::in_place_etor<TypeCategory::SIGNED_INTEGRAL>,4_u64,4_u64);
-                infos[T_UINT64].initialize(hashcode++,cppp::in_place_etor<TypeCategory::UNSIGNED_INTEGRAL>,8_u64,8_u64);
-                infos[T_INT64].initialize(hashcode++,cppp::in_place_etor<TypeCategory::SIGNED_INTEGRAL>,8_u64,8_u64);
-                infos[T_BOOL].initialize(hashcode++,cppp::in_place_etor<TypeCategory::SIGNED_INTEGRAL>,1_u64,1_u64);
+                infos[T_VOID].initialize(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,0_u64,0_u64);
+                infos[T_UINT32].initialize(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,4_u64,4_u64);
+                infos[T_INT32].initialize(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,4_u64,4_u64);
+                infos[T_UINT64].initialize(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,8_u64,8_u64);
+                infos[T_INT64].initialize(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,8_u64,8_u64);
+                infos[T_BOOL].initialize(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,1_u64,1_u64);
                 for(type_id i=T_INTRINSIC_END;i<infos.size();++i){
                     infos[i].deserialize(buf,*this);
                 }

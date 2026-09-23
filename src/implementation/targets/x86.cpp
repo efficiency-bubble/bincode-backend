@@ -153,12 +153,12 @@ namespace bbe::targets::x86::impl{
                 }
                 void load_args(const TypeInfo& argt){
                     arg_values.emplace_back(argt);
-                    if(argt.type() == TypeCategory::VOID) return; // nothing here
+                    if(argt.index() == TypeDatabase::T_VOID) return; // nothing here
                     else if(argt.type() == TypeCategory::PACK){
                         arg_values.reserve(1uz+argt.pack_contents().size());
                         for(std::uint32_t i=0;i<argt.pack_contents().size();++i){
                             const TypeInfo& arg_i_t = argt.pack_contents()[i];
-                            if(arg_i_t.type() == TypeCategory::VOID) continue;
+                            if(arg_i_t.index() == TypeDatabase::T_VOID) continue;
                             else if(arg_i_t.type() == TypeCategory::PACK) throw std::logic_error("x86 compile: ABI: Can't have packs in an argument pack"s);
                             DataValue& arg_i_v = arg_values.emplace_back(arg_i_t);
                             
