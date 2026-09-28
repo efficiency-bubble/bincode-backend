@@ -13,7 +13,7 @@ namespace bbe::formats::elf::impl{
         public:
             Nametable() : buf{0_b}{}
             std::uint32_t add(cppp::sv name){
-                std::uint32_t location = static_cast<std::uint32_t>(buf.size());
+                std::uint32_t location = cppp::assume_cast<std::uint32_t>(buf.size());
                 buf.append(as_bytes(std::span<const char8_t>(name)));
                 buf.append(0_b);
                 return location;

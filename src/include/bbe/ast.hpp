@@ -8,6 +8,7 @@
 #include<cppp/object-view.hpp>
 #include<cppp/bytearray.hpp>
 #include<cppp/assert.hpp>
+#include<cppp/int.hpp>
 #include<unordered_map>
 #include<algorithm>
 #include<cstdint>
@@ -19,28 +20,12 @@ namespace bbe::impl{
     class ASTNode;
     class VariableDecls;
     enum class NodeType : std::uint8_t{
-        UINT32,UINT64,PACK,COMMA,PACKIND,ARG,DEREF,ADDROF,CALL_BUILTIN=9,SETVAR,GETVAR,HAVEVAR,BOOL=20,FORK,SINT32=30,UINT32SYM=100,FNSYM=200,
-        IMPORT_STUB = 254,
-        NTYPE = 255
+        UINT32,UINT64,PACK,COMMA,PACKIND,ARG,DEREF,ADDROF,CALL_BUILTIN=9_u8,SETVAR,GETVAR,HAVEVAR,BOOL=20_u8,FORK,SINT32=30_u8,UINT32SYM=100_u8,FNSYM=200_u8,
+        IMPORT_STUB = 254_u8,
+        NTYPE = 255_u8
     };
     constexpr inline std::uint32_t VARIABLE = std::numeric_limits<std::uint32_t>::max();
-    
-    inline std::uint32_t nchld_of(NodeType t){
-        switch(t){
-            using enum NodeType;
-            case UINT32: case UINT64: case SINT32: case BOOL: case ARG: case GETVAR: case UINT32SYM: case FNSYM: case NTYPE: case IMPORT_STUB:
-                return 0;
-            case SETVAR: case PACKIND: case DEREF: case ADDROF:
-                return 1;
-            case HAVEVAR:
-                return 2;
-            case FORK:
-                return 3;
-            case PACK: case COMMA: case CALL_BUILTIN:
-                return VARIABLE;
-        }
-        cppp::unreachable();
-    }
+
     // Public API: sequence for accessing children; implementation detail: also packs the 64-bit data field to save memory (otherwise it would be wasted on padding)
     static_assert(sizeof(std::uintptr_t)==sizeof(std::uint64_t),"Non-64-bit systems unsupported");
     
@@ -64,7 +49,7 @@ namespace bbe::impl{
             ("Too expensive")
             #endif
             ;
-            inline ASTChildren& operator=(ASTChildren&&);
+            inline ASTChildren& operator=(ASTChildren&&) noexcept;
             ASTChildren& operator=(const ASTChildren&) = delete
             #ifndef __INTELLISENSE__
             ("Too expensive")
@@ -199,7 +184,7 @@ namespace bbe::impl{
                 deserialize(buf);
             }
             ASTNode(const ASTNode&) = delete;
-            ASTNode(ASTNode&&) = default;
+            ASTNode(ASTNode&&) noexcept = default;
             void deserialize(cppp::frozen_byte_view&);
             void serialize(cppp::bytes&,const std::unordered_map<func_id,func_id>&) const;
             void initialize(NodeType type,std::uint32_t p){
@@ -272,14 +257,14 @@ namespace bbe::impl{
             ASTNode& operator=(ASTNode&&) = default;
     };
     #ifndef __INTELLISENSE__ // intellisense doesn't reuse the base class padding, so it always thinks we have a regression
-    static_assert(sizeof(ASTNode)<=24,"Regression");
+    static_assert(sizeof(ASTNode)<=24uz,"Regression");
     #endif
     inline ASTChildren::ASTChildren(std::uint32_t n,uninitialize_t uninit) : _data(reinterpret_cast<std::uint64_t>(std::allocator<ASTNode>::allocate(n))), nchld(n){
         CPPP_ASSERT(n);
         // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
         std::uninitialized_fill_n(m(),n,uninit);
     }
-    inline ASTChildren& ASTChildren::operator=(ASTChildren&& other){
+    inline ASTChildren& ASTChildren::operator=(ASTChildren&& other) noexcept{
         std::uint32_t tmp_nc = std::exchange(other.nchld,0_u32);
         _die();
         _data = other._data;
@@ -299,10 +284,10 @@ namespace bbe::impl{
         return m()+nchld;
     }
     inline ASTNode& ASTChildren::back(){
-        return m()[nchld-1];
+        return m()[nchld-1_u32];
     }
     inline const ASTNode& ASTChildren::back() const{
-        return m()[nchld-1];
+        return m()[nchld-1_u32];
     }
     inline bool ASTChildren::operator==(const ASTChildren& other) const{
         if(nchld != other.nchld) return false;
@@ -317,12 +302,11 @@ namespace bbe::impl{
     inline void ASTChildren::erase(std::uint32_t indx){
         CPPP_ASSERT(indx < nchld);
         ASTNode* nmem;
-        if(nchld > 1){
-            nmem = std::allocator<ASTNode>::allocate(nchld - 1);
+        if(nchld > 1_u32){
+            nmem = std::allocator<ASTNode>::allocate(nchld - 1_u32);
         }else{
             nmem = nullptr;
         }
-        --nchld;
         /*
         indx = 2
         ~~~~~v
@@ -340,17 +324,18 @@ namespace bbe::impl{
         // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
         std::uninitialized_move_n(m(),indx,nmem);
         // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
-        std::uninitialized_move_n(m()+indx+1,nchld-indx,nmem+indx);
+        std::uninitialized_move_n(m()+indx+1_u32,nchld-1_u32-indx,nmem+indx);
         _die();
+        --nchld;
         _data = reinterpret_cast<std::uintptr_t>(nmem);
     }
     template<typename ...A>
     inline void ASTChildren::emplace(A&& ...args){
-        ASTNode* nmem = std::allocator<ASTNode>::allocate(nchld+1);
+        ASTNode* nmem = std::allocator<ASTNode>::allocate(nchld+1_u32);
         try{
             new(nmem+nchld) ASTNode(std::forward<A>(args)...);
         }catch(...){
-            std::allocator<ASTNode>::deallocate(nmem,nchld+1);
+            std::allocator<ASTNode>::deallocate(nmem,nchld+1_u32);
             throw;
         }
         // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
@@ -361,19 +346,30 @@ namespace bbe::impl{
     }
     template<typename ...A>
     inline void ASTChildren::insert(std::uint32_t at,A&& ...args){
-        ASTNode* nmem = std::allocator<ASTNode>::allocate(nchld+1);
+        ASTNode* nmem = std::allocator<ASTNode>::allocate(nchld+1_u32);
         try{
             new(nmem+at) ASTNode(std::forward<A>(args)...);
         }catch(...){
-            std::allocator<ASTNode>::deallocate(nmem,nchld+1);
+            std::allocator<ASTNode>::deallocate(nmem,nchld+1_u32);
             throw;
         }
         // XXX: Can't use std::execution::unseq yet due to https://gcc.gnu.org/bugzilla/show_bug.cgi?id=126186
         std::uninitialized_move_n(m(),at,nmem);
-        std::uninitialized_move_n(m()+at,nchld-at,nmem+at+1);
+        std::uninitialized_move_n(m()+at,nchld-at,nmem+at+1_u32);
         _die();
         _data = reinterpret_cast<std::uintptr_t>(nmem);
         ++nchld;
+    }
+    inline bool can_pop_back_from(const ASTNode& n){
+        switch(n.type()){
+            using enum NodeType;
+            case PACK: case COMMA:
+                return true;
+            case CALL_BUILTIN:
+                return n.getp32() == 0 && n.children().size() > 1uz;
+            default:
+                return false;
+        }
     }
 }
 namespace bbe{
@@ -383,5 +379,5 @@ namespace bbe{
     BBE_EXPORT null_initialize_t;
     BBE_EXPORT null_initialize;
     BBE_EXPORT VARIABLE;
-    BBE_EXPORT nchld_of;
+    BBE_EXPORT can_pop_back_from;
 }

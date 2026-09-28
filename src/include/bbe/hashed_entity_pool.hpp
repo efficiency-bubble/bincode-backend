@@ -92,7 +92,7 @@ namespace bbe::impl{
         public:
             HashedEntityPool() = default;
             id_type size() const{
-                return static_cast<id_type>(obj.size());
+                return cppp::assume_cast<id_type>(obj.size());
             }
             template<typename ...Ctx>
             HashedEntityPool(id_type from,cppp::frozen_byte_view& buf,Ctx& ...ctx) : fl(from+cppp::muleb128_r<id_type>(buf)){

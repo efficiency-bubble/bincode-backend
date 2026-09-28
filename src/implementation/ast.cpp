@@ -2,9 +2,27 @@
 #include<bbe/project_entity_pool.hpp>
 #include<bbe/serialization.hpp>
 #include<cppp/assert.hpp>
+#include<cppp/format.hpp>
+#include<cppp/int.hpp>
 namespace bbe::impl{
     static bool has_extended_data(NodeType t){
         return t == NodeType::UINT64;
+    }
+    static std::uint32_t nchld_of(NodeType t){
+        switch(t){
+            using enum NodeType;
+            case UINT32: case UINT64: case SINT32: case BOOL: case GETVAR: case UINT32SYM: case FNSYM: case NTYPE: case IMPORT_STUB:
+                return 0;
+            case SETVAR: case PACKIND: case DEREF: case ADDROF: case ARG:
+                return 1;
+            case HAVEVAR:
+                return 2;
+            case FORK:
+                return 3;
+            case PACK: case COMMA: case CALL_BUILTIN:
+                return VARIABLE;
+        }
+        cppp::unreachable();
     }
     void ASTNode::deserialize(cppp::frozen_byte_view& buf){
         _type = static_cast<NodeType>(cppp::read<std::uint8_t>(buf));
@@ -95,7 +113,7 @@ namespace bbe::impl{
                 }else goto error;
                 break;
             case ARG:
-                ret = sig.parameter().index();
+                ret = sig.parameters()[getp32()].index();
                 break;
             case DEREF:
                 if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
@@ -117,11 +135,19 @@ namespace bbe::impl{
                     case 0:
                         if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
                             if(const TypeInfo& t = tdb[pt];t.type() == TypeCategory::FUNCTION_POINTER){
-                                type_id at = children()[1uz].result_type();
-                                if(at != tdb.T_ERROR && t.function_signature().parameter().index() != at){
-                                    errors.add(this,u8"Argument and parameter type mismatch"s);
+                                if(t.function_signature().parameters().size() == children().size() - 1uz){
+                                    for(std::uint32_t ind=0,indnext;ind<cppp::assume_cast<std::uint32_t>(t.function_signature().parameters().size());ind=indnext){
+                                        indnext = ind + 1_u32;
+                                        type_id at = children()[indnext].result_type();
+                                        if(at != tdb.T_ERROR && t.function_signature().parameters()[ind].index() != at){
+                                            errors.add(this,cppp::format<u8"Argument and parameter type mismatch at {}"_ts>(ind));
+                                        }
+                                    }
+                                    ret = t.function_signature().return_type().index();
+                                }else{
+                                    errors.add(this,cppp::format<u8"Argument and parameter type count mismatch, #a {} != #p {}"_ts>(children().size() - 1uz,t.function_signature().parameters().size()));
+                                    goto error;
                                 }
-                                ret = t.function_signature().return_type().index();
                             }else{
                                 errors.add(this,u8"Cannot call non-function"s);
                                 goto error;

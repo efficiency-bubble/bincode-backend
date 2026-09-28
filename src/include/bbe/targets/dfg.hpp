@@ -10,12 +10,12 @@ namespace bbe::targets::dfg::impl{
     using namespace std::literals;
     using namespace cppp::literals;
     enum class NodeType : std::uint16_t{
-        UINT32,UINT64,PACK,PACKIND=4,ARG,DEREF,ADDROF,CALL_BUILTIN=9,BOOL=20,FORK,SINT32=30,
-        FNSYM=200,
-        SEQU=310,
-        DUMMY=400,
+        UINT32,UINT64,PACK,PACKIND=4_u16,ARG,DEREF,ADDROF,CALL_BUILTIN=9_u16,BOOL=20_u16,FORK,SINT32=30_u16,
+        FNSYM=200_u16,
+        SEQU=310_u16,
+        DUMMY=400_u16,
         
-        VOID=65535
+        VOID=65535_u16
     };
     class DataNode{
         NodeType op;
@@ -28,9 +28,9 @@ namespace bbe::targets::dfg::impl{
             DataNode(NodeType op,type_id rtype,std::vector<const DataNode*>&& src) : op(op), rtype(rtype), src(std::move(src)){}
             DataNode(NodeType op,type_id rtype,std::uint32_t prim,std::vector<const DataNode*>&& src) : op(op), rtype(rtype), prim(prim), src(std::move(src)){}
             DataNode(const DataNode&) = delete;
-            DataNode(DataNode&&) = default; // only use when nothing points to this
+            DataNode(DataNode&&) noexcept = default; // only use when nothing points to this
             DataNode& operator=(const DataNode&) = delete;
-            DataNode& operator=(DataNode&&) = default;
+            DataNode& operator=(DataNode&&) noexcept = default;
             ~DataNode(){}
             NodeType operation() const{
                 return op;

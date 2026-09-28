@@ -15,17 +15,17 @@ namespace bbe::impl{
         friend class LinearMovingGarbageCollectedPool;
         // GC marking isn't *really* a mutating operation, is it?
         void invert_mark_and_set_id(I other) const{
-            _index = static_cast<I>(static_cast<I>(other << 1) | static_cast<I>(static_cast<I>(~_index) & static_cast<I>(1)));
+            _index = cppp::assume_cast<I>(cppp::assume_cast<I>(other << 1) | cppp::assume_cast<I>(cppp::assume_cast<I>(~_index) & cppp::assume_cast<I>(1)));
         }
         bool mark_parity() const{
-            return (_index & 1) != 0;
+            return cppp::assume_cast<I>(_index & cppp::safe_cast<I>(1)) != 0;
         }
         public:
             Entity(I k) : _index(k << 1){}
             Entity(const Entity&) = delete;
-            Entity(Entity&&) = default;
+            Entity(Entity&&) noexcept = default;
             Entity& operator=(const Entity&) = delete;
-            Entity& operator=(Entity&&) = default;
+            Entity& operator=(Entity&&) noexcept = default;
             using id_type = I;
             I index() const{
                 return _index >> 1;
@@ -122,7 +122,7 @@ namespace bbe::impl{
             LinearMovingGarbageCollectedPool(const LinearMovingGarbageCollectedPool&) = delete;
             LinearMovingGarbageCollectedPool(LinearMovingGarbageCollectedPool&& other) : storage(std::exchange(other.storage,nullptr)), length(other.length), parity(other.parity){}
             LinearMovingGarbageCollectedPool& operator=(const LinearMovingGarbageCollectedPool&) = delete;
-            LinearMovingGarbageCollectedPool& operator=(LinearMovingGarbageCollectedPool&& other){
+            LinearMovingGarbageCollectedPool& operator=(LinearMovingGarbageCollectedPool&& other) noexcept{
                 E** tmp = std::exchange(other.storage,nullptr);
                 destroy();
                 length = other.length;
@@ -154,9 +154,9 @@ namespace bbe::impl{
                 }
                 public:
                     Sweeper(const Sweeper&) = delete;
-                    Sweeper(Sweeper&& other) : pool(std::exchange(other.pool,nullptr)), counter(other.counter){}
+                    Sweeper(Sweeper&& other) noexcept : pool(std::exchange(other.pool,nullptr)), counter(other.counter){}
                     Sweeper& operator=(const Sweeper&) = delete;
-                    Sweeper& operator=(Sweeper&& other){
+                    Sweeper& operator=(Sweeper&& other) noexcept{
                         LinearMovingGarbageCollectedPool* tmp = std::exchange(other.pool,nullptr);
                         _destroy();
                         pool = tmp;
@@ -222,7 +222,7 @@ namespace bbe::impl{
                             }
                         }else new(storage + block_count) E*(new_block.get());
                     }else{
-                        storage = std::allocator<E*>().allocate(1);
+                        storage = std::allocator<E*>().allocate(1uz);
                         new(storage) E*(new_block.get());
                     }
                     new_block.release();

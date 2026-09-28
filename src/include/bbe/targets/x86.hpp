@@ -65,6 +65,17 @@ namespace bbe::targets::x86::impl{
         std::unordered_map<func_id,std::uint32_t> function_order;
         std::vector<SymbolInfo> symtab;
         public:
+            Program() = default;
+            Program(const ProjectEntitiesPool&&) = delete;
+            Program(const ProjectEntitiesPool& pep){
+                for(const auto& fn : pep.functions()){
+                    if(fn.ast().type() == bbe::NodeType::IMPORT_STUB){
+                        import_function(fn.index(),fn.cname());
+                    }else{
+                        export_function(fn.index(),{fn.cname(),fn,pep.types()});
+                    }
+                }
+            }
             void add_function(func_id fid,Function&& fn){
                 function_order.try_emplace(fid,fnv.size());
                 fnv.emplace_back(std::move(fn));

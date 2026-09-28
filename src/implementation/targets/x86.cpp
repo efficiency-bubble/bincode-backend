@@ -76,7 +76,7 @@ namespace bbe::targets::x86::impl{
             static x::displacement<x::width::W8> soff_to_disp8(std::uint32_t off){
                 CPPP_ASSERT(off != NSOFF);
                 if(off > 128) throw std::logic_error("x86 compile: soff_to_disp8: stack offset too large");
-                return {static_cast<std::int8_t>(-static_cast<std::int32_t>(off))};
+                return {cppp::assume_cast<std::int8_t>(-cppp::assume_cast<std::int32_t>(off))};
             }
             template<x::width w=x::width::W32>
             static void rtos(cppp::bytes& b,std::byte r,x::displacement<x::width::W8> soff){
@@ -130,7 +130,7 @@ namespace bbe::targets::x86::impl{
             }
             static x::displacement<x::width::W8> aoff_to_disp8(std::uint32_t off){
                 if(off > 127) throw std::logic_error("x86 compile: aoff_to_disp8: offset too large");
-                return {static_cast<std::int8_t>(off)};
+                return {cppp::assume_cast<std::int8_t>(off)};
             }
             template<x::width w>
             void ldbyte(std::uint32_t doffs,std::uint32_t soffs){
@@ -151,23 +151,16 @@ namespace bbe::targets::x86::impl{
                 void into(const DataValue& v,std::byte reg) const{
                     stor(f.instructions(),soff_to_disp8(v.stack()),reg);
                 }
-                void load_args(const TypeInfo& argt){
-                    arg_values.emplace_back(argt);
-                    if(argt.index() == TypeDatabase::T_VOID) return; // nothing here
-                    else if(argt.type() == TypeCategory::PACK){
-                        arg_values.reserve(1uz+argt.pack_contents().size());
-                        for(std::uint32_t i=0;i<argt.pack_contents().size();++i){
-                            const TypeInfo& arg_i_t = argt.pack_contents()[i];
-                            if(arg_i_t.index() == TypeDatabase::T_VOID) continue;
-                            else if(arg_i_t.type() == TypeCategory::PACK) throw std::logic_error("x86 compile: ABI: Can't have packs in an argument pack"s);
-                            DataValue& arg_i_v = arg_values.emplace_back(arg_i_t);
-                            
-                            std::uint32_t asize = static_cast<std::uint32_t>(arg_i_t.size());
-                            rtosd(asize,f.instructions(),arg_reg(i),soff_to_disp8(allocate_stack(asize,arg_i_v)));
-                            arg_values[0uz].pack_contents().emplace_back(&arg_i_v);
-                        }
-                    }else{
-                        rtos(f.instructions(),arg_reg(0),soff_to_disp8(allocate_stack(static_cast<std::uint32_t>(argt.size()),arg_values[0uz])));
+                void load_args(const type_pack& argp){
+                    arg_values.reserve(1uz+argp.size());
+                    for(std::uint32_t i=0;i<argp.size();++i){
+                        const TypeInfo& arg_i_t = argp[i];
+                        if(arg_i_t.index() == TypeDatabase::T_VOID) continue;
+                        else if(arg_i_t.type() == TypeCategory::PACK) throw std::logic_error("x86 compile: ABI: Can't have packs in an argument pack"s);
+                        DataValue& arg_i_v = arg_values.emplace_back(arg_i_t);
+                        
+                        std::uint32_t asize = cppp::assume_cast<std::uint32_t>(arg_i_t.size());
+                        rtosd(asize,f.instructions(),arg_reg(i),soff_to_disp8(allocate_stack(asize,arg_i_v)));
                     }
                 }
                 const DataValue& compile_node(const dfg::DataNode& dn){
@@ -189,11 +182,11 @@ namespace bbe::targets::x86::impl{
                         case PACKIND:
                             return *compile_node(*dn.parents().front()).pack_contents()[dn.primitive()];
                         case ARG:
-                            return arg_values.front();
+                            return arg_values[dn.primitive()];
                         case DEREF: {
                             stor<x::width::W64>(f.instructions(),soff_to_disp8(compile_node(*dn.parents().front()).stack()),x::reg::C);
                             DataValue& rv = new_value(dn);
-                            const std::uint32_t bound = static_cast<std::uint32_t>(tdb[dn.return_type()].size());
+                            const std::uint32_t bound = cppp::assume_cast<std::uint32_t>(tdb[dn.return_type()].size());
                             switch(bound){
                                 case 1:
                                     x::instructions::mov::r_rm::for_width<x::width::W8>::encode(f.instructions(),x::reg::A,0b00_b /* [reg] */,x::reg::C);
@@ -227,13 +220,11 @@ namespace bbe::targets::x86::impl{
                                     DataValue& ret = new_value(dn);
                                     const DataValue& fn = compile_node(*dn.parents()[0uz]);
                                     
-                                    const DataValue& arg = compile_node(*dn.parents()[1uz]);
-                                    if(arg.is_pack()){
-                                        for(std::uint32_t i=0;i<arg.pack_contents().size();++i){
-                                            stord(static_cast<std::uint32_t>(arg.pack_contents()[i]->type().size()),f.instructions(),soff_to_disp8(arg.pack_contents()[i]->stack()),arg_reg(i));
-                                        }
-                                    }else{
-                                        stor(f.instructions(),soff_to_disp8(arg.stack()),arg_reg(0));
+                                    std::uint32_t argc = cppp::assume_cast<std::uint32_t>(dn.parents().size() - 1uz);
+                                    for(std::uint32_t i=0,inext;i<argc;i=inext){
+                                        inext = i + 1_u32;
+                                        const DataValue& arg = compile_node(*dn.parents()[inext]);
+                                        stord(cppp::assume_cast<std::uint32_t>(arg.type().size()),f.instructions(),soff_to_disp8(arg.stack()),arg_reg(i));
                                     }
                                     
                                     x::instructions::call::near_abs::for_width<x::width::W64>::encode(f.instructions(),0x01_b /* disp8 */,x::reg::BP,soff_to_disp8(fn.stack()));
@@ -287,13 +278,13 @@ namespace bbe::targets::x86::impl{
                                 std::size_t jeloc = f.instructions().size();
                                 auto je = x::instructions::jmp::rel::for_width<x::width::W8>::encode(f.instructions(),x::skip_immediate);
                                 
-                                cppp::write<std::int8_t>(f.instructions().data()+jzloc+jz.offset_of_first<x::ComponentType::IMMEDIATE>,static_cast<std::int8_t>(f.instructions().size()-jzloc-jz.total_size));
+                                cppp::write<std::int8_t>(f.instructions().data()+jzloc+jz.offset_of_first<x::ComponentType::IMMEDIATE>,cppp::assume_cast<std::int8_t>(f.instructions().size()-jzloc-jz.total_size));
                                 {
                                     const DataValue& rhv = compile_node(*dn.parents()[2uz]);
                                     into(rhv,x::reg::A);
                                     rtos(f.instructions(),x::reg::A,spoff);
                                 }
-                                cppp::write<std::int8_t>(f.instructions().data()+jeloc+je.offset_of_first<x::ComponentType::IMMEDIATE>,static_cast<std::int8_t>(f.instructions().size()-jeloc-je.total_size));
+                                cppp::write<std::int8_t>(f.instructions().data()+jeloc+je.offset_of_first<x::ComponentType::IMMEDIATE>,cppp::assume_cast<std::int8_t>(f.instructions().size()-jeloc-je.total_size));
                                 return rv;
                             }else{
                                 const DataValue& cond = compile_node(*dn.parents()[0uz]);
@@ -305,9 +296,9 @@ namespace bbe::targets::x86::impl{
                                 std::size_t jeloc = f.instructions().size();
                                 auto je = x::instructions::jmp::rel::for_width<x::width::W8>::encode(f.instructions(),x::skip_immediate);
                                 
-                                cppp::write<std::int8_t>(f.instructions().data()+jzloc+jz.offset_of_first<x::ComponentType::IMMEDIATE>,static_cast<std::int8_t>(f.instructions().size()-jzloc-jz.total_size));
+                                cppp::write<std::int8_t>(f.instructions().data()+jzloc+jz.offset_of_first<x::ComponentType::IMMEDIATE>,cppp::assume_cast<std::int8_t>(f.instructions().size()-jzloc-jz.total_size));
                                 compile_node(*dn.parents()[2uz]);
-                                cppp::write<std::int8_t>(f.instructions().data()+jeloc+je.offset_of_first<x::ComponentType::IMMEDIATE>,static_cast<std::int8_t>(f.instructions().size()-jeloc-je.total_size));
+                                cppp::write<std::int8_t>(f.instructions().data()+jeloc+je.offset_of_first<x::ComponentType::IMMEDIATE>,cppp::assume_cast<std::int8_t>(f.instructions().size()-jeloc-je.total_size));
                                 return no_value(dn);
                             }
                         }
@@ -317,7 +308,7 @@ namespace bbe::targets::x86::impl{
                             auto lea = x::instructions::lea::for_width<x::width::W64>::encode(f.instructions(),x::reg::A,0b00_b,0b101_b /* rip+disp32 on 64-bit mode */,x::skip_displacement<x::width::W32>);
                             constexpr std::size_t disp_local_offs = lea.offset_of_first<x::ComponentType::DISPLACEMENT>;
                             offs += disp_local_offs;
-                            f.add_relocation({.offset=static_cast<std::uint32_t>(offs),.fni=dn.primitive(),.isize=static_cast<std::uint32_t>(lea.total_size-disp_local_offs)});
+                            f.add_relocation({.offset=cppp::assume_cast<std::uint32_t>(offs),.fni=dn.primitive(),.isize=cppp::assume_cast<std::uint32_t>(lea.total_size-disp_local_offs)});
                             rtos<x::width::W64>(f.instructions(),x::reg::A,soff_to_disp8(allocate_qw(rv)));
                             return rv;
                         }
@@ -345,7 +336,7 @@ namespace bbe::targets::x86::impl{
         x::instructions::mov::rm_r::for_width<x::width::W64>::encode(b,0b11_b,x::reg::BP,x::reg::SP);
         std::size_t enter = b.size();
         enter += x::instructions::sub::rm_imm::for_width<x::width::W64>::encode(b,0b11_b,x::reg::SP,x::skip_immediate).offset_of_first<x::ComponentType::IMMEDIATE>;
-        compiler.load_args(f.signature().parameter());
+        compiler.load_args(f.signature().parameters());
         if(const targets::dfg::DataNode* se=f.dfg().root().side_effects()){
             compiler.compile_node(*se);
         }

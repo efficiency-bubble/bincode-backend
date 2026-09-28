@@ -40,9 +40,9 @@ namespace bbe::inter::impl{
             Value() = default;
             template<typename T> requires(!std::is_same_v<std::remove_cvref_t<T>,Value>)
             Value(T&& v) : _value(std::forward<T>(v)){}
-            Value(Value&&) = default;
+            Value(Value&&) noexcept = default;
             Value(const Value& other) : _value(other._value.index(),other._value?other._value.dispatch(copy_construct()):nullptr){}
-            Value& operator=(Value&&) = default;
+            Value& operator=(Value&&) noexcept = default;
             Value& operator=(const Value& other){
                 _value.reset(other._value.index(),other._value?other._value.dispatch(copy_construct()):nullptr);
                 return *this;

@@ -80,7 +80,7 @@ namespace bbe::impl{
                 return align;
             }
             std::uint64_t stride() const{
-                return _size + (-_size & (align-1));
+                return _size + (-_size & (align-1_u64));
             }
             TypeCategory type() const{
                 return data.tag();
@@ -204,6 +204,9 @@ namespace bbe::impl{
             const TypeInfo& operator[](std::size_t ind) const{
                 return *arr[ind];
             }
+            void set(std::size_t ind,const TypeInfo& ref){
+                arr[ind] = &ref;
+            }
             std::size_t size() const{
                 return arr.size();
             }
@@ -213,26 +216,42 @@ namespace bbe::impl{
     };
     class FunctionSignature{
         const TypeInfo* ret;
-        const TypeInfo* par;
+        union{
+            type_pack par;
+        };
         friend TypeDatabase;
         public:
             FunctionSignature(uninitialize_t){}
-            FunctionSignature(const TypeInfo& r,const TypeInfo& a) : ret(&r), par(&a){}
+            FunctionSignature(const TypeInfo& r,type_pack&& p) : ret(&r), par(std::move(p)){}
+            template<std::same_as<TypeInfo> ...T>
+            FunctionSignature(const TypeInfo& r,const T& ...pv) : ret(&r), par({&pv...}){}
             FunctionSignature(cppp::frozen_byte_view& buf,const TypeDatabase& tdb) : FunctionSignature(uninitialize){
                 deserialize(buf,tdb);
+            }
+            FunctionSignature(const FunctionSignature& other) : ret(other.ret), par(other.par){}
+            FunctionSignature(FunctionSignature&& other) noexcept : ret(other.ret), par(std::move(other.par)){}
+            FunctionSignature& operator=(const FunctionSignature& other){
+                ret = other.ret;
+                par = other.par;
+                return *this;
+            }
+            FunctionSignature& operator=(FunctionSignature&& other) noexcept{
+                ret = other.ret;
+                par = std::move(other.par);
+                return *this;
             }
             inline void deserialize(cppp::frozen_byte_view&,const TypeDatabase&);
             void trace_types(TypeSweeper& swp){
                 swp.trace(ret);
-                swp.trace(par);
+                par.trace_types(swp);
             }
             void serialize(cppp::bytes& dst) const{
                 cppp::muleb128_w<type_id>(dst,ret->index());
-                cppp::muleb128_w<type_id>(dst,par->index());
+                par.serialize(dst);
             }
             type_hash hash() const{
                 type_hash h = ret->hash();
-                h.combine(par->hash());
+                h.combine(par.hash());
                 return h;
             }
             void set_return(const TypeInfo& t){
@@ -241,14 +260,17 @@ namespace bbe::impl{
             const TypeInfo& return_type() const{
                 return *ret;
             }
-            void set_param(const TypeInfo& t){
-                par = &t;
+            const type_pack& parameters() const{
+                return par;
             }
-            const TypeInfo& parameter() const{
-                return *par;
+            type_pack& parameters(){
+                return par;
             }
             bool operator==(const FunctionSignature& other) const{
                 return ret == other.ret && par == other.par;
+            }
+            ~FunctionSignature(){
+                par.~type_pack();
             }
     };
     // sahd, size align hash data
@@ -309,16 +331,16 @@ namespace bbe::impl{
         };
         struct hash_tr{
             constexpr std::size_t operator()(MutableTypeKey r) const noexcept{
-                return static_cast<std::size_t>(r->hash().value());
+                return cppp::assume_cast<std::size_t>(r->hash().value());
             }
             constexpr std::size_t operator()(const type_pack& pk) const noexcept{
-                return static_cast<std::size_t>(pk.hash().value());
+                return cppp::assume_cast<std::size_t>(pk.hash().value());
             }
             constexpr std::size_t operator()(FunctionSignature fs) const noexcept{
-                return static_cast<std::size_t>(fs.hash().value());
+                return cppp::assume_cast<std::size_t>(fs.hash().value());
             }
             constexpr std::size_t operator()(const TypeInfo* p) const noexcept{
-                return static_cast<std::size_t>(~p->hash().value());
+                return cppp::assume_cast<std::size_t>(~p->hash().value());
             }
             using is_transparent = void;
         };
@@ -402,7 +424,7 @@ namespace bbe::impl{
     }
     inline void FunctionSignature::deserialize(cppp::frozen_byte_view& buf,const TypeDatabase& tdb){
         ret = &tdb[cppp::muleb128_r<type_id>(buf)];
-        par = &tdb[cppp::muleb128_r<type_id>(buf)];
+        new(&par) type_pack(buf,tdb);
     }
     inline void TypeInfo::trace_data(TypeSweeper& swp){
         switch(data.tag()){

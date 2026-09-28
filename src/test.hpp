@@ -39,9 +39,6 @@ ASTNode comma(std::uint32_t ind,T&& ...children){
 ASTNode fn(std::uint32_t id){
     return {NodeType::FNSYM,id};
 }
-ASTNode arg(){
-    return {NodeType::ARG};
-}
 ASTNode pind(ASTNode&& arg,std::uint32_t ind){
     ASTNode x{NodeType::PACKIND,ind,1,uninitialize};
     x.children()[0uz].initialize(std::move(arg));
@@ -58,7 +55,7 @@ ASTNode deref(ASTNode&& arg){
     return x;
 }
 ASTNode arg(std::uint32_t ind){
-    return pind(arg(),ind);
+    return {NodeType::ARG,ind};
 }
 template<typename ...T>
 ASTNode cmag(std::uint32_t magic,T&& ...children){
@@ -101,11 +98,11 @@ std::unordered_map<std::uint32_t,cppp::sv> EXPLAIN{
 
 ASTNode fibonacci(){
     return fork(
-        cmag(FN_LEQ32,arg(),u32(2)),
+        cmag(FN_LEQ32,arg(0),u32(2)),
         u32(1),
         cmag(FN_ADD,
-            cmag(0,fn(0),cmag(FN_SUB,arg(),u32(1))),
-            cmag(0,fn(0),cmag(FN_SUB,arg(),u32(2)))
+            cmag(0,fn(0),cmag(FN_SUB,arg(0),u32(1))),
+            cmag(0,fn(0),cmag(FN_SUB,arg(0),u32(2)))
         )
     );
 }

@@ -15,16 +15,16 @@ int main(){
     ErrorDatabase edb;
     
     const TypeInfo& ui32 = p.types()[TypeDatabase::T_UINT32];
-    Function& example_fn = p.functions().emplace(u8"example"s,FunctionSignature{ui32,p.types().pack_of({&ui32,&ui32})});
-    p.functions().emplace(u8"multiply_adjust"s,FunctionSignature{ui32,p.types().pack_of({&ui32,&ui32})});
+    Function& example_fn = p.functions().emplace(u8"example"s,FunctionSignature{ui32,ui32,ui32});
+    p.functions().emplace(u8"multiply_adjust"s,FunctionSignature{ui32,ui32,ui32});
     example_fn.set(
         fork(
             cmag(FN_LEQ32,arg(0),u32(2)),
-            cmag(FN_ADD,u32(1),cmag(FN_CALL,fn(1),pack(arg(1),arg(1)))),
-            havevar(0,cmag(FN_CALL,fn(0),pack(cmag(FN_SUB,arg(0),u32(1)),arg(1))),
+            cmag(FN_ADD,u32(1),cmag(FN_CALL,fn(1),arg(1),arg(1))),
+            havevar(0,cmag(FN_CALL,fn(0),cmag(FN_SUB,arg(0),u32(1)),arg(1)),
             cmag(FN_ADD,
                 getvar(0),
-                cmag(FN_CALL,fn(0),pack(cmag(FN_SUB,arg(0),u32(2)),arg(1)))
+                cmag(FN_CALL,fn(0),cmag(FN_SUB,arg(0),u32(2)),arg(1))
             ))
         )
     );

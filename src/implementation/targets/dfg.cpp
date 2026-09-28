@@ -63,7 +63,7 @@ namespace bbe::targets::dfg::impl{
                 return {_nodes.emplace_back(NodeType::PACKIND,nd.result_type(),nd.getp32(),std::vector{&op.value()}),op.side_effects()};
             }
             case ARG:
-                return _nodes.emplace_back(NodeType::ARG,nd.result_type());
+                return _nodes.emplace_back(NodeType::ARG,nd.result_type(),nd.getp32());
             case DEREF: {
                 Operation op{compile(br,nd.children().front())};
                 return {_nodes.emplace_back(NodeType::DEREF,nd.result_type(),std::vector{&op.value()}),op.side_effects()};

@@ -16,7 +16,7 @@ struct TestCase{
 void test(const cppp::view<const TestCase> cases){
     std::size_t pass=0uz;
     for(std::size_t i=0uz;i<cases.size();++i){
-        std::println("[{}/{}] Testing {}"sv,i+1,cases.size(),cppp::cview(cases[i].name));
+        std::println("[{}/{}] Testing {}"sv,i+1uz,cases.size(),cppp::cview(cases[i].name));
         try{
             auto result{cases[i].fn()};
             pass += result.has_value();
@@ -58,30 +58,30 @@ cppp::str to_string(bool b){
 int main(){
     std::initializer_list<TestCase> test_cases{
         {u8"AST construct and move"sv,[] -> test_result_t {
-            bbe::ASTNode test{NodeType::BOOL,1,bbe::uninitialize};
-            test.children().front().initialize(NodeType::PACK,12);
+            bbe::ASTNode test{NodeType::BOOL,1_u32,bbe::uninitialize};
+            test.children().front().initialize(NodeType::PACK,12_u32);
             ASSERT_EQ(test.type(),NodeType::BOOL,"Wrong type");
-            ASSERT_EQ(test.children().size(),1,"Wrong nchld");
+            ASSERT_EQ(test.children().size(),1_u32,"Wrong nchld");
             ASSERT_EQ(test.children().front().type(),NodeType::PACK,"Wrong type of child");
-            ASSERT_EQ(test.children().front().getp32(),12,"Wrong prim of child");
+            ASSERT_EQ(test.children().front().getp32(),12_u32,"Wrong prim of child");
             if(!test.children().front().children().empty()) return std::unexpected(u8"Wrong nchld of child"s);
 
             bbe::ASTNode test2{std::move(test)};
             ASSERT_EQ(test2.type(),NodeType::BOOL,"Wrong type after move");
-            ASSERT_EQ(test2.children().size(),1,"Wrong nchld after move");
+            ASSERT_EQ(test2.children().size(),1_u32,"Wrong nchld after move");
             ASSERT_EQ(test2.children().front().type(),NodeType::PACK,"Wrong type of child after move");
-            ASSERT_EQ(test2.children().front().getp32(),12,"Wrong prim of child after move");
+            ASSERT_EQ(test2.children().front().getp32(),12_u32,"Wrong prim of child after move");
             if(!test2.children().front().children().empty()) return std::unexpected(u8"Wrong nchld of child after move"s);
             return {};
         }},
         {u8"AST serialization/deserialization"sv,[] -> test_result_t {
             cppp::bytes buf;
-            bbe::ASTNode test{NodeType::PACK,2,bbe::uninitialize};
-            test.children()[0uz].initialize({NodeType::COMMA,0,1,bbe::uninitialize});
+            bbe::ASTNode test{NodeType::PACK,2_u32,bbe::uninitialize};
+            test.children()[0uz].initialize({NodeType::COMMA,0_u32,1_u32,bbe::uninitialize});
             test.children()[0uz].children()[0uz].initialize();
             test.children()[1uz].initialize();
             test.serialize(buf,{});
-            for(std::size_t i=0;i<buf.size();++i){
+            for(std::size_t i=0uz;i<buf.size();++i){
                 printf("%02x ",(int)buf[i]);
             }
             putchar('\n');
@@ -121,9 +121,10 @@ int main(){
             ASSERT_EQ(deser.functions().has_func(0),true,"Deserialization does not include func id 0");
             ASSERT_EQ(deser.functions()[0].ast() == fn.ast(),true,"Deserialized AST was changed");
             ASSERT_EQ(deser.functions()[0].cname(),u8"test"sv,"Deserialized function cname was changed");
-            ASSERT_EQ(deser.functions()[0].signature().parameter().index(),TypeDatabase::T_VOID,"Deserialized function parameter type was changed");
+            ASSERT_EQ(deser.functions()[0].signature().parameters().size(),1uz,"Deserialized function parameter count was changed");
+            ASSERT_EQ(deser.functions()[0].signature().parameters()[0uz].index(),TypeDatabase::T_VOID,"Deserialized function parameter type was changed");
             ASSERT_EQ(deser.functions()[0].signature().return_type().index(),TypeDatabase::T_UINT32,"Deserialized function return type was changed");
-            ASSERT_EQ(&deser.functions()[0].signature().parameter(),&deser.types()[TypeDatabase::T_VOID],"Deserialized function parameter type address was changed");
+            ASSERT_EQ(&deser.functions()[0].signature().parameters()[0uz],&deser.types()[TypeDatabase::T_VOID],"Deserialized function parameter type address was changed");
             ASSERT_EQ(&deser.functions()[0].signature().return_type(),&deser.types()[TypeDatabase::T_UINT32],"Deserialized function return type address was changed");
             return {};
         }},

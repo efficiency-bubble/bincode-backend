@@ -28,13 +28,13 @@ namespace bbe::formats::elf::impl{
                     symtab.appendl<std::uint16_t>(0);
                     symtab.appendl<std::uint64_t>(0);
                 }else{
-                    symtab.appendl(static_cast<std::uint16_t>(sections.size())); // linked section ID (to .text; adding after registering .text therefore +1, because of null section)
+                    symtab.appendl(cppp::assume_cast<std::uint16_t>(sections.size())); // linked section ID (to .text; adding after registering .text therefore +1, because of null section)
                     symtab.appendl<std::uint64_t>(entoffs[sym.index()]);
                 }
                 symtab.appendl<std::uint64_t>(0);
             }
             add_section(u8".symtab"sv,2/*symbol table*/,symtab.data(),symtab.size(),0,0,false,false,false,0x18,
-            static_cast<std::uint32_t>(SYMBOL_NAME_TABLE_INDEX+1),1);
+            cppp::assume_cast<std::uint32_t>(SYMBOL_NAME_TABLE_INDEX+1),1);
         }
         cppp::bytes& reltab = section_data.emplace_back();
         for(std::size_t i=0;i<prog.functions().size();++i){
@@ -45,7 +45,7 @@ namespace bbe::formats::elf::impl{
             }
         }
         add_section(u8".rela.text"sv,4/*relocations table*/,reltab.data(),reltab.size(),0,0,false,false,false,0x18,
-static_cast<std::uint32_t>(sections.size()),static_cast<std::uint32_t>(sections.size()-1));
+cppp::assume_cast<std::uint32_t>(sections.size()),cppp::assume_cast<std::uint32_t>(sections.size()-1));
     }
     cppp::bytes Elf::encode() const{
         section_names.data();
@@ -74,8 +74,8 @@ static_cast<std::uint32_t>(sections.size()),static_cast<std::uint32_t>(sections.
         data.appendl<std::uint16_t>(0x38); // PHT item size
         data.appendl<std::uint16_t>(0); // PHT item count
         constexpr std::size_t SHT_ENTRY_SIZE = 0x40uz;
-        data.appendl(static_cast<std::uint16_t>(SHT_ENTRY_SIZE));
-        data.appendl(static_cast<std::uint16_t>(sections.size()+1)); // SHT entry count (+ null entry)
+        data.appendl(cppp::assume_cast<std::uint16_t>(SHT_ENTRY_SIZE));
+        data.appendl(cppp::assume_cast<std::uint16_t>(sections.size()+1)); // SHT entry count (+ null entry)
         data.appendl<std::uint16_t>(SECTION_NAME_TABLE_INDEX+1); // + null entry
         // section data
         std::vector<std::uint64_t> sdaddr;
@@ -86,7 +86,7 @@ static_cast<std::uint32_t>(sections.size()),static_cast<std::uint32_t>(sections.
             }
         }
         // SHT
-        cppp::write(data.data()+SHT_OFFSET_POS,static_cast<std::uint64_t>(data.size()));
+        cppp::write(data.data()+SHT_OFFSET_POS,cppp::assume_cast<std::uint64_t>(data.size()));
         data.resize(data.size()+SHT_ENTRY_SIZE,0_b); // null entry
         std::size_t index = 0uz;
         for(const Section& sec : sections){
@@ -104,7 +104,7 @@ static_cast<std::uint32_t>(sections.size()),static_cast<std::uint32_t>(sections.
             data.appendl<std::uint64_t>(flags);
             data.appendl<std::uint64_t>(sec.m_addr); // loaded memory address
             data.appendl<std::uint64_t>(sdaddr[index]); // file address
-            data.appendl(static_cast<std::uint64_t>(sec.size)); // size
+            data.appendl(cppp::assume_cast<std::uint64_t>(sec.size)); // size
             data.appendl<std::uint32_t>(sec.link); // link
             data.appendl<std::uint32_t>(sec.info); // info
             data.appendl<std::uint64_t>(sec.align); // alignment
