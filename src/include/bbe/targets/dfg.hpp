@@ -1,6 +1,5 @@
 #pragma once
-#include"../function.hpp"
-#include"../type.hpp"
+#include"../project_entity_pool.hpp"
 #include<unordered_map>
 #include<cstdint>
 #include<vector>
@@ -86,9 +85,9 @@ namespace bbe::targets::dfg::impl{
         std::deque<DataNode> _nodes;
         CodeBranch main;
         Operation _root;
-        Operation compile(CodeBranch&,const ASTNode&);
+        Operation compile(const ProjectEntitiesPool&,CodeBranch&,const ASTNode&);
         public:
-            DataFlowGraph(const bbe::Function&);
+            DataFlowGraph(const ProjectEntitiesPool&,const bbe::Function&);
             const std::deque<DataNode>& nodes() const{
                 return _nodes;
             }
@@ -100,7 +99,7 @@ namespace bbe::targets::dfg::impl{
         const FunctionSignature* sig;
         DataFlowGraph _dfg;
         public:
-            Function(const bbe::Function& fn) : sig(&fn.signature()), _dfg(fn){}
+            Function(const ProjectEntitiesPool& pep,const bbe::Function& fn) : sig(&fn.signature()), _dfg(pep,fn){}
             const DataFlowGraph& dfg() const{
                 return _dfg;
             }

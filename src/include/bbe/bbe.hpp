@@ -1,4 +1,2 @@
 #pragma once
-#include"function.hpp"
-#include"ast.hpp"
-#include"entity_pool.hpp"
+#include"project_entity_pool.hpp"

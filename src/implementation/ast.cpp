@@ -11,7 +11,7 @@ namespace bbe::impl{
     static std::uint32_t nchld_of(NodeType t){
         switch(t){
             using enum NodeType;
-            case UINT32: case UINT64: case SINT32: case BOOL: case GETVAR: case UINT32SYM: case FNSYM: case NTYPE: case IMPORT_STUB:
+            case UINT32: case UINT64: case SINT32: case BOOL: case GETVAR: case UINT32SYM: case FNSYM: case NTYPE: case EXTERN_OR_INTRIN:
                 return 0;
             case SETVAR: case PACKIND: case DEREF: case ADDROF: case ARG:
                 return 1;
@@ -19,7 +19,7 @@ namespace bbe::impl{
                 return 2;
             case FORK:
                 return 3;
-            case PACK: case COMMA: case CALL_BUILTIN:
+            case PACK: case COMMA: case CALL:
                 return VARIABLE;
         }
         cppp::unreachable();
@@ -130,65 +130,27 @@ namespace bbe::impl{
                     ret = tdb.pointer_to(tdb[pt]).index();
                 }else goto error;
                 break;
-            case CALL_BUILTIN:
-                switch(prim){
-                    case 0:
-                        if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
-                            if(const TypeInfo& t = tdb[pt];t.type() == TypeCategory::FUNCTION_POINTER){
-                                if(t.function_signature().parameters().size() == children().size() - 1uz){
-                                    for(std::uint32_t ind=0,indnext;ind<cppp::assume_cast<std::uint32_t>(t.function_signature().parameters().size());ind=indnext){
-                                        indnext = ind + 1_u32;
-                                        type_id at = children()[indnext].result_type();
-                                        if(at != tdb.T_ERROR && t.function_signature().parameters()[ind].index() != at){
-                                            errors.add(this,cppp::format<u8"Argument and parameter type mismatch at {}"_ts>(ind));
-                                        }
-                                    }
-                                    ret = t.function_signature().return_type().index();
-                                }else{
-                                    errors.add(this,cppp::format<u8"Argument and parameter type count mismatch, #a {} != #p {}"_ts>(children().size() - 1uz,t.function_signature().parameters().size()));
-                                    goto error;
+            case CALL:
+                if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
+                    if(const TypeInfo& t = tdb[pt];t.type() == TypeCategory::FUNCTION_POINTER){
+                        if(t.function_signature().parameters().size() == children().size() - 1uz){
+                            for(std::uint32_t ind=0,indnext;ind<cppp::assume_cast<std::uint32_t>(t.function_signature().parameters().size());ind=indnext){
+                                indnext = ind + 1_u32;
+                                type_id at = children()[indnext].result_type();
+                                if(at != tdb.T_ERROR && t.function_signature().parameters()[ind].index() != at){
+                                    errors.add(this,cppp::format<u8"Argument and parameter type mismatch at {}"_ts>(ind));
                                 }
-                            }else{
-                                errors.add(this,u8"Cannot call non-function"s);
-                                goto error;
                             }
-                        }else goto error;
-                        break;
-                    case 10:
-                    case 20:
-                    case 30:
-                        if(type_id lt = children()[0uz].result_type();lt != tdb.T_ERROR){
-                            if(type_id rt = children()[1uz].result_type();rt != tdb.T_ERROR){
-                                if(lt == rt){
-                                    switch(lt){
-                                        case TypeDatabase::T_INT32:
-                                        case TypeDatabase::T_UINT32:
-                                        case TypeDatabase::T_INT64:
-                                        case TypeDatabase::T_UINT64:
-                                            ret = lt;
-                                            break;
-                                        default:
-                                        errors.add(this,u8"Non-arithmetic type passed to arithmetic"s);
-                                        goto error;
-                                    }
-                                }else{
-                                    errors.add(this,u8"Mismatched operands to arithmetic"s);
-                                    goto error;
-                                }
-                            }else goto error;
-                        }else goto error;
-                        break;
-                        break;
-                    case 50:
-                    case 51:
-                    case 60:
-                        ret = tdb.T_BOOL;
-                        break;
-                    case 100:
-                        ret = tdb.T_VOID;
-                        break;
-                    default: throw std::logic_error("AST type inference: unknown magic "s+std::to_string(prim));
-                }
+                            ret = t.function_signature().return_type().index();
+                        }else{
+                            errors.add(this,cppp::format<u8"Argument and parameter type count mismatch, #a {} != #p {}"_ts>(children().size() - 1uz,t.function_signature().parameters().size()));
+                            goto error;
+                        }
+                    }else{
+                        errors.add(this,u8"Cannot call non-function"s);
+                        goto error;
+                    }
+                }else goto error;
                 break;
             case SETVAR:
                 // TODO
@@ -201,14 +163,14 @@ namespace bbe::impl{
                 break;
             case HAVEVAR:
                 vd.set(prim,*this);
-                ret = children()[1uz].result_type();
+                ret = children()[1_u32].result_type();
                 break;
             case BOOL:
                 ret = tdb.T_BOOL;
                 break;
             case FORK: {
-                type_id lht = children()[1uz].result_type();
-                type_id rht = children()[2uz].result_type();
+                type_id lht = children()[1_u32].result_type();
+                type_id rht = children()[2_u32].result_type();
                 if(lht == rht){
                     ret = lht;
                 }else goto error;
@@ -222,7 +184,7 @@ namespace bbe::impl{
             }
             case NTYPE:
                 goto error;
-            case IMPORT_STUB:
+            case EXTERN_OR_INTRIN:
                 CPPP_ASSERT(false);
         }
         return;

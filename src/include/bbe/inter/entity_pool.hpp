@@ -7,7 +7,9 @@ namespace bbe::inter::impl{
         public:
             CompiledFunctionPool(const ProjectEntitiesPool& pep){
                 for(const auto& fn : pep.functions()){
-                    pool.try_emplace(fn.index(),fn);
+                    if(!fn.is_intrin()){
+                        pool.try_emplace(fn.index(),pep,fn);
+                    }
                 }
             }
             const T& function(func_id i) const{

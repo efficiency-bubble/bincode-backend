@@ -1,8 +1,8 @@
 #pragma once
 #include"value.hpp"
 namespace bbe::inter::impl{
-    Value cmag(std::uint32_t magic,const std::vector<Value>& arg);
+    Value eval_intrin(std::uint32_t intrin,const std::vector<Value>& argv);
 }
 namespace bbe::inter{
-    BBE_EXPORT cmag;
+    BBE_EXPORT eval_intrin;
 }

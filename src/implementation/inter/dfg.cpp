@@ -30,14 +30,14 @@ namespace bbe::inter::dfg::impl{
             case ADDROF:
                 return dptr{.pv=&dedup_eval(pool,*nr.parents()[0uz],arg,cache)};
             case CALL_BUILTIN: {
-                if(nr.primitive() == 0){ // call function
+                if(nr.primitive() == std::numeric_limits<std::uint32_t>::max()){ // call function
                     return pool.call(dedup_eval(pool,*nr.parents()[0uz],arg,cache).get<fptr>().id,dedup_eval(pool,*nr.parents()[1uz],arg,cache));
                 }else{
                     std::vector<Value> values;
                     for(const targets::dfg::DataNode* par : nr.parents()){
                         values.emplace_back(dedup_eval(pool,*par,arg,cache));
                     }
-                    return cmag(nr.primitive(),values);
+                    return eval_intrin(nr.primitive(),values);
                 }
             }
             case BOOL:

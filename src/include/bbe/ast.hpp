@@ -20,8 +20,8 @@ namespace bbe::impl{
     class ASTNode;
     class VariableDecls;
     enum class NodeType : std::uint8_t{
-        UINT32,UINT64,PACK,COMMA,PACKIND,ARG,DEREF,ADDROF,CALL_BUILTIN=9_u8,SETVAR,GETVAR,HAVEVAR,BOOL=20_u8,FORK,SINT32=30_u8,UINT32SYM=100_u8,FNSYM=200_u8,
-        IMPORT_STUB = 254_u8,
+        UINT32,UINT64,PACK,COMMA,PACKIND,ARG,DEREF,ADDROF,CALL=9_u32,SETVAR=10_u32,GETVAR,HAVEVAR,BOOL=20_u8,FORK,SINT32=30_u8,UINT32SYM=100_u8,FNSYM=200_u8,
+        EXTERN_OR_INTRIN = 254_u8,
         NTYPE = 255_u8
     };
     constexpr inline std::uint32_t VARIABLE = std::numeric_limits<std::uint32_t>::max();
@@ -61,6 +61,10 @@ namespace bbe::impl{
             using const_iterator = const ASTNode*;
             inline ASTNode& operator[](std::uint32_t);
             inline const ASTNode& operator[](std::uint32_t) const;
+            ASTNode& operator[](int i){return (*this)[cppp::assume_cast<std::uint32_t>(i)];};
+            const ASTNode& operator[](int i) const{return (*this)[cppp::assume_cast<std::uint32_t>(i)];};
+            ASTNode& operator[](std::size_t) = delete;
+            const ASTNode& operator[](std::size_t) const = delete;
             ASTNode* begin(){
                 return m();
             }
@@ -365,8 +369,8 @@ namespace bbe::impl{
             using enum NodeType;
             case PACK: case COMMA:
                 return true;
-            case CALL_BUILTIN:
-                return n.getp32() == 0 && n.children().size() > 1uz;
+            case CALL:
+                return n.children().size() > 1uz;
             default:
                 return false;
         }

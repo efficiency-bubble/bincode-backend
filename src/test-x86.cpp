@@ -17,14 +17,16 @@ int main(){
     const TypeInfo& ui32 = p.types()[TypeDatabase::T_UINT32];
     Function& example_fn = p.functions().emplace(u8"example"s,FunctionSignature{ui32,ui32,ui32});
     p.functions().emplace(u8"multiply_adjust"s,FunctionSignature{ui32,ui32,ui32});
+    const Function& itadd = intrin(INTR_ADDU32,p);
+    const Function& itsub = intrin(INTR_SUBU32,p);
     example_fn.set(
         fork(
-            cmag(FN_LEQ32,arg(0),u32(2)),
-            cmag(FN_ADD,u32(1),cmag(FN_CALL,fn(1),arg(1),arg(1))),
-            havevar(0,cmag(FN_CALL,fn(0),cmag(FN_SUB,arg(0),u32(1)),arg(1)),
-            cmag(FN_ADD,
+            call(intrin(INTR_LEQU32,p),arg(0),u32(2)),
+            call(itadd,u32(1),call(fn(1),arg(1),arg(1))),
+            havevar(0,call(fn(0),call(itsub,arg(0),u32(1)),arg(1)),
+            call(itadd,
                 getvar(0),
-                cmag(FN_CALL,fn(0),cmag(FN_SUB,arg(0),u32(2)),arg(1))
+                call(fn(0),call(itsub,arg(0),u32(2)),arg(1))
             ))
         )
     );
@@ -40,7 +42,7 @@ int main(){
         }
         return -1;
     }
-    bbe::targets::x86::Function fn{example_fn.cname(),example_fn,p.types()};
+    bbe::targets::x86::Function fn{example_fn,p};
     for(const std::byte b : fn.instructions()){
         cppp::print<u8"{:02x} "_ts>(static_cast<std::uint8_t>(b));
     }

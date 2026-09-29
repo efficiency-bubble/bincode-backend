@@ -19,6 +19,7 @@ namespace bbe::targets::x86::impl{
         std::vector<FunctionRelocation> rels;
         public:
             Function(cppp::sv cn,const dfg::Function& f,const TypeDatabase& tdb);
+            Function(const bbe::Function& f,const ProjectEntitiesPool& pep) : Function(f.cname(),{pep,f},pep.types()){}
             // stub constructor
             Function(cppp::sv cn) : _cname(cn){}
             cppp::sv cname() const{
@@ -69,10 +70,12 @@ namespace bbe::targets::x86::impl{
             Program(const ProjectEntitiesPool&&) = delete;
             Program(const ProjectEntitiesPool& pep){
                 for(const auto& fn : pep.functions()){
-                    if(fn.ast().type() == bbe::NodeType::IMPORT_STUB){
-                        import_function(fn.index(),fn.cname());
+                    if(fn.ast().type() == NodeType::EXTERN_OR_INTRIN){
+                        if(fn.ast().getp32() == bbe::Function::INTR_EXTERN){
+                            import_function(fn.index(),fn.cname());
+                        }
                     }else{
-                        export_function(fn.index(),{fn.cname(),fn,pep.types()});
+                        export_function(fn.index(),{fn,pep});
                     }
                 }
             }

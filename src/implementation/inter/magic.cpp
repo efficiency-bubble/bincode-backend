@@ -4,10 +4,13 @@
 #include<format>
 namespace bbe::inter::impl{
     using namespace bbe::impl;
-    Value cmag(std::uint32_t magic,const std::vector<Value>& argv){
-        switch(magic){
+    Value eval_intrin(std::uint32_t intrin,const std::vector<Value>& argv){
+        (void)argv;
+        switch(intrin){
             case 10: // add32
                 return uint32v(argv[0uz].get<uint32v>().value+argv[1uz].get<uint32v>().value);
+            case 11: // add32s
+                return sint32v(argv[0uz].get<sint32v>().value+argv[1uz].get<sint32v>().value);
             case 20: // sub32
                 return uint32v(argv[0uz].get<uint32v>().value-argv[1uz].get<uint32v>().value);
             case 30: // mul32
@@ -22,7 +25,7 @@ namespace bbe::inter::impl{
                 std::cout << argv[0uz].get<uint32v>().value << std::endl;
                 return {};
             default:
-                throw std::logic_error(std::format("inter::cmag(): Unknown magic function {}"sv,magic));
+                throw std::logic_error(std::format("inter::eval_intrin(): Unknown intrinsic {}"sv,intrin));
         }
     }
 }

@@ -77,9 +77,9 @@ int main(){
         {u8"AST serialization/deserialization"sv,[] -> test_result_t {
             cppp::bytes buf;
             bbe::ASTNode test{NodeType::PACK,2_u32,bbe::uninitialize};
-            test.children()[0uz].initialize({NodeType::COMMA,0_u32,1_u32,bbe::uninitialize});
-            test.children()[0uz].children()[0uz].initialize();
-            test.children()[1uz].initialize();
+            test.children()[0_u32].initialize({NodeType::COMMA,0_u32,1_u32,bbe::uninitialize});
+            test.children()[0_u32].children()[0_u32].initialize();
+            test.children()[1_u32].initialize();
             test.serialize(buf,{});
             for(std::size_t i=0uz;i<buf.size();++i){
                 printf("%02x ",(int)buf[i]);
@@ -132,7 +132,7 @@ int main(){
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
             bbe::Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
-            fn.set(cmag(FN_ADD,u32(1),u32(41)));
+            fn.set(call(intrin(INTR_ADDU32,proj),u32(1),u32(41)));
             fn.recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
             
@@ -144,7 +144,7 @@ int main(){
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
             Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{proj.types()[TypeDatabase::T_BOOL],proj.types()[TypeDatabase::T_VOID]});
-            fn.set(cmag(FN_EQ32,u32(42),u32(42)));
+            fn.set(call(intrin(INTR_EQU32,proj),u32(42),u32(42)));
             fn.recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
             
@@ -168,7 +168,7 @@ int main(){
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
             Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
-            fn.set(havevar(0,u32(307),cmag(FN_ADD,u32(2),getvar(0))));
+            fn.set(havevar(0,u32(307),call(intrin(INTR_ADDU32,proj),u32(2),getvar(0))));
             
             // TODO: only recalc once after we fix the dependency issue
             fn.recalculate_types(proj,edb);
@@ -184,7 +184,8 @@ int main(){
             bbe::ProjectEntitiesPool proj;
             bbe::ErrorDatabase edb;
             bbe::Function& fn = proj.functions().emplace(u8"test"s,FunctionSignature{proj.types()[TypeDatabase::T_UINT32],proj.types()[TypeDatabase::T_VOID]});
-            fn.set(comma(0,cmag(FN_PRU32,u32(0)),cmag(FN_PRU32,u32(1))));
+            const bbe::Function& itpr = intrin(INTR_PRU32,proj);
+            fn.set(comma(0,call(itpr,u32(0)),call(itpr,u32(1))));
             fn.recalculate_types(proj,edb);
             ASSERT_EQ(edb.empty(),true,"Errors reported from type inference");
             

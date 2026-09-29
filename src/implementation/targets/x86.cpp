@@ -216,7 +216,7 @@ namespace bbe::targets::x86::impl{
                         }
                         case CALL_BUILTIN: {
                             switch(dn.primitive()){
-                                case 0: {
+                                case std::numeric_limits<std::uint32_t>::max(): {
                                     DataValue& ret = new_value(dn);
                                     const DataValue& fn = compile_node(*dn.parents()[0uz]);
                                     

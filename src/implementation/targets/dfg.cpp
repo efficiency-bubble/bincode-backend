@@ -18,7 +18,7 @@ namespace bbe::targets::dfg::impl{
             return rse;
         }
     }
-    Operation DataFlowGraph::compile(CodeBranch& br,const ASTNode& nd){
+    Operation DataFlowGraph::compile(const ProjectEntitiesPool& pep,CodeBranch& br,const ASTNode& nd){
         switch(nd.type()){
             using enum bbe::NodeType;
             case UINT32:
@@ -31,7 +31,7 @@ namespace bbe::targets::dfg::impl{
                 DataNode& pack = _nodes.emplace_back(NodeType::PACK,nd.result_type());
                 const DataNode* se = nullptr;
                 for(const ASTNode& c : nd.children()){
-                    Operation op{compile(br,c)};
+                    Operation op{compile(pep,br,c)};
                     if(const DataNode* ese = op.side_effects()){
                         if(se) throw std::logic_error("Side effects are indeterminately ordered");
                         se = ese;
@@ -46,7 +46,7 @@ namespace bbe::targets::dfg::impl{
                 DataNode* se = nullptr;
                 std::uint32_t i = nd.getp32();
                 for(const ASTNode& c : nd.children()){
-                    Operation op{compile(br,c)};
+                    Operation op{compile(pep,br,c)};
                     if(!(i--)){
                         result = &op.value();
                     }
@@ -59,68 +59,31 @@ namespace bbe::targets::dfg::impl{
                 return {*result,se};
             }
             case PACKIND: {
-                Operation op{compile(br,nd.children().front())};
+                Operation op{compile(pep,br,nd.children().front())};
                 return {_nodes.emplace_back(NodeType::PACKIND,nd.result_type(),nd.getp32(),std::vector{&op.value()}),op.side_effects()};
             }
             case ARG:
                 return _nodes.emplace_back(NodeType::ARG,nd.result_type(),nd.getp32());
             case DEREF: {
-                Operation op{compile(br,nd.children().front())};
+                Operation op{compile(pep,br,nd.children().front())};
                 return {_nodes.emplace_back(NodeType::DEREF,nd.result_type(),std::vector{&op.value()}),op.side_effects()};
             }
             case ADDROF: {
-                Operation op{compile(br,nd.children().front())};
+                Operation op{compile(pep,br,nd.children().front())};
                 return {_nodes.emplace_back(NodeType::ADDROF,nd.result_type(),std::vector{&op.value()}),op.side_effects()};
             }
-            case CALL_BUILTIN: {
-                std::uint32_t fnid = nd.getp32();
+            case CALL: {
                 bool side_effects = false;
-                switch(fnid){
-                    case 0:
-                        side_effects = true;
-                        break;
-                    case 10:
-                        switch(nd.result_type()){
-                            case TypeDatabase::T_UINT32:
-                                // fnid = 10; // already 10
-                                break;
-                            case TypeDatabase::T_INT32:
-                                fnid = 11;
-                                break;
-                            default: throw std::logic_error("DataFlowGraph::compile(): Don't know what kind of addition results in type "s+std::to_string(nd.result_type()));
-                        }
-                        break;
-                    case 20:
-                        switch(nd.result_type()){
-                            case TypeDatabase::T_UINT32:
-                                // fnid = 20; // already 20
-                                break;
-                            case TypeDatabase::T_INT32:
-                                fnid = 21;
-                                break;
-                            default: throw std::logic_error("DataFlowGraph::compile(): Don't know what kind of subtraction results in type "s+std::to_string(nd.result_type()));
-                        }
-                        break;
-                    case 30:
-                        switch(nd.result_type()){
-                            case TypeDatabase::T_UINT32:
-                                // fnid = 30; // already 30
-                                break;
-                            case TypeDatabase::T_INT32:
-                                fnid = 31;
-                                break;
-                            default: throw std::logic_error("DataFlowGraph::compile(): Don't know what kind of multiplication results in type "s+std::to_string(nd.result_type()));
-                        }
-                        break;
-                    case 100:
-                        side_effects = true;
-                        break;
-                    default:;
+                std::uint32_t fnid = std::numeric_limits<std::uint32_t>::max();
+                if(nd.children()[0].type() == bbe::NodeType::FNSYM){
+                    if(const bbe::Function& fn = pep.functions()[nd.children()[0].getp32()];fn.is_intrin()){
+                        fnid = fn.intrin();
+                    }
                 }
                 DataNode& cmag = _nodes.emplace_back(NodeType::CALL_BUILTIN,nd.result_type(),fnid);
                 const DataNode* se = nullptr;
-                for(const ASTNode& c : nd.children()){
-                    Operation op{compile(br,c)};
+                for(const ASTNode& c : nd.children() | std::views::drop(fnid != std::numeric_limits<std::uint32_t>::max())){
+                    Operation op{compile(pep,br,c)};
                     cmag.emplace(op.value());
                     if(const DataNode* ese = op.side_effects()){
                         if(se) throw std::logic_error("Side effects are indeterminately ordered");
@@ -130,7 +93,7 @@ namespace bbe::targets::dfg::impl{
                 return {cmag,se_merge(_nodes,side_effects?&cmag:nullptr,se)};
             }
             case SETVAR: {
-                Operation op{compile(br,nd.children().front())};
+                Operation op{compile(pep,br,nd.children().front())};
                 br.setvar(nd.getp32(),op.value());
                 return {_nodes.emplace_back(NodeType::VOID,TypeDatabase::T_VOID),op.side_effects()};
             }
@@ -138,19 +101,19 @@ namespace bbe::targets::dfg::impl{
                 return *br.getvar(nd.getp32());
             case HAVEVAR: {
                 CodeBranch local_scope{br};
-                Operation vop{compile(br,nd.children()[0uz])};
+                Operation vop{compile(pep,br,nd.children()[0_u32])};
                 local_scope.setvar(nd.getp32(),vop.value());
-                Operation eop{compile(local_scope,nd.children()[1uz])};
+                Operation eop{compile(pep,local_scope,nd.children()[1_u32])};
                 return {eop.value(),se_merge(_nodes,vop.side_effects(),eop.side_effects())};
             }
             case BOOL: // bool
                 return _nodes.emplace_back(NodeType::BOOL,nd.result_type(),nd.getp32());
             case FORK: {
-                Operation condition{compile(br,nd.children().front())};
+                Operation condition{compile(pep,br,nd.children().front())};
                 CodeBranch lcb{br};
                 CodeBranch rcb{br};
-                Operation lhs{compile(lcb,nd.children()[1uz])};
-                Operation rhs{compile(rcb,nd.children()[2uz])};
+                Operation lhs{compile(pep,lcb,nd.children()[1_u32])};
+                Operation rhs{compile(pep,rcb,nd.children()[2_u32])};
                 
                 std::unordered_set<std::uint32_t> overrides;
                 for(const auto& lv : lcb.local_vars()){
@@ -190,7 +153,7 @@ namespace bbe::targets::dfg::impl{
             }
             case FNSYM:
                 return _nodes.emplace_back(NodeType::FNSYM,nd.result_type(),nd.getp32());
-            case IMPORT_STUB:
+            case EXTERN_OR_INTRIN:
                 cppp::unreachable();
             case UINT32SYM:
             case NTYPE:
@@ -198,5 +161,5 @@ namespace bbe::targets::dfg::impl{
         }
         cppp::unreachable();
     }
-    DataFlowGraph::DataFlowGraph(const bbe::Function& f) : _root(compile(main,f.ast())){}
+    DataFlowGraph::DataFlowGraph(const ProjectEntitiesPool& pep,const bbe::Function& f) : _root(compile(pep,main,f.ast())){}
 }
