@@ -11,9 +11,9 @@ namespace bbe::impl{
     static std::uint32_t nchld_of(NodeType t){
         switch(t){
             using enum NodeType;
-            case UINT32: case UINT64: case SINT32: case BOOL: case GETVAR: case UINT32SYM: case FNSYM: case NTYPE: case EXTERN_OR_INTRIN:
+            case UINT32: case UINT64: case SINT32: case BOOL: case GETVAR: case UINT32SYM: case FNSYM: case NTYPE: case EXTERN_OR_INTRIN:  case ARG:
                 return 0;
-            case SETVAR: case PACKIND: case DEREF: case ADDROF: case ARG:
+            case SETVAR: case PACKIND: case DEREF: case ADDROF:
                 return 1;
             case HAVEVAR:
                 return 2;
