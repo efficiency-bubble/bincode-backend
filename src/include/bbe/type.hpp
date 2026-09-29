@@ -204,9 +204,6 @@ namespace bbe::impl{
             const TypeInfo& operator[](std::size_t ind) const{
                 return *arr[ind];
             }
-            void set(std::size_t ind,const TypeInfo& ref){
-                arr[ind] = &ref;
-            }
             std::size_t size() const{
                 return arr.size();
             }
