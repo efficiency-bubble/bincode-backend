@@ -12,7 +12,6 @@ namespace bbe::impl{
     class Function : public HashedEntity<func_id>{
         cppp::str _cname;
         FunctionSignature sig;
-        VariableDecls vd;
         ASTNode root;
         public:
             Function(func_id id,uninitialize_t uninit) : HashedEntity(id), sig(uninit), root(uninit){}
@@ -38,6 +37,7 @@ namespace bbe::impl{
                 root.recursively_trace_types(swp);
             }
             void recalculate_types(ProjectEntitiesPool& p,ErrorDatabase& e){
+                VariableDecls vd;
                 root.recursively_recalculate_result_type(p,vd,e,sig);
             }
             void set_cname(cppp::str cn){
