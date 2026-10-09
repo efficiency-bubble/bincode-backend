@@ -243,6 +243,7 @@ namespace bbe::impl{
 }
 namespace bbe{
     BBE_EXPORT TypePack;
+    BBE_EXPORT TypePackBuilder;
     BBE_EXPORT TypeCategory;
     BBE_EXPORT TypeInfo;
     BBE_EXPORT T_VOID;
