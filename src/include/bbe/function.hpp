@@ -37,10 +37,10 @@ namespace bbe::impl{
             void serialize(cppp::bytes& dst) const{
                 sig.serialize(dst);
                 if(is_intrin()){
-                    cppp::muleb128_w<std::size_t>(dst,0uz);
-                    cppp::muleb128_w<std::uint32_t>(dst,root.getp32());
+                    cppp::muleb128_w(dst,0uz);
+                    cppp::muleb128_w(dst,root.getp32());
                 }else{
-                    cppp::muleb128_w<std::size_t>(dst,_cname.size()+1uz);
+                    cppp::muleb128_w(dst,_cname.size()+1uz);
                     dst.append(std::as_bytes(std::span{_cname}));
                     root.serialize(dst);
                 }

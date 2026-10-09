@@ -23,7 +23,7 @@ namespace bbe::impl{
             }
             EntityPool(cppp::frozen_byte_view& buf) : EntityPool(static_cast<id_type>(0),buf){}
             void serialize(cppp::bytes& dst) const{
-                cppp::muleb128_w<id_type>(dst,size());
+                cppp::muleb128_w(dst,size());
                 for(const auto& ent : *this){
                     ent.serialize(dst);
                 }

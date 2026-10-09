@@ -33,7 +33,7 @@ namespace bbe::targets::dfg::impl{
                 for(const ASTNode& c : nd.children()){
                     Operation op{compile(pep,br,c)};
                     if(const DataNode* ese = op.side_effects()){
-                        if(se) throw std::logic_error("Side effects are indeterminately ordered");
+                        if(se) throw std::logic_error("Side effects are indeterminately ordered"s);
                         se = ese;
                     }
                     pack.emplace(op.value());
@@ -72,6 +72,36 @@ namespace bbe::targets::dfg::impl{
                 Operation op{compile(pep,br,nd.children().front())};
                 return {_nodes.emplace_back(NodeType::ADDROF,nd.result_type(),std::vector{&op.value()}),op.side_effects()};
             }
+            case OVERCALL: {
+                bool side_effects = false;
+                const OverloadSet& os = pep.overloads()[nd.getp32()];
+                TypePackBuilder tpb{nd.children().size()};
+                for(std::uint32_t i=0;i<nd.children().size();++i){
+                    if(type_id rt=nd.children()[i].result_type();rt != T_ERROR){
+                        tpb.emplace(i,pep.types()[rt]);
+                    }else{
+                        tpb.abandon(i);
+                        throw std::logic_error("Cannot resolve overload because there are type errors in arguments"s);
+                    }
+                }
+                const bbe::Function* f = os.match(std::move(tpb));
+                if(!f) throw std::logic_error("No matching overload for call"s);
+                
+                DataNode& cmag = _nodes.emplace_back(NodeType::CALL_BUILTIN,nd.result_type(),f->is_intrin()?f->intrin():std::numeric_limits<std::uint32_t>::max());
+                if(!f->is_intrin()){
+                    _nodes.emplace_back(NodeType::FNSYM,pep.types().function_of(f->signature()).index(),f->index());
+                }
+                const DataNode* se = nullptr;
+                for(const ASTNode& c : nd.children()){
+                    Operation op{compile(pep,br,c)};
+                    cmag.emplace(op.value());
+                    if(const DataNode* ese = op.side_effects()){
+                        if(se) throw std::logic_error("Side effects are indeterminately ordered"s);
+                        se = ese;
+                    }
+                }
+                return {cmag,se_merge(_nodes,side_effects?&cmag:nullptr,se)};
+            }
             case CALL: {
                 bool side_effects = false;
                 std::uint32_t fnid = std::numeric_limits<std::uint32_t>::max();
@@ -86,7 +116,7 @@ namespace bbe::targets::dfg::impl{
                     Operation op{compile(pep,br,c)};
                     cmag.emplace(op.value());
                     if(const DataNode* ese = op.side_effects()){
-                        if(se) throw std::logic_error("Side effects are indeterminately ordered");
+                        if(se) throw std::logic_error("Side effects are indeterminately ordered"s);
                         se = ese;
                     }
                 }

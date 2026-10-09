@@ -193,7 +193,7 @@ int main(){
             ASSERT_EQ(cfp.call(fn.index(),{}).empty(),true,"Non-empty return value");
             return {};
         }},
-        {u8"Type database garbage collection"sv,[] -> test_result_t {
+        {u8"Garbage collection"sv,[] -> test_result_t {
             bbe::ProjectEntitiesPool proj;
             std::size_t n_builtins = proj.types().size();
             const bbe::TypeInfo& ui32 = proj.types()[T_UINT32];

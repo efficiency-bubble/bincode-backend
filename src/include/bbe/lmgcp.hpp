@@ -3,6 +3,7 @@
 #include<cppp/memory.hpp>
 #include<cppp/int.hpp>
 #include<utility>
+#include<climits>
 #include<memory>
 #include<cmath>
 #include<array>
@@ -31,6 +32,11 @@ namespace bbe::impl{
                 return _index >> 1;
             }
     };
+    /*
+    Invariant:
+    `storage` points to an array whose length is the number of blocks rounded up to the next power of 2,
+    except that when the length is 0, `storage` is a null pointer.
+    */
     template<typename E,E::id_type n = cppp::safe_cast<typename E::id_type>(std::max(std::bit_ceil(4096uz / sizeof(E)),16uz))>
     class LinearMovingGarbageCollectedPool{
         using id_type = E::id_type;
@@ -41,7 +47,8 @@ namespace bbe::impl{
             return length / n;
         }
         id_type block_capacity() const{
-            return std::bit_ceil((length + n - 1) / n);
+            if(length) return std::bit_ceil((length + n - 1) / n);
+            else return 0;
         }
         template<bool _const>
         class _iterator{
@@ -125,7 +132,7 @@ namespace bbe::impl{
             LinearMovingGarbageCollectedPool& operator=(LinearMovingGarbageCollectedPool&& other) noexcept{
                 E** tmp = std::exchange(other.storage,nullptr);
                 destroy();
-                length = other.length;
+                length = std::exchange(other.length,0uz);
                 parity = other.parity;
                 storage = tmp;
                 return *this;
@@ -247,35 +254,44 @@ namespace bbe::impl{
             }
             void erase_after(id_type i){
                 BBE_DEBUG(u8"Truncating memory"sv);
-                id_type old_capacity = block_capacity();
-                id_type block = i / n;
-                id_type start_index = i % n;
-                BBE_DEBUG(u8"Starting capacity:"sv,old_capacity);
-                BBE_DEBUG(u8"Truncating after"sv,block,u8":"sv,start_index);
-                if(block == old_capacity - 1uz){
-                    id_type end_index = length % n;
-                    BBE_DEBUG(u8"Deleting last block from"sv,start_index,u8"to"sv,end_index);
-                    std::ranges::destroy(storage[block] + start_index, storage[block] + end_index);
-                    if(!start_index){
-                        std::allocator<E>().deallocate(storage[block],n);
-                        std::destroy_at(storage + block);
+                if(i){
+                    id_type old_capacity = block_capacity();
+                    id_type block = i / n;
+                    id_type start_index = i % n;
+                    BBE_DEBUG(u8"Starting capacity:"sv,old_capacity);
+                    BBE_DEBUG(u8"Truncating after"sv,block,u8":"sv,start_index);
+                    if(block == old_capacity - static_cast<id_type>(1)){
+                        if(id_type end_index = length % n){
+                            BBE_DEBUG(u8"Deleting last block from"sv,start_index,u8"to"sv,end_index);
+                            std::ranges::destroy(storage[block] + start_index, storage[block] + end_index);
+                            if(!start_index){
+                                std::allocator<E>().deallocate(storage[block],n);
+                                std::destroy_at(storage + block);
+                            }
+                        }
+                    }else{
+                        if(start_index){
+                            BBE_DEBUG(u8"Partially deleting block"sv,block,u8"("sv,start_index,u8":"sv,n,u8")"sv);
+                            std::ranges::destroy(storage[block] + start_index,storage[block] + n);
+                            ++block;
+                        }
+                        BBE_DEBUG(u8"Deleting full blocks ("sv,block,u8":"sv,full_block_count(),u8")"sv);
+                        for(const id_type fbc = full_block_count();block < fbc;++block){
+                            destroy_block(block);
+                        }
+                        destroy_last_block(block);
+                    }
+                    length = i;
+                    if(block_capacity() < old_capacity){
+                        BBE_DEBUG(u8"Shrinking pointer array"sv);
+                        storage = cppp::shrink(storage,(length + n - 1) / n,old_capacity,block_capacity());
                     }
                 }else{
-                    if(start_index){
-                        BBE_DEBUG(u8"Partially deleting block"sv,block,u8"("sv,start_index,u8":"sv,n,u8")"sv);
-                        std::ranges::destroy(storage[block] + start_index,storage[block] + n);
-                        ++block;
-                    }
-                    BBE_DEBUG(u8"Deleting full blocks ("sv,block,u8":"sv,full_block_count(),u8")"sv);
-                    for(const id_type fbc = full_block_count();block < fbc;++block){
-                        destroy_block(block);
-                    }
-                    destroy_last_block(block);
-                }
-                length = i;
-                if(block_capacity() < old_capacity){
-                    BBE_DEBUG(u8"Shrinking pointer array"sv);
-                    storage = cppp::shrink(storage,(length + n - 1) / n,old_capacity,block_capacity());
+                    BBE_DEBUG(u8"Starting capacity:"sv,block_capacity());
+                    BBE_DEBUG(u8"Truncating memory to 0 (nothing is used)"sv);
+                    destroy();
+                    storage = nullptr;
+                    length = 0;
                 }
             }
             id_type size() const{

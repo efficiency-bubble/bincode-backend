@@ -90,7 +90,7 @@ namespace bbe::impl{
                 }
             }
             void serialize(cppp::bytes& dst) const{
-                cppp::muleb128_w<type_id>(dst,infos.size() - T_INTRINSIC_END);
+                cppp::muleb128_w(dst,infos.size() - T_INTRINSIC_END);
                 for(const TypeInfo& ent : infos){
                     if(ent.index() >= T_INTRINSIC_END){
                         ent.serialize(dst);
@@ -122,8 +122,8 @@ namespace bbe::impl{
         new(&par) TypePack(buf,tdb);
     }
     inline void TypeInfo::serialize(cppp::bytes& dst) const{
-        cppp::muleb128_w<std::uint64_t>(dst,_size);
-        cppp::muleb128_w<std::uint64_t>(dst,align);
+        cppp::muleb128_w(dst,_size);
+        cppp::muleb128_w(dst,align);
         dst.appendl(static_cast<std::uint8_t>(data.tag()));
         switch(data.tag()){
             case TypeCategory::PACK:
@@ -133,7 +133,7 @@ namespace bbe::impl{
                 function_signature().serialize(dst);
                 break;
             case TypeCategory::POINTER:
-                cppp::muleb128_w<type_id>(dst,pointee().index());
+                cppp::muleb128_w(dst,pointee().index());
                 break;
             default:;
         }

@@ -116,9 +116,9 @@ namespace bbe::impl{
                 return h;
             }
             void serialize(cppp::bytes& dst) const{
-                cppp::muleb128_w<std::uint64_t>(dst,arr.size());
+                cppp::muleb128_w(dst,arr.size());
                 for(const TraceableReference<TypeInfo> p : arr){
-                    cppp::muleb128_w<type_id>(dst,p->index());
+                    cppp::muleb128_w(dst,p->index());
                 }
             }
             class const_iterator{
@@ -198,7 +198,7 @@ namespace bbe::impl{
             }
             inline void deserialize(cppp::frozen_byte_view&,const TypeDatabase&);
             void serialize(cppp::bytes& dst) const{
-                cppp::muleb128_w<type_id>(dst,ret->index());
+                cppp::muleb128_w(dst,ret->index());
                 par.serialize(dst);
             }
             type_hash hash() const{

@@ -7,7 +7,7 @@ Node type conventions (subject to change):
 5 = arg
 6 = *$0
 7 = &$0
-9 = callf(node($0),node($1))
+9 = callf(node($0),...)
 10 = setvar(uint64($0),node($1))
 11 = getvar(uint64($0))
 12 = havevar(uint64($0),node($1),node($2)) # returns { let var$0 = $1 in $2 }
@@ -17,6 +17,7 @@ Node type conventions (subject to change):
 100 = uint32(SYMTAB[$0]) # TODO: check symbol table to automatically determine value width
 101 = uint64(SYMTAB[$0])
 200 = FN[$0]
+201 = callf(OS[$0],...)
 254 = (( extern stub )) # as a root node of a function, indicates that it is an imported function.
 
 Additional DFG node types:

@@ -19,7 +19,7 @@ namespace bbe::impl{
                 return 2;
             case FORK:
                 return 3;
-            case PACK: case COMMA: case CALL:
+            case PACK: case COMMA: case CALL: case OVERCALL:
                 return VARIABLE;
         }
         cppp::unreachable();
@@ -55,7 +55,7 @@ namespace bbe::impl{
         }
         if(has_extended_data(_type)){
             CPPP_ASSERT(nchld == 0);
-            cppp::muleb128_w<std::uint64_t>(b,_data);
+            cppp::muleb128_w(b,_data);
         }
         for(const auto& c : *this){
             c.serialize(b);
@@ -110,7 +110,7 @@ namespace bbe::impl{
                 }else goto error;
                 break;
             case ARG:
-                ret = sig.parameters()[getp32()].index();
+                ret = sig.parameters()[prim].index();
                 break;
             case DEREF:
                 if(type_id pt = children().front().result_type();pt != T_ERROR){
@@ -127,6 +127,26 @@ namespace bbe::impl{
                     ret = tdb.pointer_to(tdb[pt]).index();
                 }else goto error;
                 break;
+            case OVERCALL: {
+                if(prim >= p.overloads().size()) goto error;
+                const OverloadSet& os = p.overloads()[prim];
+                TypePackBuilder tpb{children().size()};
+                for(std::uint32_t i=0;i<children().size();++i){
+                    if(type_id rt=children()[i].result_type();rt != T_ERROR){
+                        tpb.emplace(i,tdb[rt]);
+                    }else{
+                        tpb.abandon(i);
+                        goto error;
+                    }
+                }
+                if(const Function* f=os.match(std::move(tpb))){
+                    ret = tdb.function_of(f->signature()).index();
+                }else{
+                    errors.add(this,u8"No matching overload found"s);
+                    goto error;
+                }
+                break;
+            }
             case CALL:
                 if(type_id pt = children().front().result_type();pt != T_ERROR){
                     if(const TypeInfo& t = tdb[pt];t.type() == TypeCategory::FUNCTION_POINTER){
@@ -173,12 +193,10 @@ namespace bbe::impl{
                 }else goto error;
                 break;
             }
-            case FNSYM: {
+            case FNSYM: 
                 if(prim >= p.functions().size()) goto error;
-                const FunctionSignature& sig = p.functions()[prim].signature();
-                ret = tdb.function_of(sig).index();
+                ret = tdb.function_of(p.functions()[prim].signature()).index();
                 break;
-            }
             case NTYPE:
                 goto error;
             case EXTERN_OR_INTRIN:
