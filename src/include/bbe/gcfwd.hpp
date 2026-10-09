@@ -31,4 +31,5 @@ namespace bbe::impl{
 }
 namespace bbe{
     BBE_EXPORT EntitySweeper;
+    BBE_EXPORT TraceableReference;
 }
