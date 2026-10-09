@@ -44,13 +44,9 @@ namespace bbe::impl{
             }
         }
     }
-    void ASTNode::serialize(cppp::bytes& b,const FunctionDatabase::consolidation_map& fcmap) const{
+    void ASTNode::serialize(cppp::bytes& b) const{
         b.appendl<std::uint8_t>(std::to_underlying(_type));
-        if(_type == NodeType::FNSYM){
-            cppp::muleb128_w(b,fcmap.at(prim));
-        }else{
-            cppp::muleb128_w(b,prim);
-        }
+        cppp::muleb128_w(b,prim);
         std::uint32_t nc = nchld_of(_type);
         if(nc == VARIABLE){
             cppp::muleb128_w(b,nchld);
@@ -62,7 +58,7 @@ namespace bbe::impl{
             cppp::muleb128_w<std::uint64_t>(b,_data);
         }
         for(const auto& c : *this){
-            c.serialize(b,fcmap);
+            c.serialize(b);
         }
     }
     void ASTNode::recalculate_result_type(const ProjectEntitiesPool& p,VariableDecls& vd,ErrorDatabase& errors,FunctionSignature sig){
@@ -71,23 +67,24 @@ namespace bbe::impl{
         switch(_type){
             using enum NodeType;
             case UINT32: case UINT32SYM:
-                ret = tdb.T_UINT32;
+                ret = T_UINT32;
                 break;
             case UINT64:
-                ret = tdb.T_UINT64;
+                ret = T_UINT64;
                 break;
             case SINT32:
-                ret = tdb.T_INT32;
+                ret = T_INT32;
                 break;
             case PACK: {
-                cppp::fixed_array<const TypeInfo*> a(children().size());
+                TypePackBuilder b(children().size());
                 for(std::uint32_t i=0;i<children().size();++i){
-                    if(children()[i].result_type() == tdb.T_ERROR){
+                    if(children()[i].result_type() == T_ERROR){
+                        b.abandon(i);
                         goto error;
                     }
-                    a[i] = &tdb[children()[i].result_type()];
+                    b.emplace(i,tdb[children()[i].result_type()]);
                 }
-                ret = tdb.pack_of(std::move(a)).index();
+                ret = tdb.pack_of(std::move(b)).index();
                 break;
             }
             case COMMA:
@@ -99,7 +96,7 @@ namespace bbe::impl{
                 }
                 break;
             case PACKIND:
-                if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
+                if(type_id pt = children().front().result_type();pt != T_ERROR){
                     if(const TypeInfo& t = tdb[pt];t.type() == TypeCategory::PACK){
                         if(prim >= t.pack_contents().size()){
                             errors.add(this,u8"Pack indexing out of bounds"s);
@@ -116,7 +113,7 @@ namespace bbe::impl{
                 ret = sig.parameters()[getp32()].index();
                 break;
             case DEREF:
-                if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
+                if(type_id pt = children().front().result_type();pt != T_ERROR){
                     if(tdb[pt].type() == TypeCategory::POINTER){
                         ret = tdb[pt].pointee().index();
                     }else{
@@ -126,18 +123,18 @@ namespace bbe::impl{
                 }else goto error;
                 break;
             case ADDROF:
-                if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
+                if(type_id pt = children().front().result_type();pt != T_ERROR){
                     ret = tdb.pointer_to(tdb[pt]).index();
                 }else goto error;
                 break;
             case CALL:
-                if(type_id pt = children().front().result_type();pt != tdb.T_ERROR){
+                if(type_id pt = children().front().result_type();pt != T_ERROR){
                     if(const TypeInfo& t = tdb[pt];t.type() == TypeCategory::FUNCTION_POINTER){
                         if(t.function_signature().parameters().size() == children().size() - 1uz){
                             for(std::uint32_t ind=0,indnext;ind<cppp::assume_cast<std::uint32_t>(t.function_signature().parameters().size());ind=indnext){
                                 indnext = ind + 1_u32;
                                 type_id at = children()[indnext].result_type();
-                                if(at != tdb.T_ERROR && t.function_signature().parameters()[ind].index() != at){
+                                if(at != T_ERROR && t.function_signature().parameters()[ind].index() != at){
                                     errors.add(this,cppp::format<u8"Argument and parameter type mismatch at {}"_ts>(ind));
                                 }
                             }
@@ -154,7 +151,7 @@ namespace bbe::impl{
                 break;
             case SETVAR:
                 // TODO
-                ret = tdb.T_VOID;
+                ret = T_VOID;
                 break;
             case GETVAR:
                 if(const ASTNode* p=vd.query(prim)){
@@ -166,7 +163,7 @@ namespace bbe::impl{
                 ret = children()[1_u32].result_type();
                 break;
             case BOOL:
-                ret = tdb.T_BOOL;
+                ret = T_BOOL;
                 break;
             case FORK: {
                 type_id lht = children()[1_u32].result_type();
@@ -177,7 +174,7 @@ namespace bbe::impl{
                 break;
             }
             case FNSYM: {
-                if(!p.functions().has_func(prim)) goto error;
+                if(prim >= p.functions().size()) goto error;
                 const FunctionSignature& sig = p.functions()[prim].signature();
                 ret = tdb.function_of(sig).index();
                 break;
@@ -189,6 +186,6 @@ namespace bbe::impl{
         }
         return;
         error:
-        ret = tdb.T_ERROR;
+        ret = T_ERROR;
     }
 }

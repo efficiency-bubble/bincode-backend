@@ -4,13 +4,16 @@
 #include"uninit.hpp"
 #include"error.hpp"
 #include"idfwd.hpp"
+#include"gcfwd.hpp"
 #include"type.hpp"
 #include<cppp/object-view.hpp>
 #include<cppp/bytearray.hpp>
 #include<cppp/assert.hpp>
+#include<cppp/memory.hpp>
 #include<cppp/int.hpp>
 #include<unordered_map>
 #include<algorithm>
+#include<execution>
 #include<cstdint>
 #include<utility>
 #include<limits>
@@ -112,6 +115,7 @@ namespace bbe::impl{
                 return nullptr;
             }
     };
+    class FuncSweeper;
     /*
     Nodes have invalid state when constructed with uninitialize_t, or as a children of a node constructed with children + uninitialize_t
     In this state, you cannot:
@@ -124,9 +128,10 @@ namespace bbe::impl{
     Note that resolution of CWG2264 may allow move-assignment and move-construction from an invalid node to work. In this case, a moved-from invalid node is now partially invalid such that it is also valid to destroy or query the children count of (a query which will return 0).
     */
     class ASTNode : ASTChildren{
-        std::uint32_t prim;
-        type_id ret;
+        mutable std::uint32_t prim;
+        mutable type_id ret;
         NodeType _type;
+        friend EntitySweeper;
         public:
             explicit operator bool() const{
                 return _type != NodeType::NTYPE;
@@ -149,12 +154,6 @@ namespace bbe::impl{
             type_id result_type() const{
                 return ret;
             }
-            void recursively_trace_types(TypeSweeper& swp){
-                if(ret != TypeDatabase::T_ERROR) swp.trace(ret);
-                for(auto& c : children()){
-                    c.recursively_trace_types(swp);
-                }
-            }
             void recalculate_result_type(const ProjectEntitiesPool&,VariableDecls&,ErrorDatabase&,FunctionSignature);
             void recursively_recalculate_result_type(const ProjectEntitiesPool& p,VariableDecls& vd,ErrorDatabase& e,FunctionSignature sig){
                 for(auto& c : children()){
@@ -173,8 +172,8 @@ namespace bbe::impl{
             ASTNode(NodeType tp) : ASTNode(tp,0){}
             ASTNode(NodeType tp,std::uint32_t nchld,uninitialize_t uninit) : ASTNode(tp,0,nchld,uninit){}
             ASTNode(NodeType tp,std::uint32_t nchld,null_initialize_t nulinit) : ASTNode(tp,0,nchld,nulinit){}
-            ASTNode(NodeType tp,std::uint32_t prim) : ASTChildren(), prim(prim), ret(TypeDatabase::T_ERROR), _type(tp){}
-            ASTNode(NodeType tp,std::uint32_t prim,std::uint32_t nchld,uninitialize_t uninit) : ASTChildren(nchld,uninit), prim(prim), ret(TypeDatabase::T_ERROR), _type(tp){}
+            ASTNode(NodeType tp,std::uint32_t prim) : ASTChildren(), prim(prim), ret(T_ERROR), _type(tp){}
+            ASTNode(NodeType tp,std::uint32_t prim,std::uint32_t nchld,uninitialize_t uninit) : ASTChildren(nchld,uninit), prim(prim), ret(T_ERROR), _type(tp){}
             ASTNode(NodeType tp,std::uint32_t prim,std::uint32_t nchld,null_initialize_t) : ASTNode(tp,prim,nchld,uninitialize){
                 // NOTE: GCC doesn't support for_each_n on member pointers but it could be a standard defect
                 // anyhow:
@@ -190,11 +189,11 @@ namespace bbe::impl{
             ASTNode(const ASTNode&) = delete;
             ASTNode(ASTNode&&) noexcept = default;
             void deserialize(cppp::frozen_byte_view&);
-            void serialize(cppp::bytes&,const std::unordered_map<func_id,func_id>&) const;
+            void serialize(cppp::bytes&) const;
             void initialize(NodeType type,std::uint32_t p){
                 nchld = 0;
                 prim = p;
-                ret = TypeDatabase::T_ERROR;
+                ret = T_ERROR;
                 _type = type;
                 _data = 0;
             }
@@ -207,7 +206,7 @@ namespace bbe::impl{
                 std::uninitialized_fill_n(buf,nc,uninit);
                 prim = p;
                 _type = type;
-                ret = TypeDatabase::T_ERROR;
+                ret = T_ERROR;
             }
             void initialize(){
                 initialize(NodeType::NTYPE,0);
@@ -299,7 +298,7 @@ namespace bbe::impl{
     }
     inline void ASTChildren::_die(){
         if(nchld){
-            std::destroy_n(m(),nchld);
+            cppp::destroy_backwards(std::span{m(),nchld});
             std::allocator<ASTNode>::deallocate(m(),nchld);
         }
     }

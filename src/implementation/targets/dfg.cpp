@@ -8,7 +8,7 @@
 namespace bbe::targets::dfg::impl{
     static const DataNode* se_merge(std::deque<DataNode>& nodes,const DataNode* lse,const DataNode* rse){
         if(lse && rse){
-            DataNode& seq = nodes.emplace_back(NodeType::SEQU,TypeDatabase::T_ERROR);
+            DataNode& seq = nodes.emplace_back(NodeType::SEQU,T_ERROR);
             seq.emplace(*lse);
             seq.emplace(*rse);
             return &seq;
@@ -51,7 +51,7 @@ namespace bbe::targets::dfg::impl{
                         result = &op.value();
                     }
                     if(op.side_effects()){
-                        if(!se) se = &_nodes.emplace_back(NodeType::SEQU,TypeDatabase::T_ERROR);
+                        if(!se) se = &_nodes.emplace_back(NodeType::SEQU,T_ERROR);
                         se->emplace(op.value());
                     }
                 }
@@ -95,7 +95,7 @@ namespace bbe::targets::dfg::impl{
             case SETVAR: {
                 Operation op{compile(pep,br,nd.children().front())};
                 br.setvar(nd.getp32(),op.value());
-                return {_nodes.emplace_back(NodeType::VOID,TypeDatabase::T_VOID),op.side_effects()};
+                return {_nodes.emplace_back(NodeType::VOID,T_VOID),op.side_effects()};
             }
             case GETVAR:
                 return *br.getvar(nd.getp32());
@@ -134,17 +134,17 @@ namespace bbe::targets::dfg::impl{
                 join.emplace(lhs.value());
                 join.emplace(rhs.value());
                 if(condition.side_effects() || lhs.side_effects() || rhs.side_effects()){
-                    DataNode& sejoin = _nodes.emplace_back(NodeType::FORK,TypeDatabase::T_VOID);
+                    DataNode& sejoin = _nodes.emplace_back(NodeType::FORK,T_VOID);
                     sejoin.emplace(condition.value());
                     if(const DataNode* lp = se_merge(_nodes,condition.side_effects(),lhs.side_effects())){
                         sejoin.emplace(*lp);
                     }else{
-                        sejoin.emplace(_nodes.emplace_back(NodeType::DUMMY,TypeDatabase::T_VOID));
+                        sejoin.emplace(_nodes.emplace_back(NodeType::DUMMY,T_VOID));
                     }
                     if(const DataNode* rp = se_merge(_nodes,condition.side_effects(),rhs.side_effects())){
                         sejoin.emplace(*rp);
                     }else{
-                        sejoin.emplace(_nodes.emplace_back(NodeType::DUMMY,TypeDatabase::T_VOID));
+                        sejoin.emplace(_nodes.emplace_back(NodeType::DUMMY,T_VOID));
                     }
                     return {join,&sejoin};
                 }else{

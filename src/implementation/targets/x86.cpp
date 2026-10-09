@@ -151,11 +151,11 @@ namespace bbe::targets::x86::impl{
                 void into(const DataValue& v,std::byte reg) const{
                     stor(f.instructions(),soff_to_disp8(v.stack()),reg);
                 }
-                void load_args(const type_pack& argp){
+                void load_args(const TypePack& argp){
                     arg_values.reserve(1uz+argp.size());
                     for(std::uint32_t i=0;i<argp.size();++i){
                         const TypeInfo& arg_i_t = argp[i];
-                        if(arg_i_t.index() == TypeDatabase::T_VOID) continue;
+                        if(arg_i_t.index() == T_VOID) continue;
                         else if(arg_i_t.type() == TypeCategory::PACK) throw std::logic_error("x86 compile: ABI: Can't have packs in an argument pack"s);
                         DataValue& arg_i_v = arg_values.emplace_back(arg_i_t);
                         

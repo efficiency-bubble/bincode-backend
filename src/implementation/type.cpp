@@ -1,8 +1,7 @@
-#include<bbe/type.hpp>
+#include<bbe/type-database.hpp>
 #include<cppp/int.hpp>
 namespace bbe::impl{
-    const TypeInfo& TypeDatabase::pack_of(cppp::fixed_array<const TypeInfo*>&& a) const{
-        type_pack key{std::move(a)};
+    const TypeInfo& TypeDatabase::pack_of(TypePack&& key) const{
         if(auto it=compounds.find(key);it!=compounds.end()){
             return **it;
         }else{
@@ -24,7 +23,7 @@ namespace bbe::impl{
         if(auto it=compounds.find(&pointed);it!=compounds.end()){
             return **it;
         }else{
-            TypeInfo& nt = infos.emplace(&pointed);
+            TypeInfo& nt = infos.emplace(pointed);
             compounds.emplace(nt);
             return nt;
         }

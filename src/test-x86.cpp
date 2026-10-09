@@ -14,9 +14,9 @@ int main(){
     ProjectEntitiesPool p;
     ErrorDatabase edb;
     
-    const TypeInfo& ui32 = p.types()[TypeDatabase::T_UINT32];
-    Function& example_fn = p.functions().emplace(u8"example"s,FunctionSignature{ui32,ui32,ui32});
-    p.functions().emplace(u8"multiply_adjust"s,FunctionSignature{ui32,ui32,ui32});
+    const TypeInfo& ui32 = p.types()[T_UINT32];
+    Function& example_fn = p.functions().emplace(u8"example"s,FunctionSignature{ui32,{ui32,ui32}});
+    p.functions().emplace(u8"multiply_adjust"s,FunctionSignature{ui32,{ui32,ui32}});
     const Function& itadd = intrin(INTR_ADDU32,p);
     const Function& itsub = intrin(INTR_SUBU32,p);
     example_fn.set(

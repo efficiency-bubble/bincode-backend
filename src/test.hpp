@@ -95,13 +95,13 @@ ASTNode getvar(std::uint32_t var){
 FunctionSignature intrin_sig(std::uint32_t i,const TypeDatabase& tdb){
     switch(i){
         case 10: case 20: case 30: case 50: case 51:
-            return {tdb[tdb.T_UINT32],tdb[tdb.T_UINT32],tdb[tdb.T_UINT32]};
+            return {tdb[T_UINT32],{tdb[T_UINT32],tdb[T_UINT32]}};
         case 11: case 21: case 31:
-            return {tdb[tdb.T_INT32],tdb[tdb.T_INT32],tdb[tdb.T_INT32]};
+            return {tdb[T_INT32],{tdb[T_INT32],tdb[T_INT32]}};
         case 60:
-            return {tdb[tdb.T_BOOL],tdb[tdb.T_BOOL]};
+            return {tdb[T_BOOL],{tdb[T_BOOL]}};
         case 100:
-            return {tdb[tdb.T_VOID],tdb[tdb.T_UINT32]};
+            return {tdb[T_VOID],{tdb[T_UINT32]}};
     }
     cppp::unreachable();
 }

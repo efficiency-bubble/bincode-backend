@@ -1,5 +1,7 @@
 #pragma once
-#include"lmgp.hpp"
+#include"lmgcp.hpp"
+#include"uninit.hpp"
+#include"serialization.hpp"
 namespace bbe::impl{
     template<typename T>
     class EntityPool{

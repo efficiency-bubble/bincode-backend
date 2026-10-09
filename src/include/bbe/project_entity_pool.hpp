@@ -1,29 +1,22 @@
 #pragma once
-#include"function.hpp"
-#include"type.hpp"
+#include"function-database.hpp"
+#include"type-database.hpp"
 namespace bbe::impl{
-    struct SCM{
-        FunctionDatabase::consolidation_map fcmap;
-    };
     class ProjectEntitiesPool{
         TypeDatabase td;
         FunctionDatabase fd;
         public:
             ProjectEntitiesPool() = default;
             ProjectEntitiesPool(cppp::frozen_byte_view& b) : td(b), fd(b,td){}
-            TypeSweeper begin_gc(){
-                TypeSweeper swp{td.sweep()};
-                fd.trace_types(swp);
-                return swp;
+            EntitySweeper begin_gc(){
+                return {td.sweep(),fd.sweep()};
             }
-            void end_gc(TypeSweeper&& swp){
-                td.finalize_gc(std::move(swp));
+            void end_gc(EntitySweeper swp){
+                td.finalize_gc(swp);
             }
-            SCM serialize(cppp::bytes& dst) const{
-                SCM scm{.fcmap{fd.make_consolidation_map()}};
+            void serialize(cppp::bytes& dst) const{
                 td.serialize(dst);
-                fd.serialize(dst,scm.fcmap);
-                return scm;
+                fd.serialize(dst);
             }
             const TypeDatabase& types() const{
                 return td;
@@ -40,6 +33,5 @@ namespace bbe::impl{
     };
 }
 namespace bbe{
-    BBE_EXPORT SCM;
     BBE_EXPORT ProjectEntitiesPool;
 }

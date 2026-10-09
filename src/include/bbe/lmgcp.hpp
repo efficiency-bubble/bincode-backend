@@ -92,7 +92,7 @@ namespace bbe::impl{
                 }
         };
         void destroy_block(id_type i){
-            std::destroy_n(storage[i],n);
+            cppp::destroy_backwards(std::span{storage[i],n});
             std::allocator<E>().deallocate(storage[i],n);
             
             // Only for the peace of mind. Pointers are trivially-destructible so this is a no-op.
@@ -102,7 +102,7 @@ namespace bbe::impl{
         void destroy_last_block(id_type ilast){
             if(id_type last_block_population = length % n){
                 BBE_DEBUG(u8"Deleting last block"sv,ilast);
-                std::destroy_n(storage[ilast],last_block_population);
+                cppp::destroy_backwards(std::span{storage[ilast],last_block_population});
                 std::allocator<E>().deallocate(storage[ilast],n);
                 std::destroy_at(storage + ilast);
             }
@@ -176,6 +176,12 @@ namespace bbe::impl{
                     }
                     E& new_location(E& v) const{
                         return (*pool)[v.index()];
+                    }
+                    void mark(id_type id){
+                        (*pool)[id].invert_mark_and_set_id(counter++);
+                    }
+                    void mark(const E& e){
+                        e.invert_mark_and_set_id(counter++);
                     }
                     void trace(id_type& id){
                         E& entity = (*pool)[id];

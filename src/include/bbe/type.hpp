@@ -1,21 +1,12 @@
 #pragma once
 #include"commons.hpp"
-#include"serialization.hpp"
+#include"gcfwd.hpp"
 #include"uninit.hpp"
-#include"entity_pool.hpp"
 #include"idfwd.hpp"
-#include<cppp/object-view.hpp>
+#include"entity_pool.hpp"
+#include"serialization.hpp"
 #include<cppp/variant.hpp>
-#include<cppp/assert.hpp>
 #include<cppp/array.hpp>
-#include<cppp/int.hpp>
-#include<unordered_map>
-#include<unordered_set>
-#include<functional>
-#include<algorithm>
-#include<execution>
-#include<numeric>
-#include<bit>
 namespace bbe::impl{
     #ifdef __INTELLISENSE__
     #define BBE_ANNOTATE(t)
@@ -40,30 +31,28 @@ namespace bbe::impl{
                 _value ^= _value >> 28;
             }
     };
-    class type_pack;
+    class TypePack;
     class FunctionSignature;
     class TypeDatabase;
     class TypeInfo;
     enum class TypeCategory : std::uint8_t{
         DTYPE,
-        PACK BBE_ANNOTATE(type_pack),
+        PACK BBE_ANNOTATE(TypePack),
         FUNCTION_POINTER BBE_ANNOTATE(FunctionSignature),
-        POINTER BBE_ANNOTATE(const TypeInfo*)
+        POINTER BBE_ANNOTATE(TraceableReference<TypeInfo>)
     };
-    class TypeSweeper;
     class TypeInfo : public Entity<type_id>{
         std::uint64_t _size;
         std::uint64_t align;
         type_hash _hash;
         cppp::heap_variant<TypeCategory> data;
         friend TypeDatabase;
-        friend TypeSweeper;
-        inline void trace_data(TypeSweeper& swp);
+        friend EntitySweeper;
         public:
             TypeInfo(type_id id,type_hash hash,cppp::heap_variant<TypeCategory>&& d,std::uint64_t sz,std::uint64_t al) : Entity(id), _size(sz), align(al), _hash(hash), data(std::move(d)){}
-            inline TypeInfo(type_id,type_pack&&);
+            inline TypeInfo(type_id,TypePack&&);
             inline TypeInfo(type_id,FunctionSignature);
-            inline TypeInfo(type_id,const TypeInfo*);
+            inline TypeInfo(type_id,const TypeInfo&);
             TypeInfo(type_id id,uninitialize_t uninit) : Entity(id), _hash(uninit){}
             void initialize(type_hash h,cppp::heap_variant<TypeCategory>&& t,std::uint64_t sz,std::uint64_t al){
                 _size = sz;
@@ -88,7 +77,7 @@ namespace bbe::impl{
             type_hash hash() const{
                 return _hash;
             }
-            const type_pack& pack_contents() const{
+            const TypePack& pack_contents() const{
                 return data.get<TypeCategory::PACK>();
             }
             const FunctionSignature& function_signature() const{
@@ -98,49 +87,26 @@ namespace bbe::impl{
                 return *data.get<TypeCategory::POINTER>();
             }
     };
-    class TypeSweeper{
-        LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper swp;
+    class TypePackBuilder{
+        cppp::uninitialized_memory<TraceableReference<TypeInfo>> mem;
+        friend TypePack;
         public:
-            TypeSweeper(LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper&& s) : swp(std::move(s)){}
-            bool is_marked(const TypeInfo& inf) const{
-                return swp.is_marked(inf);
+            TypePackBuilder(std::size_t n) : mem(n){}
+            void emplace(std::size_t i,const TypeInfo& inf){
+                mem.emplace_at(i,inf);
             }
-            const TypeInfo& new_location(const TypeInfo& i) const{
-                return swp.new_location(i);
-            }
-            void trace(type_id& tid){
-                bool unmarked = !swp.is_marked(swp.associated_pool()[tid]);
-                swp.trace(tid);
-                if(unmarked){
-                    swp.associated_pool()[tid].trace_data(*this);
-                }
-            }
-            void trace(TypeInfo*& p){
-                bool unmarked = !swp.is_marked(*p);
-                swp.trace(p);
-                if(unmarked){
-                    p->trace_data(*this);
-                }
-            }
-            void trace(const TypeInfo*& p){
-                TypeInfo* oldp = const_cast<TypeInfo*>(p);
-                bool unmarked = !swp.is_marked(*p);
-                swp.trace(p); // trace first to mark ourselves, so we don't infinitely recurse
-                if(unmarked){
-                    oldp->trace_data(*this);
-                }
-                
+            void abandon(std::size_t i){
+                mem.destroy_n_from_begin(i);
             }
     };
-    class type_pack{
-        cppp::fixed_array<const TypeInfo*> arr;
+    class TypePack{
+        cppp::fixed_array<TraceableReference<TypeInfo>> arr;
         using view_t = cppp::view<const TypeInfo*>;
-        friend class TypeDatabase;
+        friend EntitySweeper;
         public:
-            type_pack(cppp::fixed_array<const TypeInfo*>&& a) : arr(std::move(a)){
-                CPPP_ASSERT(!std::ranges::contains(arr,nullptr));
-            }
-            inline type_pack(cppp::frozen_byte_view&,const TypeDatabase&);
+            TypePack(TypePackBuilder&& a) : arr(std::move(a.mem)){}
+            TypePack(std::initializer_list<TraceableReference<TypeInfo>> ilis) : arr(ilis){}
+            inline TypePack(cppp::frozen_byte_view&,const TypeDatabase&);
             type_hash hash() const{
                 if(arr.empty()) return {std::numeric_limits<std::uint64_t>::max()};
                 type_hash h = arr[0uz]->hash();
@@ -149,27 +115,22 @@ namespace bbe::impl{
                 }
                 return h;
             }
-            void trace_types(TypeSweeper& swp){
-                for(const TypeInfo*& p : arr){
-                    swp.trace(p);
-                }
-            }
             void serialize(cppp::bytes& dst) const{
                 cppp::muleb128_w<std::uint64_t>(dst,arr.size());
-                for(const TypeInfo* p : arr){
+                for(const TraceableReference<TypeInfo> p : arr){
                     cppp::muleb128_w<type_id>(dst,p->index());
                 }
             }
             class const_iterator{
-                const TypeInfo* const* p;
-                friend type_pack;
-                const_iterator(const TypeInfo* const* p) : p(p){}
+                const TraceableReference<TypeInfo>* p;
+                friend TypePack;
+                const_iterator(const TraceableReference<TypeInfo>* p) : p(p){}
                 public:
                     using value_type = TypeInfo;
                     const TypeInfo& operator*() const{
                         return **p;
                     }
-                    const TypeInfo* operator->() const{
+                    TraceableReference<TypeInfo> operator->() const{
                         return *p;
                     }
                     const_iterator& operator+=(std::ptrdiff_t off){
@@ -198,7 +159,7 @@ namespace bbe::impl{
             const_iterator end() const{
                 return arr.end();
             }
-            const cppp::fixed_array<const TypeInfo*>& array() const{
+            const cppp::fixed_array<TraceableReference<TypeInfo>>& array() const{
                 return arr;
             }
             const TypeInfo& operator[](std::size_t ind) const{
@@ -207,21 +168,19 @@ namespace bbe::impl{
             std::size_t size() const{
                 return arr.size();
             }
-            bool operator==(const type_pack& other) const{
+            bool operator==(const TypePack& other) const{
                 return std::ranges::equal(arr,other.arr);
             }
     };
     class FunctionSignature{
-        const TypeInfo* ret;
+        TraceableReference<TypeInfo> ret;
         union{
-            type_pack par;
+            TypePack par;
         };
-        friend TypeDatabase;
+        friend EntitySweeper;
         public:
             FunctionSignature(uninitialize_t){}
-            FunctionSignature(const TypeInfo& r,type_pack&& p) : ret(&r), par(std::move(p)){}
-            template<std::same_as<TypeInfo> ...T>
-            FunctionSignature(const TypeInfo& r,const T& ...pv) : ret(&r), par({&pv...}){}
+            FunctionSignature(const TypeInfo& r,TypePack&& p) : ret(r), par(std::move(p)){}
             FunctionSignature(cppp::frozen_byte_view& buf,const TypeDatabase& tdb) : FunctionSignature(uninitialize){
                 deserialize(buf,tdb);
             }
@@ -238,10 +197,6 @@ namespace bbe::impl{
                 return *this;
             }
             inline void deserialize(cppp::frozen_byte_view&,const TypeDatabase&);
-            void trace_types(TypeSweeper& swp){
-                swp.trace(ret);
-                par.trace_types(swp);
-            }
             void serialize(cppp::bytes& dst) const{
                 cppp::muleb128_w<type_id>(dst,ret->index());
                 par.serialize(dst);
@@ -252,234 +207,49 @@ namespace bbe::impl{
                 return h;
             }
             void set_return(const TypeInfo& t){
-                ret = &t;
+                ret.set(t);
             }
             const TypeInfo& return_type() const{
                 return *ret;
             }
-            const type_pack& parameters() const{
+            const TypePack& parameters() const{
                 return par;
             }
-            type_pack& parameters(){
+            TypePack& parameters(){
                 return par;
             }
             bool operator==(const FunctionSignature& other) const{
                 return ret == other.ret && par == other.par;
             }
             ~FunctionSignature(){
-                par.~type_pack();
+                par.~TypePack();
             }
     };
-    // sahd, size align hash data
-    inline TypeInfo::TypeInfo(type_id id,type_pack&& pk) : Entity(id), _size(0_u64), align(1_u64), _hash(pk.hash()), data(cppp::in_place_etor<TypeCategory::PACK>,std::move(pk)){
+    inline TypeInfo::TypeInfo(type_id id,FunctionSignature sig) : Entity(id), _size(8_u64), align(8_u64), _hash(sig.hash()), data(cppp::in_place_etor<TypeCategory::FUNCTION_POINTER>,sig){}
+    inline TypeInfo::TypeInfo(type_id id,const TypeInfo& pe) : Entity(id), _size(8_u64), align(8_u64), _hash(~pe.hash().value()), data(cppp::in_place_etor<TypeCategory::POINTER>,pe){}
+    inline TypeInfo::TypeInfo(type_id id,TypePack&& pk) : Entity(id), _size(0_u64), align(1_u64), _hash(pk.hash()), data(cppp::in_place_etor<TypeCategory::PACK>,std::move(pk)){
         for(const TypeInfo& i : pack_contents()){
             _size += i.size();
             align = std::max(align,i.alignment());
         }
     }
-    inline TypeInfo::TypeInfo(type_id id,FunctionSignature sig) : Entity(id), _size(8_u64), align(8_u64), _hash(sig.hash()), data(cppp::in_place_etor<TypeCategory::FUNCTION_POINTER>,sig){}
-    inline TypeInfo::TypeInfo(type_id id,const TypeInfo* pe) : Entity(id), _size(8_u64), align(8_u64), _hash(~pe->hash().value()), data(cppp::in_place_etor<TypeCategory::POINTER>,pe){}
-    class MutableTypeKey{
-        mutable const TypeInfo* inf;
-        public:
-            MutableTypeKey(const TypeInfo& i) : inf(&i){}
-            const TypeInfo& operator*() const{
-                return *inf;
-            }
-            const TypeInfo* operator->() const{
-                return inf;
-            }
-            const TypeInfo* get() const{
-                return inf;
-            }
-            void update(const TypeSweeper& swp) const{
-                inf = &swp.new_location(*inf);
-            }
-            friend bool operator==(MutableTypeKey lhs,MutableTypeKey rhs){
-                return lhs.inf == rhs.inf;
-            }
-    };
-    class TypeDatabase{
-        std::uint64_t hashcode = 0;
-        mutable EntityPool<TypeInfo> infos;
-        struct eq_tr{
-            bool operator()(MutableTypeKey tr,MutableTypeKey tr2) const{
-                return tr == tr2;
-            }
-            bool operator()(MutableTypeKey tr,const type_pack& pk) const{
-                return tr->type() == TypeCategory::PACK && tr->pack_contents() == pk;
-            }
-            bool operator()(const type_pack& pk,MutableTypeKey tr) const{
-                return tr->type() == TypeCategory::PACK && tr->pack_contents() == pk;
-            }
-            bool operator()(MutableTypeKey tr,FunctionSignature sg) const{
-                return tr->type() == TypeCategory::FUNCTION_POINTER && tr->function_signature() == sg;
-            }
-            bool operator()(FunctionSignature sg,MutableTypeKey tr) const{
-                return tr->type() == TypeCategory::FUNCTION_POINTER && tr->function_signature() == sg;
-            }
-            bool operator()(MutableTypeKey tr,const TypeInfo* p) const{
-                return tr->type() == TypeCategory::POINTER && &tr->pointee() == p;
-            }
-            bool operator()(const TypeInfo* p,MutableTypeKey tr) const{
-                return tr->type() == TypeCategory::POINTER && &tr->pointee() == p;
-            }
-            using is_transparent = void;
-        };
-        struct hash_tr{
-            constexpr std::size_t operator()(MutableTypeKey r) const noexcept{
-                return cppp::assume_cast<std::size_t>(r->hash().value());
-            }
-            constexpr std::size_t operator()(const type_pack& pk) const noexcept{
-                return cppp::assume_cast<std::size_t>(pk.hash().value());
-            }
-            constexpr std::size_t operator()(FunctionSignature fs) const noexcept{
-                return cppp::assume_cast<std::size_t>(fs.hash().value());
-            }
-            constexpr std::size_t operator()(const TypeInfo* p) const noexcept{
-                return cppp::assume_cast<std::size_t>(~p->hash().value());
-            }
-            using is_transparent = void;
-        };
-        using compounds_t = std::unordered_set<MutableTypeKey,hash_tr,eq_tr>;
-        mutable compounds_t compounds;
-        friend TypeInfo;
-        constexpr static type_id T_INTRINSIC_END = 6;
-        public:
-            constexpr static type_id T_VOID = 0;
-            constexpr static type_id T_UINT32 = 1;
-            constexpr static type_id T_INT32 = 2;
-            constexpr static type_id T_UINT64 = 3;
-            constexpr static type_id T_INT64 = 4;
-            constexpr static type_id T_BOOL = 5;
-            constexpr static type_id T_ERROR = std::numeric_limits<type_id>::max();
-            TypeDatabase(){
-                emplace(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,0_u64,0_u64);
-                emplace(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,4_u64,4_u64);
-                emplace(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,4_u64,4_u64);
-                emplace(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,8_u64,8_u64);
-                emplace(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,8_u64,8_u64);
-                emplace(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,1_u64,1_u64);
-            }
-            TypeDatabase(cppp::frozen_byte_view& buf) : infos(T_INTRINSIC_END,buf){
-                infos[T_VOID].initialize(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,0_u64,0_u64);
-                infos[T_UINT32].initialize(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,4_u64,4_u64);
-                infos[T_INT32].initialize(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,4_u64,4_u64);
-                infos[T_UINT64].initialize(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,8_u64,8_u64);
-                infos[T_INT64].initialize(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,8_u64,8_u64);
-                infos[T_BOOL].initialize(hashcode++,cppp::in_place_etor<TypeCategory::DTYPE>,1_u64,1_u64);
-                for(type_id i=T_INTRINSIC_END;i<infos.size();++i){
-                    infos[i].deserialize(buf,*this);
-                }
-            }
-            TypeSweeper sweep(){
-                LinearMovingGarbageCollectedPool<TypeInfo>::Sweeper swp{infos.sweep()};
-                for(type_id i=0;i<T_INTRINSIC_END;++i){
-                    swp.trace(i);
-                }
-                return swp;
-            }
-            void finalize_gc(const TypeSweeper&& swp){
-                compounds_t::const_iterator it = compounds.begin();
-                const compounds_t::const_iterator done = compounds.end();
-                while(it != done){
-                    if(swp.is_marked(**it)){
-                        it->update(swp);
-                        ++it;
-                    }else{
-                        it = compounds.erase(it);
-                    }
-                }
-            }
-            void serialize(cppp::bytes& dst) const{
-                cppp::muleb128_w<type_id>(dst,infos.size() - T_INTRINSIC_END);
-                for(const TypeInfo& ent : infos){
-                    if(ent.index() >= T_INTRINSIC_END){
-                        ent.serialize(dst);
-                    }
-                }
-            }
-            std::size_t size() const{
-                return infos.size();
-            }
-            const TypeInfo& pack_of(cppp::fixed_array<const TypeInfo*>&&) const;
-            const TypeInfo& function_of(FunctionSignature) const;
-            const TypeInfo& pointer_to(const TypeInfo&) const;
-            template<typename ...A>
-            const TypeInfo& emplace(A&& ...a){
-                return infos.emplace(std::forward<A>(a)...);
-            }
-            const TypeInfo& operator[](type_id i) const{
-                CPPP_ASSERT(i != T_ERROR);
-                return infos[i];
-            }
-    };
-    inline type_pack::type_pack(cppp::frozen_byte_view& buf,const TypeDatabase& tdb) : arr(cppp::muleb128_r<std::uint64_t>(buf)){
-        for(const TypeInfo*& p : arr){
-            p = &tdb[cppp::muleb128_r<type_id>(buf)];
-        }
-    }
-    inline void FunctionSignature::deserialize(cppp::frozen_byte_view& buf,const TypeDatabase& tdb){
-        ret = &tdb[cppp::muleb128_r<type_id>(buf)];
-        new(&par) type_pack(buf,tdb);
-    }
-    inline void TypeInfo::trace_data(TypeSweeper& swp){
-        switch(data.tag()){
-            case TypeCategory::FUNCTION_POINTER:
-                data.get<TypeCategory::FUNCTION_POINTER>().trace_types(swp);
-                break;
-            case TypeCategory::PACK:
-                data.get<TypeCategory::PACK>().trace_types(swp);
-                break;
-            case TypeCategory::POINTER:
-                swp.trace(data.get<TypeCategory::POINTER>());
-                break;
-            default:;
-        }
-    }
-    inline void TypeInfo::serialize(cppp::bytes& dst) const{
-        cppp::muleb128_w<std::uint64_t>(dst,_size);
-        cppp::muleb128_w<std::uint64_t>(dst,align);
-        dst.appendl(static_cast<std::uint8_t>(data.tag()));
-        switch(data.tag()){
-            case TypeCategory::PACK:
-                pack_contents().serialize(dst);
-                break;
-            case TypeCategory::FUNCTION_POINTER:
-                function_signature().serialize(dst);
-                break;
-            case TypeCategory::POINTER:
-                cppp::muleb128_w<type_id>(dst,pointee().index());
-                break;
-            default:;
-        }
-    }
-    inline void TypeInfo::deserialize(cppp::frozen_byte_view& buf,TypeDatabase& tdb){
-        _size = cppp::muleb128_r<std::uint64_t>(buf);
-        align = cppp::muleb128_r<std::uint64_t>(buf);
-        TypeCategory cat;
-        switch(cat = static_cast<TypeCategory>(cppp::read<std::uint8_t>(buf))){
-            case TypeCategory::PACK:
-                data.emplace<TypeCategory::PACK>(type_pack{buf,tdb});
-                break;
-            case TypeCategory::FUNCTION_POINTER:
-                data.emplace<TypeCategory::FUNCTION_POINTER>(FunctionSignature{buf,tdb});
-                break;
-            case TypeCategory::POINTER:
-                data.emplace<TypeCategory::POINTER>(&tdb[cppp::muleb128_r<type_id>(buf)]);
-                break;
-            default: goto simple;
-        }
-        tdb.compounds.emplace(*this);
-        simple:
-    }
+    constexpr inline type_id T_VOID = 0;
+    constexpr inline type_id T_UINT32 = 1;
+    constexpr inline type_id T_INT32 = 2;
+    constexpr inline type_id T_UINT64 = 3;
+    constexpr inline type_id T_INT64 = 4;
+    constexpr inline type_id T_BOOL = 5;
+    constexpr inline type_id T_ERROR = std::numeric_limits<type_id>::max();
 }
 namespace bbe{
-    BBE_EXPORT type_id;
-    BBE_EXPORT type_pack;
+    BBE_EXPORT TypePack;
     BBE_EXPORT TypeCategory;
     BBE_EXPORT TypeInfo;
-    BBE_EXPORT TypeSweeper;
-    BBE_EXPORT TypeDatabase;
-    BBE_EXPORT MutableTypeKey;
+    BBE_EXPORT T_VOID;
+    BBE_EXPORT T_UINT32;
+    BBE_EXPORT T_UINT64;
+    BBE_EXPORT T_INT32;
+    BBE_EXPORT T_INT64;
+    BBE_EXPORT T_BOOL;
+    BBE_EXPORT T_ERROR;
 }
