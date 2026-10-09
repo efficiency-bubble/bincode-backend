@@ -57,12 +57,12 @@ namespace bbe::impl{
             }
             return swp;
         }
-        void finalize_gc(EntitySweeper& swp){
+        void finalize_gc(const EntitySweeper& swp){
             compounds_t::const_iterator it = compounds.begin();
             const compounds_t::const_iterator done = compounds.end();
             while(it != done){
-                if(swp.is_marked(**it)){
-                    swp.trace_type(*it);
+                if(swp.is_type_marked(**it)){
+                    swp.update_type_ref_to_new_location(*it);
                     ++it;
                 }else{
                     it = compounds.erase(it);
