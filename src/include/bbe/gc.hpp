@@ -71,9 +71,11 @@ namespace bbe::impl{
             void update_type_ref_to_new_location(const TraceableReference<TypeInfo>& tr) const{
                 tr.ref = &new_type_location(*tr);
             }
+            void update_type_ref_to_new_location(const TraceableReference<TypeInfo>&&) const = delete;
             void update_function_ref_to_new_location(const TraceableReference<Function>& tr) const{
                 tr.ref = &new_function_location(*tr);
             }
+            void update_function_ref_to_new_location(const TraceableReference<Function>&&) const = delete;
             void trace_type(type_id& tid){
                 TypeInfo& info = tswp.associated_pool()[tid];
                 _trace_type(info);
@@ -89,6 +91,7 @@ namespace bbe::impl{
                 _trace_type(info);
                 p = &new_type_location(info);
             }
+            void trace_type(const TraceableReference<TypeInfo>&&) = delete;
             void trace_type(const TraceableReference<TypeInfo>& tr){
                 trace_type(tr.ref);
             }
@@ -107,6 +110,7 @@ namespace bbe::impl{
                 _trace_func(fn);
                 p = &new_function_location(fn);
             }
+            void trace_function(const TraceableReference<Function>&&) = delete;
             void trace_function(const TraceableReference<Function>& fr){
                 trace_function(fr.ref);
             }
