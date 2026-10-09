@@ -171,11 +171,17 @@ namespace bbe::impl{
                     bool is_marked(const E& entity) const{
                         return entity.mark_parity() != pool->parity;
                     }
+                    bool is_marked(id_type i) const{
+                        return (*pool)[i].mark_parity() != pool->parity;
+                    }
                     const E& new_location(const E& v) const{
                         return (*pool)[v.index()];
                     }
                     E& new_location(E& v) const{
                         return (*pool)[v.index()];
+                    }
+                    id_type new_location(id_type i) const{
+                        return (*pool)[i].index();
                     }
                     void mark(id_type id){
                         (*pool)[id].invert_mark_and_set_id(counter++);

@@ -56,16 +56,28 @@ namespace bbe::impl{
             bool is_function_marked(const Function& inf) const{
                 return fswp.is_marked(inf);
             }
+            bool is_type_marked(type_id ti) const{
+                return tswp.is_marked(ti);
+            }
+            bool is_function_marked(func_id fi) const{
+                return fswp.is_marked(fi);
+            }
             const TypeInfo& new_type_location(const TypeInfo& i) const{
                 return tswp.new_location(i);
             }
             TypeInfo& new_type_location(TypeInfo& i) const{
                 return tswp.new_location(i);
             }
+            type_id new_type_location(type_id i) const{
+                return tswp.new_location(i);
+            }
             Function& new_function_location(Function& i) const{
                 return fswp.new_location(i);
             }
             const Function& new_function_location(const Function& i) const{
+                return fswp.new_location(i);
+            }
+            func_id new_function_location(func_id i) const{
                 return fswp.new_location(i);
             }
             void update_type_ref_to_new_location(const TraceableReference<TypeInfo>& tr) const{
