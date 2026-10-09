@@ -1,13 +1,17 @@
 #pragma once
-#include"function-database.hpp"
+#include"function.hpp"
 #include"type-database.hpp"
 namespace bbe::impl{
     class ProjectEntitiesPool{
         TypeDatabase td;
-        FunctionDatabase fd;
+        EntityPool<Function> fd;
         public:
             ProjectEntitiesPool() = default;
-            ProjectEntitiesPool(cppp::frozen_byte_view& b) : td(b), fd(b,td){}
+            ProjectEntitiesPool(cppp::frozen_byte_view& b) : td(b), fd(b){
+                for(func_id i=0;i<fd.size();++i){
+                    fd[i].deserialize(b,td);
+                }
+            }
             EntitySweeper begin_gc(){
                 return {td.sweep(),fd.sweep()};
             }
@@ -24,10 +28,10 @@ namespace bbe::impl{
             TypeDatabase& types(){
                 return td;
             }
-            FunctionDatabase& functions(){
+            EntityPool<Function>& functions(){
                 return fd;
             }
-            const FunctionDatabase& functions() const{
+            const EntityPool<Function>& functions() const{
                 return fd;
             }
     };
