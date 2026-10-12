@@ -130,8 +130,8 @@ namespace bbe::impl{
                     const TypeInfo& operator*() const{
                         return **p;
                     }
-                    TraceableReference<TypeInfo> operator->() const{
-                        return *p;
+                    const TypeInfo* operator->() const{
+                        return &**p;
                     }
                     const_iterator& operator+=(std::ptrdiff_t off){
                         p += off;
