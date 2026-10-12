@@ -3,13 +3,14 @@
 #include<cppp/object-view.hpp>
 #include"entity_pool.hpp"
 #include<unordered_map>
+#include<vector>
 #include"value.hpp"
 namespace bbe::inter::dfg::impl{
     using namespace bbe::impl;
     class CompiledFunctionPool : public inter::impl::CompiledFunctionPool<targets::dfg::DataFlowGraph>{
         public:
             using inter::impl::CompiledFunctionPool<targets::dfg::DataFlowGraph>::CompiledFunctionPool;
-            Value call(func_id,const Value&) const;
+            Value call(func_id,const std::vector<Value>&) const;
     };
 }
 namespace bbe::inter::dfg{

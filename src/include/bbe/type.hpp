@@ -131,7 +131,7 @@ namespace bbe::impl{
                         return **p;
                     }
                     const TypeInfo* operator->() const{
-                        return &**p;
+                        return p->get();
                     }
                     const_iterator& operator+=(std::ptrdiff_t off){
                         p += off;

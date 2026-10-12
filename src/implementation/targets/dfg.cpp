@@ -89,7 +89,7 @@ namespace bbe::targets::dfg::impl{
                 
                 DataNode& cmag = _nodes.emplace_back(NodeType::CALL_BUILTIN,nd.result_type(),f->is_intrin()?f->intrin():std::numeric_limits<std::uint32_t>::max());
                 if(!f->is_intrin()){
-                    _nodes.emplace_back(NodeType::FNSYM,pep.types().function_of(f->signature()).index(),f->index());
+                    cmag.emplace(_nodes.emplace_back(NodeType::FNSYM,pep.types().function_of(f->signature()).index(),f->index()));
                 }
                 const DataNode* se = nullptr;
                 for(const ASTNode& c : nd.children()){

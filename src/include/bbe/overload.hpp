@@ -22,7 +22,7 @@ namespace bbe::impl{
                         return **it;
                     }
                     const Function* operator->() const{
-                        return &**it;
+                        return it->get();
                     }
                     const_iterator& operator++(){
                         ++it;
@@ -65,10 +65,6 @@ namespace bbe::impl{
                 for(const TraceableReference<Function> f : fns){
                     if(f->signature().parameters() == ptypes) return f.get();
                 }
-                // Fancy way:
-                // if(auto it = std::ranges::find_if(fns,std::bind_front(std::equal_to<TypePack>{},ptypes),cppp::atop<cppp::atop<cppp::invokes_member<cppp::reflect_member<const TypePack&() const>(&FunctionSignature::parameters)>,cppp::invokes_member<cppp::reflect_member<const FunctionSignature&() const>(&Function::signature)>>,cppp::dereferences<TraceableReference<Function>>>{});it!=fns.end()){
-                //     return &**it;
-                // }
                 return nullptr;
             }
             const_iterator begin() const{
