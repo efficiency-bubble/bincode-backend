@@ -156,6 +156,7 @@ namespace bbe::impl{
             }
             void recalculate_result_type(const ProjectEntitiesPool&,VariableDecls&,ErrorDatabase&,FunctionSignature);
             void recursively_recalculate_result_type(const ProjectEntitiesPool& p,VariableDecls& vd,ErrorDatabase& e,FunctionSignature sig){
+                if(_type == NodeType::HAVEVAR) vd.set(prim,*this);
                 for(auto& c : children()){
                     c.recursively_recalculate_result_type(p,vd,e,sig);
                 }

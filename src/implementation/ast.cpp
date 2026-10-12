@@ -179,7 +179,6 @@ namespace bbe::impl{
                 }else goto error;
                 break;
             case HAVEVAR:
-                vd.set(prim,*this);
                 ret = children()[1_u32].result_type();
                 break;
             case BOOL:
@@ -188,9 +187,14 @@ namespace bbe::impl{
             case FORK: {
                 type_id lht = children()[1_u32].result_type();
                 type_id rht = children()[2_u32].result_type();
-                if(lht == rht){
+                if(lht == T_ERROR || rht == T_ERROR){
+                    goto error;
+                }else if(lht == rht){
                     ret = lht;
-                }else goto error;
+                }else{
+                    errors.add(this,u8"Type mismatch on fork branches"s);
+                    goto error;
+                }
                 break;
             }
             case FNSYM: 
