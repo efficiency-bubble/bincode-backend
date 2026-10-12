@@ -140,7 +140,7 @@ namespace bbe::impl{
                     }
                 }
                 if(const Function* f=os.match(std::move(tpb))){
-                    ret = tdb.function_of(f->signature()).index();
+                    ret = f->signature().return_type().index();
                 }else{
                     errors.add(this,u8"No matching overload found"s);
                     goto error;
