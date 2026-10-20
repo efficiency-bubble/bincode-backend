@@ -3,9 +3,6 @@
 #include"function.hpp"
 #include"entity_pool.hpp"
 #include<cppp/int.hpp>
-#include<cppp/functional.hpp>
-#include<cppp/meta-functional.hpp>
-#include<cppp/meta.hpp>
 #include<vector>
 namespace bbe::impl{
     class OverloadSet : public Entity<over_id>{
@@ -55,8 +52,7 @@ namespace bbe::impl{
                 fns.emplace_back(fn);
             }
             void remove(const Function& fn){
-                (void)fn;
-                auto it = std::ranges::find(fns,&fn,cppp::atop<cppp::addresses<const Function&>,cppp::dereferences<TraceableReference<Function>>>{});
+                auto it = std::ranges::find(fns,&fn,&TraceableReference<Function>::get);
                 CPPP_ASSERT(it != fns.end());
                 std::ranges::swap(*it,fns.back());
                 fns.pop_back();
