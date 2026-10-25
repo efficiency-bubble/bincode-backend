@@ -29,12 +29,13 @@ namespace bbe::targets::dfg::impl{
                 throw std::logic_error("dfg::compile(): Unsupported node type uint64"s);
             case PACK: {
                 DataNode& pack = _nodes.emplace_back(NodeType::PACK,nd.result_type());
-                const DataNode* se = nullptr;
+                DataNode* se = nullptr;
                 for(const ASTNode& c : nd.children()){
                     Operation op{compile(pep,br,c)};
+                    
                     if(const DataNode* ese = op.side_effects()){
-                        if(se) throw std::logic_error("Side effects are indeterminately ordered"s);
-                        se = ese;
+                        if(!se) se = &_nodes.emplace_back(NodeType::SEQU,T_ERROR);
+                        se->emplace(*ese);
                     }
                     pack.emplace(op.value());
                 }
@@ -50,9 +51,9 @@ namespace bbe::targets::dfg::impl{
                     if(!(i--)){
                         result = &op.value();
                     }
-                    if(op.side_effects()){
+                    if(const DataNode* ese = op.side_effects()){
                         if(!se) se = &_nodes.emplace_back(NodeType::SEQU,T_ERROR);
-                        se->emplace(op.value());
+                        se->emplace(*ese);
                     }
                 }
                 // GCC please fix https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80922 so I don't have to -Wno-maybe-uninitialized
@@ -91,13 +92,13 @@ namespace bbe::targets::dfg::impl{
                 if(!f->is_intrin()){
                     cmag.emplace(_nodes.emplace_back(NodeType::FNSYM,pep.types().function_of(f->signature()).index(),f->index()));
                 }
-                const DataNode* se = nullptr;
+                DataNode* se = nullptr;
                 for(const ASTNode& c : nd.children()){
                     Operation op{compile(pep,br,c)};
                     cmag.emplace(op.value());
                     if(const DataNode* ese = op.side_effects()){
-                        if(se) throw std::logic_error("Side effects are indeterminately ordered"s);
-                        se = ese;
+                        if(!se) se = &_nodes.emplace_back(NodeType::SEQU,T_ERROR);
+                        se->emplace(*ese);
                     }
                 }
                 return {cmag,se_merge(_nodes,side_effects?&cmag:nullptr,se)};
