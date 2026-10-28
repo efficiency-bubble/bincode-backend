@@ -186,7 +186,6 @@ namespace bbe::targets::dfg::impl{
                 return _nodes.emplace_back(NodeType::FNSYM,nd.result_type(),nd.getp32());
             case EXTERN_OR_INTRIN:
                 cppp::unreachable();
-            case UINT32SYM:
             case NTYPE:
                 throw std::logic_error("DataFlowGraph::compile(): Unexpected node type "s+std::to_string(std::to_underlying(nd.type())));
         }

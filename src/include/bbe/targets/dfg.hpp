@@ -13,7 +13,6 @@ namespace bbe::targets::dfg::impl{
         FNSYM=200_u16,
         SEQU=310_u16,
         DUMMY=400_u16,
-        
         VOID=65535_u16
     };
     class DataNode{
