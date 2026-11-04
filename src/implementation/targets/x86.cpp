@@ -91,11 +91,11 @@ namespace bbe::targets::x86::impl{
                     default: cppp::unreachable();
                 }
             }
-            template<x::width w=x::width::W32>
+            template<x::width w>
             static void stor(cppp::bytes& b,x::displacement<x::width::W8> soff,std::byte r){
                 x::instructions::mov::r_rm::for_width<w>::encode(b,r,0b01_b /* disp8 */,x::reg::BP,soff);
             }
-            static void stord(std::uint32_t sz,cppp::bytes& b,x::displacement<x::width::W8> soff,std::byte r){
+            static void stord(std::uint64_t sz,cppp::bytes& b,x::displacement<x::width::W8> soff,std::byte r){
                 switch(sz){
                     case 1: stor<x::width::W8>(b,soff,r); break;
                     case 2: stor<x::width::W16>(b,soff,r); break;
@@ -149,7 +149,7 @@ namespace bbe::targets::x86::impl{
             public:
                 FunctionCompiler(Function& f,const TypeDatabase& tdb) : f(f), tdb(tdb){}
                 void into(const DataValue& v,std::byte reg) const{
-                    stor(f.instructions(),soff_to_disp8(v.stack()),reg);
+                    stord(v.type().size(),f.instructions(),soff_to_disp8(v.stack()),reg);
                 }
                 void load_args(const TypePack& argp){
                     arg_values.reserve(1uz+argp.size());
