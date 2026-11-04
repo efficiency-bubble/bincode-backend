@@ -82,27 +82,26 @@ namespace bbe::targets::x86::impl{
             static void rtos(cppp::bytes& b,std::byte r,x::displacement<x::width::W8> soff){
                 x::instructions::mov::rm_r::for_width<w>::encode(b,0b01_b,x::reg::BP,soff,r);
             }
-            static void rtosd(std::uint32_t sz,cppp::bytes& b,std::byte r,x::displacement<x::width::W8> soff){
+            template<typename F>
+            static decltype(auto) switch_width(std::uint64_t sz,F&& f){
                 switch(sz){
-                    case 1: rtos<x::width::W8>(b,r,soff); break;
-                    case 2: rtos<x::width::W16>(b,r,soff); break;
-                    case 4: rtos<x::width::W32>(b,r,soff); break;
-                    case 8: rtos<x::width::W64>(b,r,soff); break;
-                    default: cppp::unreachable();
+                    case 1: return std::forward<F>(f).template operator()<x::width::W8>();
+                    case 2: return std::forward<F>(f).template operator()<x::width::W16>();
+                    case 4: return std::forward<F>(f).template operator()<x::width::W32>();
+                    case 8: return std::forward<F>(f).template operator()<x::width::W64>();
                 }
+                cppp::unreachable();
+                
+            }
+            static void rtosd(std::uint64_t sz,cppp::bytes& b,std::byte r,x::displacement<x::width::W8> soff){
+                switch_width(sz,[&b,r,soff]<x::width w>{rtos<w>(b,r,soff);});
             }
             template<x::width w>
             static void stor(cppp::bytes& b,x::displacement<x::width::W8> soff,std::byte r){
                 x::instructions::mov::r_rm::for_width<w>::encode(b,r,0b01_b /* disp8 */,x::reg::BP,soff);
             }
             static void stord(std::uint64_t sz,cppp::bytes& b,x::displacement<x::width::W8> soff,std::byte r){
-                switch(sz){
-                    case 1: stor<x::width::W8>(b,soff,r); break;
-                    case 2: stor<x::width::W16>(b,soff,r); break;
-                    case 4: stor<x::width::W32>(b,soff,r); break;
-                    case 8: stor<x::width::W64>(b,soff,r); break;
-                    default: cppp::unreachable();
-                }
+                switch_width(sz,[&b,soff,r]<x::width w>{stor<w>(b,soff,r);});
             }
             template<typename T>
             DataValue& encode_arith(const dfg::DataNode& node){
@@ -158,7 +157,6 @@ namespace bbe::targets::x86::impl{
                         if(arg_i_t.index() == T_VOID) continue;
                         else if(arg_i_t.type() == TypeCategory::PACK) throw std::logic_error("x86 compile: ABI: Can't have packs in an argument pack"s);
                         DataValue& arg_i_v = arg_values.emplace_back(arg_i_t);
-                        
                         std::uint32_t asize = cppp::assume_cast<std::uint32_t>(arg_i_t.size());
                         rtosd(asize,f.instructions(),arg_reg(i),soff_to_disp8(allocate_stack(asize,arg_i_v)));
                     }
@@ -186,26 +184,11 @@ namespace bbe::targets::x86::impl{
                         case DEREF: {
                             stor<x::width::W64>(f.instructions(),soff_to_disp8(compile_node(*dn.parents().front()).stack()),x::reg::C);
                             DataValue& rv = new_value(dn);
-                            const std::uint32_t bound = cppp::assume_cast<std::uint32_t>(tdb[dn.return_type()].size());
-                            switch(bound){
-                                case 1:
-                                    x::instructions::mov::r_rm::for_width<x::width::W8>::encode(f.instructions(),x::reg::A,0b00_b /* [reg] */,x::reg::C);
-                                    rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_b(rv)));
-                                    break;
-                                case 2:
-                                    x::instructions::mov::r_rm::for_width<x::width::W16>::encode(f.instructions(),x::reg::A,0b00_b /* [reg] */,x::reg::C);
-                                    rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_w(rv)));
-                                    break;
-                                case 4:
-                                    x::instructions::mov::r_rm::for_width<x::width::W32>::encode(f.instructions(),x::reg::A,0b00_b /* [reg] */,x::reg::C);
-                                    rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_dw(rv)));
-                                    break;
-                                case 8:
-                                    x::instructions::mov::r_rm::for_width<x::width::W64>::encode(f.instructions(),x::reg::A,0b00_b /* [reg] */,x::reg::C);
-                                    rtos(f.instructions(),x::reg::A,soff_to_disp8(allocate_qw(rv)));
-                                    break;
-                                default: throw std::logic_error("x86 compile: unsupported object size for deref to reg");
-                            }
+                            std::uint64_t size = tdb[dn.return_type()].size();
+                            switch_width(size,[this,disp=soff_to_disp8(allocate_stack(cppp::assume_cast<std::uint32_t>(size),rv))]<x::width w>{
+                                x::instructions::mov::r_rm::for_width<w>::encode(f.instructions(),x::reg::A,0b00_b /* [reg] */,x::reg::C);
+                                rtos<w>(f.instructions(),x::reg::A,disp);
+                            });
                             return rv;
                         }
                         case ADDROF: {
