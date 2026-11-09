@@ -8,22 +8,6 @@ namespace bbe::impl{
     static bool has_extended_data(NodeType t){
         return t == NodeType::UINT64;
     }
-    static std::uint32_t nchld_of(NodeType t){
-        switch(t){
-            using enum NodeType;
-            case UINT32: case UINT64: case SINT32: case BOOL: case GETVAR: case FNSYM: case NTYPE: case EXTERN_OR_INTRIN:  case ARG:
-                return 0;
-            case SETVAR: case PACKIND: case DEREF: case ADDROF:
-                return 1;
-            case HAVEVAR:
-                return 2;
-            case FORK:
-                return 3;
-            case PACK: case COMMA: case CALL: case OVERCALL:
-                return VARIABLE;
-        }
-        cppp::unreachable();
-    }
     void ASTNode::deserialize(cppp::frozen_byte_view& buf){
         _type = static_cast<NodeType>(cppp::read<std::uint8_t>(buf));
         prim = cppp::muleb128_r<std::uint32_t>(buf);

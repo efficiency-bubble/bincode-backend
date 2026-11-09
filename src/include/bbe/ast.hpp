@@ -364,10 +364,26 @@ namespace bbe::impl{
         _data = reinterpret_cast<std::uintptr_t>(nmem);
         ++nchld;
     }
+    inline std::uint32_t nchld_of(NodeType t){
+        switch(t){
+            using enum NodeType;
+            case UINT32: case UINT64: case SINT32: case BOOL: case GETVAR: case FNSYM: case NTYPE: case EXTERN_OR_INTRIN:  case ARG:
+                return 0;
+            case SETVAR: case PACKIND: case DEREF: case ADDROF:
+                return 1;
+            case HAVEVAR:
+                return 2;
+            case FORK:
+                return 3;
+            case PACK: case COMMA: case CALL: case OVERCALL:
+                return VARIABLE;
+        }
+        cppp::unreachable();
+    }
     inline bool can_pop_back_from(const ASTNode& n){
         switch(n.type()){
             using enum NodeType;
-            case PACK: case COMMA:
+            case PACK: case COMMA: case OVERCALL:
                 return true;
             case CALL:
                 return n.children().size() > 1uz;
@@ -383,5 +399,6 @@ namespace bbe{
     BBE_EXPORT null_initialize_t;
     BBE_EXPORT null_initialize;
     BBE_EXPORT VARIABLE;
+    BBE_EXPORT nchld_of;
     BBE_EXPORT can_pop_back_from;
 }
