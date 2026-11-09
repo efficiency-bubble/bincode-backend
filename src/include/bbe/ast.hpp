@@ -380,15 +380,15 @@ namespace bbe::impl{
         }
         cppp::unreachable();
     }
-    inline bool can_pop_back_from(const ASTNode& n){
-        switch(n.type()){
+    inline std::uint32_t nc_preserve_limit(NodeType t){
+        switch(t){
             using enum NodeType;
             case PACK: case COMMA: case OVERCALL:
-                return true;
+                return 0uz;
             case CALL:
-                return n.children().size() > 1uz;
+                return 1uz;
             default:
-                return false;
+                return std::numeric_limits<std::uint32_t>::max();
         }
     }
 }
@@ -400,5 +400,5 @@ namespace bbe{
     BBE_EXPORT null_initialize;
     BBE_EXPORT VARIABLE;
     BBE_EXPORT nchld_of;
-    BBE_EXPORT can_pop_back_from;
+    BBE_EXPORT nc_preserve_limit;
 }
