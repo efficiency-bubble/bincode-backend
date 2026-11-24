@@ -50,8 +50,11 @@ namespace bbe::impl{
             }
         }
         void _trace_over(const OverloadSet& os){
-            for(const TraceableReference<Function>& fr : os.fns){
-                trace_function(fr);
+            if(!is_overload_set_marked(os)){
+                oswp.mark(os);
+                for(const TraceableReference<Function>& fr : os.fns){
+                    trace_function(fr);
+                }
             }
         }
         friend class ProjectEntitiesPool;
